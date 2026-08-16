@@ -57,10 +57,15 @@ def ingest(
     column_map: Path = typer.Option(
         ..., exists=True, readable=True, help="TOML mapping of source columns."
     ),
+    metadata_rows: int = typer.Option(
+        0,
+        min=0,
+        help="Number of metadata rows before the header; Thomson/SDC exports use 1.",
+    ),
     output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "deals_seed.csv"),
 ) -> None:
     """Normalize a mapped SDC/LSEG export while preserving each raw source row."""
-    seeds = read_deal_seeds(input_csv, load_column_map(column_map))
+    seeds = read_deal_seeds(input_csv, load_column_map(column_map), metadata_rows)
     write_csv(
         output_csv,
         seeds,

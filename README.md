@@ -41,11 +41,13 @@ Read [PLAN.md](PLAN.md) for the full research and implementation plan.
 
 ## Ingesting the SDC/LSEG export
 
-Do not edit the licensed export. Copy [config/sdc_columns.example.toml](config/sdc_columns.example.toml),
-replace its values with the real column names, then run:
+Do not edit the licensed export. The current repository includes a mapping for the supplied Thomson
+Reuters main files in `/Users/sreysus/Downloads/ma_events/`:
 
 ```sh
-uv run tag-edgar ingest data/raw/your-export.csv --column-map config/sdc_columns.toml
+uv run tag-edgar ingest /Users/sreysus/Downloads/ma_events/ma_2022.csv \
+  --column-map config/sdc_columns.toml \
+  --metadata-rows 1
 ```
 
 The normalized `deals_seed.csv` retains the original source row in a JSON column. CIK resolution

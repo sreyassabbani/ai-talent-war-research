@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import tomllib
 from datetime import date
 from pathlib import Path
@@ -10,7 +11,7 @@ from .models import DealSeed
 
 REQUIRED_COLUMNS = ("deal_id", "acquirer_name", "announcement_date")
 OPTIONAL_COLUMNS = ("acquirer_ticker", "target_name", "target_ticker", "effective_date")
-DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%Y%m%d")
+DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y%m%d")
 
 
 def load_column_map(path: Path) -> dict[str, str]:
@@ -38,6 +39,22 @@ def _parse_date(value: str, field: str, row_number: int) -> date:
     raise ValueError(f"Row {row_number}: {field}={value!r} is not a supported date format.")
 
 
+def _normalize_header(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _unique_headers(values: list[str]) -> list[str]:
+    """Keep repeated SDC columns rather than overwriting one in a dictionary row."""
+    counts: dict[str, int] = {}
+    headers: list[str] = []
+    for value in values:
+        normalized = _normalize_header(value)
+        counts[normalized] = counts.get(normalized, 0) + 1
+        suffix = f"__{counts[normalized]}" if counts[normalized] > 1 else ""
+        headers.append(f"{normalized}{suffix}")
+    return headers
+
+
 def _optional(row: dict[str, str], source_column: str | None) -> str | None:
     if source_column is None:
         return None
@@ -45,19 +62,35 @@ def _optional(row: dict[str, str], source_column: str | None) -> str | None:
     return value or None
 
 
-def read_deal_seeds(input_path: Path, column_map: dict[str, str]) -> list[DealSeed]:
+def read_deal_seeds(
+    input_path: Path, column_map: dict[str, str], metadata_rows: int = 0
+) -> list[DealSeed]:
     with input_path.open(newline="", encoding="utf-8-sig") as file:
-        reader = csv.DictReader(file)
-        if reader.fieldnames is None:
-            raise ValueError("Input CSV has no header row.")
-        unknown_source_columns = set(column_map.values()) - set(reader.fieldnames)
+        raw_reader = csv.reader(file)
+        for _ in range(metadata_rows):
+            try:
+                next(raw_reader)
+            except StopIteration as error:
+                raise ValueError("Input CSV ended before its header row.") from error
+        try:
+            header = _unique_headers(next(raw_reader))
+        except StopIteration as error:
+            raise ValueError("Input CSV has no header row.") from error
+        unknown_source_columns = set(column_map.values()) - set(header)
         if unknown_source_columns:
             raise ValueError(
                 f"Column map names absent from input CSV: {sorted(unknown_source_columns)}"
             )
 
         seeds: list[DealSeed] = []
-        for row_number, row in enumerate(reader, start=2):
+        for row_number, values in enumerate(raw_reader, start=metadata_rows + 2):
+            if not any(value.strip() for value in values):
+                continue
+            if len(values) != len(header):
+                raise ValueError(
+                    f"Row {row_number}: expected {len(header)} columns, found {len(values)}."
+                )
+            row = dict(zip(header, values, strict=True))
             deal_id = row[column_map["deal_id"]].strip()
             acquirer_name = row[column_map["acquirer_name"]].strip()
             announcement_value = row[column_map["announcement_date"]].strip()

@@ -1,5 +1,5 @@
 # Replace the values with column names from the actual licensed SDC/LSEG export.
-# Keep the source export in data/raw/; it is ignored by Git.
+# Header whitespace is normalized before matching. Keep the source export in data/raw/; it is ignored by Git.
 [columns]
 deal_id = "Deal Number"
 acquirer_name = "Acquirer Name"

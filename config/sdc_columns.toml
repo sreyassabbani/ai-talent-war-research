@@ -1,0 +1,10 @@
+# Thomson Reuters SDC main M&A event files in /Users/sreysus/Downloads/ma_events/ma_*.csv.
+# Use --metadata-rows 1 because the first CSV row is the export provenance line.
+[columns]
+deal_id = "Deal Number"
+acquirer_name = "Acquiror Ultimate Parent"
+acquirer_ticker = "Acquiror Ultimate Parent Ticker Symbol"
+target_name = "Target Name"
+target_ticker = "Target Ticker Symbol"
+announcement_date = "Date Announced"
+effective_date = "Date Effective"
