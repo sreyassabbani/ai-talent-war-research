@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .ingest import _unique_headers
+from .technology import TechnologyScreen
 
 CATALOG_FIELDS = [
     "deal_id",
@@ -36,6 +37,8 @@ CATALOG_FIELDS = [
     "cik_reviewer_note",
     "pilot_status",
     "technology_scope_status",
+    "technology_screen_version",
+    "technology_screen_reason",
     "pilot_reviewer_note",
 ]
 
@@ -134,6 +137,8 @@ def build_catalog(
                     "cik_reviewer_note": _clean(match.get("reviewer_note")),
                     "pilot_status": "not_selected",
                     "technology_scope_status": "pending",
+                    "technology_screen_version": "",
+                    "technology_screen_reason": "",
                     "pilot_reviewer_note": "",
                 }
             )
@@ -145,23 +150,47 @@ def _parse_iso(value: str) -> date:
 
 
 def create_review_queue(
-    catalog_csv: Path, start: date, end: date, limit: int
+    catalog_csv: Path,
+    screen: TechnologyScreen,
+    start: date,
+    end: date,
+    limit: int,
 ) -> list[dict[str, str]]:
-    """Make a deterministic, balanced review queue without claiming it is a tech sample."""
+    """Make a purposive technology-deal queue for validating the retrieval pipeline."""
     with catalog_csv.open(newline="", encoding="utf-8") as file:
         candidates = [
             row
             for row in csv.DictReader(file)
             if row["cik_match_confidence"] in {"high", "medium"}
             and start <= _parse_iso(row["announcement_date"]) <= end
+            and screen.rationale(row["target_primary_sic"]) is not None
         ]
     buckets: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
-    for row in sorted(candidates, key=lambda item: (item["announcement_date"], item["deal_id"])):
+    for row in candidates:
         form = row["sdc_form"].strip().upper() or "missing form"
-        form_group = "tender" if "TENDER" in form else "merger" if "MERGER" in form else "other"
-        public_group = row["target_public_status"].strip().lower() or "missing target status"
+        form_group = "merger" if "MERGER" in form else "non-merger"
+        public_group = (
+            "public" if row["target_public_status"].strip().lower() == "public" else "non-public"
+        )
         value_group = "value reported" if row["transaction_value_mil"].strip() else "value missing"
         buckets[(public_group, form_group, value_group)].append(row)
+
+    def reported_value(row: dict[str, str]) -> float:
+        try:
+            return float(row["transaction_value_mil"].replace(",", ""))
+        except ValueError:
+            return -1.0
+
+    for rows in buckets.values():
+        rows.sort(
+            key=lambda row: (
+                reported_value(row),
+                row["cik_match_confidence"] == "high",
+                row["announcement_date"],
+                row["deal_id"],
+            ),
+            reverse=True,
+        )
 
     selected: list[dict[str, str]] = []
     while len(selected) < limit and any(buckets.values()):
@@ -169,8 +198,11 @@ def create_review_queue(
             if buckets[key] and len(selected) < limit:
                 row = buckets[key].pop(0).copy()
                 row["pilot_status"] = "review"
+                row["technology_scope_status"] = "candidate_in_scope"
+                row["technology_screen_version"] = screen.version
+                row["technology_screen_reason"] = screen.rationale(row["target_primary_sic"]) or ""
                 row["pilot_reviewer_note"] = (
-                    "Candidate only: confirm public acquirer CIK, set technology_scope_status, then select."
+                    "Validation candidate only: confirm CIK and technology classification before selection."
                 )
                 selected.append(row)
     return selected

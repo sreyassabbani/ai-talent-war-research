@@ -75,9 +75,11 @@ uv run tag-edgar build-deal-catalog \
   data/derived/entity_matches.csv
 ```
 
-Then make a small, deterministic review queue. It balances the cases it can see by target-public
-status, SDC form category, and whether a value is reported. It does **not** assert that a deal is
-technology-related; record that screen and the CIK confirmation during review.
+Then make a small, deterministic validation queue. `config/technology_sic.toml` applies a narrow,
+versioned digital-technology target-SIC screen. The queue records the matching SIC and label on
+every row, then balances public/non-public targets, merger/non-merger forms, and reported/missing
+values. Within each group it prioritizes larger reported deals because this pilot tests retrieval;
+it is not the final statistical sample.
 
 ```sh
 uv run tag-edgar make-pilot-queue data/derived/deal_catalog.csv \

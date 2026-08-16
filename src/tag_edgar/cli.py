@@ -18,6 +18,7 @@ from .review import approved_deals
 from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
 from .storage import write_csv, write_dict_csv
+from .technology import load_technology_screen
 from .windows import event_window
 
 app = typer.Typer(help="Enrich SDC/LSEG acquisition events with traceable EDGAR documents.")
@@ -155,13 +156,25 @@ def build_deal_catalog(
 @app.command("make-pilot-queue")
 def make_pilot_queue(
     catalog_csv: Path = typer.Argument(..., exists=True, readable=True),
+    technology_screen: Path = typer.Option(
+        PROJECT_ROOT / "config" / "technology_sic.toml",
+        exists=True,
+        readable=True,
+        help="Versioned target-SIC inclusion rules.",
+    ),
     start: str = typer.Option(..., help="Announcement-date start, YYYY-MM-DD."),
     end: str = typer.Option(..., help="Announcement-date end, YYYY-MM-DD."),
     limit: int = typer.Option(20, min=1, help="Number of cases to send for human review."),
     output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_review_queue.csv"),
 ) -> None:
-    """Create a balanced CIK-review queue; it is not an automatic technology classification."""
-    rows = create_review_queue(catalog_csv, _parse_date(start), _parse_date(end), limit)
+    """Create a purposive, technology-screened review queue for retrieval validation."""
+    rows = create_review_queue(
+        catalog_csv,
+        load_technology_screen(technology_screen),
+        _parse_date(start),
+        _parse_date(end),
+        limit,
+    )
     write_dict_csv(output_csv, rows, CATALOG_FIELDS)
     typer.echo(f"Wrote {len(rows)} pilot candidates to {output_csv}")
 

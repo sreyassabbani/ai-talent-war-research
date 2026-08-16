@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from tag_edgar.catalog import build_catalog, create_review_queue
+from tag_edgar.technology import TechnologyScreen
 
 
 def test_build_catalog_joins_supplement_and_best_acquirer_match(tmp_path: Path) -> None:
@@ -64,6 +65,7 @@ def test_review_queue_balances_available_strata(tmp_path: Path) -> None:
         "sdc_form",
         "target_public_status",
         "transaction_value_mil",
+        "target_primary_sic",
     ]
     rows = [
         {
@@ -73,6 +75,7 @@ def test_review_queue_balances_available_strata(tmp_path: Path) -> None:
             "sdc_form": "Merger",
             "target_public_status": "Public",
             "transaction_value_mil": "10",
+            "target_primary_sic": "7372",
         },
         {
             "deal_id": "2",
@@ -81,6 +84,7 @@ def test_review_queue_balances_available_strata(tmp_path: Path) -> None:
             "sdc_form": "Tender Offer",
             "target_public_status": "Private",
             "transaction_value_mil": "",
+            "target_primary_sic": "7372",
         },
     ]
     with catalog.open("w", newline="", encoding="utf-8") as file:
@@ -90,6 +94,7 @@ def test_review_queue_balances_available_strata(tmp_path: Path) -> None:
 
     queue = create_review_queue(
         catalog,
+        TechnologyScreen("test-v1", "test-source", {"7372": "Software"}),
         date(2022, 1, 1),
         date(2022, 12, 31),
         2,
@@ -97,3 +102,4 @@ def test_review_queue_balances_available_strata(tmp_path: Path) -> None:
 
     assert [row["deal_id"] for row in queue] == ["2", "1"]
     assert all(row["pilot_status"] == "review" for row in queue)
+    assert all(row["technology_screen_version"] == "test-v1" for row in queue)
