@@ -85,3 +85,15 @@ class EntityMatch:
     confidence: str
     manual_status: str
     reviewer_note: str | None
+
+
+@dataclass(frozen=True)
+class DealFiling:
+    deal_id: str
+    accession_number: str
+    discovery_route: str
+    days_from_announcement: int
+    days_from_effective: int | None
+    automated_relevance_score: int
+    manual_status: str
+    reviewer_note: str | None

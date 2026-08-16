@@ -33,8 +33,9 @@ Run `uv sync`. `uv` can install a compatible Python version when needed.
      --target-name "Example Target"
    ```
 
-The command writes normalized `deals.csv`, `filings.csv`, `documents.csv`, and `evidence.csv`
-under `data/derived/vertical_slice/`. `evidence.csv` is a review queue, not a verified dataset.
+The command writes normalized `deals.csv`, `filings.csv`, `deal_filings.csv`, `documents.csv`,
+and `evidence.csv` under `data/derived/vertical_slice/`. `deal_filings.csv` and `evidence.csv`
+are review queues, not verified datasets.
 
 Read [PLAN.md](PLAN.md) for the full research and implementation plan.
 

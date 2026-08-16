@@ -7,6 +7,7 @@ from typing import Any
 
 from .accessions import enumerate_documents, is_relevant_document
 from .evidence import document_text, find_evidence
+from .linking import deal_filing_links
 from .models import Deal, Document, Evidence
 from .sec_client import SecClient
 from .settings import Settings
@@ -21,6 +22,7 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
     with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
         all_filings = fetch_filings(client, deal.acquirer_cik)
         filings = relevant_filings(all_filings, settings.forms, window.start, window.end)
+        links = deal_filing_links(deal, filings)
         documents: list[Document] = []
         for filing in filings:
             documents.extend(enumerate_documents(client, filing))
@@ -62,6 +64,20 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
         ],
     )
     write_csv(
+        output_dir / "deal_filings.csv",
+        links,
+        [
+            "deal_id",
+            "accession_number",
+            "discovery_route",
+            "days_from_announcement",
+            "days_from_effective",
+            "automated_relevance_score",
+            "manual_status",
+            "reviewer_note",
+        ],
+    )
+    write_csv(
         output_dir / "documents.csv",
         documents,
         [
@@ -83,6 +99,7 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
     )
     return {
         "filings": len(filings),
+        "deal_filing_links": len(links),
         "documents": len(documents),
         "relevant_documents": len(relevant_documents),
         "evidence": len(evidence),
