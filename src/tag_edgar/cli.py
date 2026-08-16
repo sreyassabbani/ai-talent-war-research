@@ -8,14 +8,16 @@ from pathlib import Path
 import typer
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 
+from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
 from .entity_matches import count_deal_seeds, resolve_seed_file
 from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
 from .pipeline import run_vertical_slice
+from .review import approved_deals
 from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
-from .storage import write_csv
+from .storage import write_csv, write_dict_csv
 from .windows import event_window
 
 app = typer.Typer(help="Enrich SDC/LSEG acquisition events with traceable EDGAR documents.")
@@ -134,6 +136,60 @@ def resolve_seed_ciks(
         ],
     )
     typer.echo(f"Wrote {len(matches)} CIK candidate rows to {output_csv}")
+
+
+@app.command("build-deal-catalog")
+def build_deal_catalog(
+    deals_seed_csv: Path = typer.Argument(..., exists=True, readable=True),
+    additional_csv: Path = typer.Argument(..., exists=True, readable=True),
+    entity_matches_csv: Path = typer.Argument(..., exists=True, readable=True),
+    metadata_rows: int = typer.Option(1, min=0, help="Supplemental-export metadata rows."),
+    output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "deal_catalog.csv"),
+) -> None:
+    """Join SDC main/supplemental fields and CIK candidates into the audit denominator."""
+    rows = build_catalog(deals_seed_csv, additional_csv, entity_matches_csv, metadata_rows)
+    write_dict_csv(output_csv, rows, CATALOG_FIELDS)
+    typer.echo(f"Wrote {len(rows)} joined deal rows to {output_csv}")
+
+
+@app.command("make-pilot-queue")
+def make_pilot_queue(
+    catalog_csv: Path = typer.Argument(..., exists=True, readable=True),
+    start: str = typer.Option(..., help="Announcement-date start, YYYY-MM-DD."),
+    end: str = typer.Option(..., help="Announcement-date end, YYYY-MM-DD."),
+    limit: int = typer.Option(20, min=1, help="Number of cases to send for human review."),
+    output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_review_queue.csv"),
+) -> None:
+    """Create a balanced CIK-review queue; it is not an automatic technology classification."""
+    rows = create_review_queue(catalog_csv, _parse_date(start), _parse_date(end), limit)
+    write_dict_csv(output_csv, rows, CATALOG_FIELDS)
+    typer.echo(f"Wrote {len(rows)} pilot candidates to {output_csv}")
+
+
+@app.command("run-reviewed-pilot")
+def run_reviewed_pilot(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_runs"),
+) -> None:
+    """Retrieve EDGAR only for pilot rows explicitly approved by a human reviewer."""
+    deals = approved_deals(review_csv)
+    if not deals:
+        raise typer.BadParameter(
+            "No approved cases. Set cik_manual_status=confirmed, "
+            "technology_scope_status=in_scope, and pilot_status=selected first."
+        )
+    settings = load_settings(require_user_agent=True)
+    summaries: list[dict[str, str | int]] = []
+    for deal in deals:
+        counts = run_vertical_slice(deal, settings, output_dir / deal.deal_id)
+        summaries.append({"deal_id": deal.deal_id, **counts})
+        typer.echo(f"Completed {deal.deal_id}: {counts['documents']} documents")
+    write_dict_csv(
+        output_dir / "run_summary.csv",
+        summaries,
+        ["deal_id", "filings", "deal_filing_links", "documents", "relevant_documents", "evidence"],
+    )
+    typer.echo(f"Wrote {len(deals)} reviewed pilot runs to {output_dir}")
 
 
 @app.command()

@@ -61,3 +61,40 @@ uv run tag-edgar resolve-seed-ciks data/derived/deals_seed.csv
 
 An exact ticker or name match is only a candidate. Review `entity_matches.csv` and change only
 manually confirmed rows to `confirmed` before passing a CIK to `vertical-slice`.
+
+## Creating the pilot review queue
+
+First join the main SDC export, its supplemental export, and the CIK candidate rows. This preserves
+the full source denominator and keeps `Form`, SIC codes, target public status, consideration
+structure, values, and CIK confidence in separate columns:
+
+```sh
+uv run tag-edgar build-deal-catalog \
+  data/derived/deals_seed.csv \
+  /Users/sreysus/Downloads/ma_events/maadditional2022.csv \
+  data/derived/entity_matches.csv
+```
+
+Then make a small, deterministic review queue. It balances the cases it can see by target-public
+status, SDC form category, and whether a value is reported. It does **not** assert that a deal is
+technology-related; record that screen and the CIK confirmation during review.
+
+```sh
+uv run tag-edgar make-pilot-queue data/derived/deal_catalog.csv \
+  --start 2021-01-01 --end 2022-12-31 --limit 20
+```
+
+For each chosen row, verify the acquirer CIK, decide whether it belongs in the supervisor-approved
+technology scope, and set these three columns deliberately:
+
+| Column | Value to approve retrieval |
+| --- | --- |
+| `cik_manual_status` | `confirmed` |
+| `technology_scope_status` | `in_scope` |
+| `pilot_status` | `selected` |
+
+The batch command refuses every other row and writes each accepted deal to its own directory:
+
+```sh
+uv run tag-edgar run-reviewed-pilot data/derived/pilot_review_queue.csv
+```

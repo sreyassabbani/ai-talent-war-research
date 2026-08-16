@@ -14,3 +14,12 @@ def write_csv(path: Path, rows: Iterable[Any], fieldnames: list[str]) -> None:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(materialized)
+
+
+def write_dict_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]) -> None:
+    materialized = list(rows)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(materialized)
