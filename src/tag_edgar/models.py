@@ -56,3 +56,16 @@ class CikCandidate:
     exchange: str | None
     match_method: str
     confidence: str
+
+
+@dataclass(frozen=True)
+class DealSeed:
+    deal_id: str
+    acquirer_name: str
+    acquirer_ticker: str | None
+    target_name: str | None
+    target_ticker: str | None
+    announcement_date: date
+    effective_date: date | None
+    source_row_number: int
+    raw_source_row: str

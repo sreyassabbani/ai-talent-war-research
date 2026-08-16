@@ -1,0 +1,10 @@
+# Replace the values with column names from the actual licensed SDC/LSEG export.
+# Keep the source export in data/raw/; it is ignored by Git.
+[columns]
+deal_id = "Deal Number"
+acquirer_name = "Acquirer Name"
+announcement_date = "Announcement Date"
+effective_date = "Effective Date"
+acquirer_ticker = "Acquirer Ticker"
+target_name = "Target Name"
+target_ticker = "Target Ticker"

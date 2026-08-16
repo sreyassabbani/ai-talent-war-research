@@ -8,10 +8,12 @@ from pathlib import Path
 import typer
 
 from .cik import fetch_candidates
+from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
 from .pipeline import run_vertical_slice
 from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
+from .storage import write_csv
 from .windows import event_window
 
 app = typer.Typer(help="Enrich SDC/LSEG acquisition events with traceable EDGAR documents.")
@@ -44,6 +46,36 @@ def resolve_cik(
     with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
         candidates = fetch_candidates(client, company_name, ticker)
     typer.echo(json.dumps([asdict(candidate) for candidate in candidates], indent=2))
+
+
+@app.command()
+def ingest(
+    input_csv: Path = typer.Argument(
+        ..., exists=True, readable=True, help="Licensed SDC/LSEG CSV export."
+    ),
+    column_map: Path = typer.Option(
+        ..., exists=True, readable=True, help="TOML mapping of source columns."
+    ),
+    output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "deals_seed.csv"),
+) -> None:
+    """Normalize a mapped SDC/LSEG export while preserving each raw source row."""
+    seeds = read_deal_seeds(input_csv, load_column_map(column_map))
+    write_csv(
+        output_csv,
+        seeds,
+        [
+            "deal_id",
+            "acquirer_name",
+            "acquirer_ticker",
+            "target_name",
+            "target_ticker",
+            "announcement_date",
+            "effective_date",
+            "source_row_number",
+            "raw_source_row",
+        ],
+    )
+    typer.echo(f"Wrote {len(seeds)} normalized deal seeds to {output_csv}")
 
 
 @app.command()

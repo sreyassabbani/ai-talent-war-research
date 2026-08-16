@@ -37,3 +37,15 @@ The command writes normalized `deals.csv`, `filings.csv`, `documents.csv`, and `
 under `data/derived/vertical_slice/`. `evidence.csv` is a review queue, not a verified dataset.
 
 Read [PLAN.md](PLAN.md) for the full research and implementation plan.
+
+## Ingesting the SDC/LSEG export
+
+Do not edit the licensed export. Copy [config/sdc_columns.example.toml](config/sdc_columns.example.toml),
+replace its values with the real column names, then run:
+
+```sh
+uv run tag-edgar ingest data/raw/your-export.csv --column-map config/sdc_columns.toml
+```
+
+The normalized `deals_seed.csv` retains the original source row in a JSON column. CIK resolution
+and filing retrieval are intentionally separate stages.
