@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
 import typer
 
+from .cik import fetch_candidates
 from .models import Deal
 from .pipeline import run_vertical_slice
+from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
 from .windows import event_window
 
@@ -28,6 +32,18 @@ def show_window(
     """Show the reproducible filing-discovery window for one event."""
     window = event_window(_parse_date(announcement), _parse_date(effective) if effective else None)
     typer.echo(f"{window.start.isoformat()} through {window.end.isoformat()} ({window.status})")
+
+
+@app.command()
+def resolve_cik(
+    company_name: str = typer.Option(..., help="Company name as recorded in the deal source."),
+    ticker: str | None = typer.Option(None, help="Optional ticker from the deal source."),
+) -> None:
+    """Return exact SEC CIK candidates; review them manually before any retrieval."""
+    settings = load_settings(require_user_agent=True)
+    with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
+        candidates = fetch_candidates(client, company_name, ticker)
+    typer.echo(json.dumps([asdict(candidate) for candidate in candidates], indent=2))
 
 
 @app.command()

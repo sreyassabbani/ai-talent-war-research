@@ -46,3 +46,13 @@ class Evidence:
     pattern: str
     excerpt: str
     score: int
+
+
+@dataclass(frozen=True)
+class CikCandidate:
+    cik: str
+    sec_name: str
+    ticker: str | None
+    exchange: str | None
+    match_method: str
+    confidence: str
