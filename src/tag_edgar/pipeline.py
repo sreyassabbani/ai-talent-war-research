@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+import csv
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
+
+from .accessions import enumerate_documents, is_relevant_document
+from .evidence import document_text, find_evidence
+from .models import Deal, Document, Evidence
+from .sec_client import SecClient
+from .settings import Settings
+from .storage import write_csv
+from .submissions import fetch_filings, normalized_cik, relevant_filings
+from .windows import event_window
+
+
+def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict[str, int]:
+    """Retrieve and rank transaction documents for one manually confirmed acquirer CIK."""
+    window = event_window(deal.announcement_date, deal.effective_date)
+    with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
+        all_filings = fetch_filings(client, deal.acquirer_cik)
+        filings = relevant_filings(all_filings, settings.forms, window.start, window.end)
+        documents: list[Document] = []
+        for filing in filings:
+            documents.extend(enumerate_documents(client, filing))
+
+        relevant_documents = [
+            document
+            for document in documents
+            if is_relevant_document(document, settings.document_prefixes)
+        ]
+        evidence: list[Evidence] = []
+        for document in relevant_documents:
+            text = document_text(client, document)
+            evidence.extend(
+                find_evidence(deal.deal_id, document, text, settings.patterns, deal.target_name)
+            )
+
+    deal_row = {
+        **asdict(deal),
+        "acquirer_cik": normalized_cik(deal.acquirer_cik),
+        "window_start": window.start.isoformat(),
+        "window_end": window.end.isoformat(),
+        "window_status": window.status,
+        "cik_match_confidence": "confirmed_required_for_vertical_slice",
+        "retrieval_status": "complete",
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _write_dict_csv(output_dir / "deals.csv", [deal_row])
+    write_csv(
+        output_dir / "filings.csv",
+        filings,
+        [
+            "accession_number",
+            "cik",
+            "form",
+            "filing_date",
+            "report_date",
+            "primary_document",
+            "items",
+        ],
+    )
+    write_csv(
+        output_dir / "documents.csv",
+        documents,
+        [
+            "document_id",
+            "accession_number",
+            "cik",
+            "sequence",
+            "description",
+            "document_name",
+            "document_type",
+            "url",
+            "is_primary",
+        ],
+    )
+    write_csv(
+        output_dir / "evidence.csv",
+        evidence,
+        ["evidence_id", "deal_id", "document_id", "category", "pattern", "excerpt", "score"],
+    )
+    return {
+        "filings": len(filings),
+        "documents": len(documents),
+        "relevant_documents": len(relevant_documents),
+        "evidence": len(evidence),
+    }
+
+
+def _write_dict_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)

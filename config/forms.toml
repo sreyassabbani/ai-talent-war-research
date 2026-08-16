@@ -1,0 +1,18 @@
+# Keep SEC form selection in configuration rather than hard-coding it in the crawler.
+[core]
+forms = [
+  "8-K", "8-K/A",
+  "S-4", "S-4/A", "424B3",
+  "PREM14A", "PREM14A/A", "DEFM14A", "DEFM14A/A",
+  "SC 14D9", "SC 14D9/A",
+  "SC TO-T", "SC TO-T/A", "SC TO-I", "SC TO-I/A",
+]
+
+[expanded]
+forms = [
+  "425", "DEFA14A", "PREM14C", "PREM14C/A", "DEFM14C", "DEFM14C/A",
+  "SC TO-C", "SC14D9C", "F-4", "F-4/A", "6-K", "CB",
+]
+
+[documents]
+prefixes = ["EX-2.", "EX-10.", "EX-99."]

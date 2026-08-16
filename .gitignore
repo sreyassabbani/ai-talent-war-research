@@ -1,3 +1,9 @@
 .direnv
 .venv
 __pycache__/
+.env
+.pytest_cache/
+.ruff_cache/
+cache/
+data/raw/
+data/derived/

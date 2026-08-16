@@ -1,0 +1,17 @@
+[transaction]
+patterns = ["agreement and plan of merger", "asset purchase agreement", "merger consideration", "tender offer"]
+
+[continued_service]
+patterns = ["continued employment", "remain employed", "continued service", "service condition"]
+
+[employee_specificity]
+patterns = ["key employee", "key employees", "employee matters", "named executive", "founder"]
+
+[retention_compensation]
+patterns = ["retention", "retention bonus", "vesting", "rollover equity", "incentive award", "earnout"]
+
+[exit_protections]
+patterns = ["change in control", "severance", "good reason", "termination"]
+
+[disclosure_limits]
+patterns = ["confidential treatment", "omitted schedule", "redacted"]
