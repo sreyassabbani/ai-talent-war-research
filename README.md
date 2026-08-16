@@ -108,6 +108,14 @@ uv run tag-edgar summarize-pilot \
   data/derived/pilot_review_queue.csv data/derived/pilot_runs
 ```
 
+After human triage, include the manual coding table to produce one combined SDC-versus-SEC audit:
+
+```sh
+uv run tag-edgar summarize-pilot \
+  data/derived/pilot_review_queue.csv data/derived/pilot_runs \
+  --manual-coding-csv data/derived/pilot_manual_coding.csv
+```
+
 `agreement_exhibit_found` and the `automated_*_hits` fields are discovery signals only. A keyword
 hit does not establish a retention payment, an employee-specific term, or a legal protection; the
 two `manual_*_review_status` columns exist to prevent that inference.

@@ -25,6 +25,10 @@ SUMMARY_FIELDS = [
     "automated_exit_protection_hits",
     "manual_document_review_status",
     "manual_evidence_review_status",
+    "manual_employee_term_code",
+    "employee_amount_or_named_package_publicly_disclosed",
+    "manual_evidence_source_url",
+    "manual_review_status",
     "manual_summary_note",
 ]
 
@@ -41,11 +45,23 @@ def _summary_counts(path: Path) -> dict[str, dict[str, str]]:
     return {row["deal_id"]: row for row in summary}
 
 
-def pilot_audit_rows(review_csv: Path, runs_dir: Path) -> list[dict[str, str]]:
+def _manual_coding(path: Path | None) -> dict[str, dict[str, str]]:
+    if path is None:
+        return {}
+    rows = _read_rows(path)
+    if any(not row.get("deal_id") for row in rows):
+        raise ValueError("Manual coding CSV has a row without deal_id.")
+    return {row["deal_id"]: row for row in rows}
+
+
+def pilot_audit_rows(
+    review_csv: Path, runs_dir: Path, manual_coding_csv: Path | None = None
+) -> list[dict[str, str]]:
     """Summarize retrieval coverage while preserving the need for manual evidence review."""
     review_rows = _read_rows(review_csv)
     selected = [row for row in review_rows if row.get("pilot_status", "").lower() == "selected"]
     counts_by_deal = _summary_counts(runs_dir)
+    coding_by_deal = _manual_coding(manual_coding_csv)
     output: list[dict[str, str]] = []
     for row in selected:
         deal_id = row["deal_id"]
@@ -57,6 +73,7 @@ def pilot_audit_rows(review_csv: Path, runs_dir: Path) -> list[dict[str, str]]:
         agreement = any(
             _AGREEMENT_EXHIBIT.match(document["document_type"] or "") for document in documents
         )
+        coding = coding_by_deal.get(deal_id, {})
         output.append(
             {
                 "deal_id": deal_id,
@@ -76,9 +93,17 @@ def pilot_audit_rows(review_csv: Path, runs_dir: Path) -> list[dict[str, str]]:
                 "automated_retention_compensation_hits": str(categories["retention_compensation"]),
                 "automated_employee_specificity_hits": str(categories["employee_specificity"]),
                 "automated_exit_protection_hits": str(categories["exit_protections"]),
-                "manual_document_review_status": "pending",
-                "manual_evidence_review_status": "pending",
-                "manual_summary_note": "Automated counts are leads, not verified facts.",
+                "manual_document_review_status": coding.get("manual_review_status", "pending"),
+                "manual_evidence_review_status": coding.get("manual_review_status", "pending"),
+                "manual_employee_term_code": coding.get("manual_employee_term_code", ""),
+                "employee_amount_or_named_package_publicly_disclosed": coding.get(
+                    "amount_or_named_package_publicly_disclosed", ""
+                ),
+                "manual_evidence_source_url": coding.get("source_url", ""),
+                "manual_review_status": coding.get("manual_review_status", "pending"),
+                "manual_summary_note": coding.get(
+                    "manual_finding", "Automated counts are leads, not verified facts."
+                ),
             }
         )
     return output

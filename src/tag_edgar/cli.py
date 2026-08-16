@@ -210,10 +210,13 @@ def run_reviewed_pilot(
 def summarize_pilot(
     review_csv: Path = typer.Argument(..., exists=True, readable=True),
     runs_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    manual_coding_csv: Path | None = typer.Option(
+        None, exists=True, readable=True, help="Optional human coding joined by deal_id."
+    ),
     output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_audit_summary.csv"),
 ) -> None:
     """Create a per-deal audit table; automated hits remain unverified until reviewed."""
-    rows = pilot_audit_rows(review_csv, runs_dir)
+    rows = pilot_audit_rows(review_csv, runs_dir, manual_coding_csv)
     write_dict_csv(output_csv, rows, SUMMARY_FIELDS)
     typer.echo(f"Wrote {len(rows)} per-deal audit rows to {output_csv}")
 
