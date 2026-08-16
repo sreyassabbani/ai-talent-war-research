@@ -100,3 +100,14 @@ The batch command refuses every other row and writes each accepted deal to its o
 ```sh
 uv run tag-edgar run-reviewed-pilot data/derived/pilot_review_queue.csv
 ```
+
+Create the audit table after retrieval:
+
+```sh
+uv run tag-edgar summarize-pilot \
+  data/derived/pilot_review_queue.csv data/derived/pilot_runs
+```
+
+`agreement_exhibit_found` and the `automated_*_hits` fields are discovery signals only. A keyword
+hit does not establish a retention payment, an employee-specific term, or a legal protection; the
+two `manual_*_review_status` columns exist to prevent that inference.

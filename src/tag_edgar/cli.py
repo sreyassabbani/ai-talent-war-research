@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 
+from .audit import SUMMARY_FIELDS, pilot_audit_rows
 from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
 from .entity_matches import count_deal_seeds, resolve_seed_file
@@ -203,6 +204,18 @@ def run_reviewed_pilot(
         ["deal_id", "filings", "deal_filing_links", "documents", "relevant_documents", "evidence"],
     )
     typer.echo(f"Wrote {len(deals)} reviewed pilot runs to {output_dir}")
+
+
+@app.command("summarize-pilot")
+def summarize_pilot(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    runs_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_audit_summary.csv"),
+) -> None:
+    """Create a per-deal audit table; automated hits remain unverified until reviewed."""
+    rows = pilot_audit_rows(review_csv, runs_dir)
+    write_dict_csv(output_csv, rows, SUMMARY_FIELDS)
+    typer.echo(f"Wrote {len(rows)} per-deal audit rows to {output_csv}")
 
 
 @app.command()
