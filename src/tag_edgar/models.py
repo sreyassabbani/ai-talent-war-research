@@ -46,6 +46,8 @@ class Evidence:
     pattern: str
     excerpt: str
     score: int
+    match_start: int
+    match_end: int
 
 
 @dataclass(frozen=True)

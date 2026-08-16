@@ -23,15 +23,28 @@ def find_evidence(
     patterns: dict[str, tuple[str, ...]],
     target_name: str | None = None,
 ) -> list[Evidence]:
-    lower_text = text.lower()
     evidence: list[Evidence] = []
     for category, category_patterns in patterns.items():
+        matches: list[tuple[int, int, str]] = []
         for pattern in category_patterns:
-            match = re.search(re.escape(pattern), lower_text)
-            if match is None:
+            expression = re.compile(
+                rf"(?<![a-z0-9]){re.escape(pattern)}(?![a-z0-9])", re.IGNORECASE
+            )
+            matches.extend((match.start(), match.end(), pattern) for match in expression.finditer(text))
+
+        # Prefer the most specific configured phrase when two patterns begin at the same offset,
+        # such as "retention" and "retention bonus".
+        distinct_matches: list[tuple[int, int, str]] = []
+        for match_start, match_end, pattern in sorted(
+            matches, key=lambda item: (item[0], -(item[1] - item[0]), item[2])
+        ):
+            if distinct_matches and distinct_matches[-1][0] == match_start:
                 continue
-            start = max(0, match.start() - 250)
-            end = min(len(text), match.end() + 350)
+            distinct_matches.append((match_start, match_end, pattern))
+
+        for match_start, match_end, pattern in distinct_matches:
+            start = max(0, match_start - 250)
+            end = min(len(text), match_end + 350)
             excerpt = " ".join(text[start:end].split())
             score = 1
             if document.is_primary:
@@ -41,7 +54,7 @@ def find_evidence(
             if target_name and target_name.lower() in excerpt.lower():
                 score += 1
             digest = hashlib.sha256(
-                f"{deal_id}:{document.document_id}:{category}:{pattern}".encode()
+                f"{deal_id}:{document.document_id}:{category}:{pattern}:{match_start}".encode()
             ).hexdigest()[:16]
             evidence.append(
                 Evidence(
@@ -52,6 +65,8 @@ def find_evidence(
                     pattern=pattern,
                     excerpt=excerpt,
                     score=score,
+                    match_start=match_start,
+                    match_end=match_end,
                 )
             )
     return evidence

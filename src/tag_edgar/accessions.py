@@ -4,6 +4,7 @@ import hashlib
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from .models import Document, Filing
 from .sec_client import SecClient
@@ -32,18 +33,27 @@ def enumerate_documents(client: SecClient, filing: Filing) -> list[Document]:
     documents: list[Document] = []
 
     for table in soup.find_all("table"):
-        headings = [heading.get_text(" ", strip=True).lower() for heading in table.find_all("th")]
+        if not isinstance(table, Tag):
+            continue
+        headings = [
+            heading.get_text(" ", strip=True).lower()
+            for heading in table.find_all("th")
+            if isinstance(heading, Tag)
+        ]
         if "document" not in headings or "type" not in headings:
             continue
         for row in table.find_all("tr"):
-            cells = row.find_all("td")
+            if not isinstance(row, Tag):
+                continue
+            cells = [cell for cell in row.find_all("td") if isinstance(cell, Tag)]
             if len(cells) < 4:
                 continue
             link = cells[2].find("a")
-            href = link.get("href") if link is not None else None
+            if not isinstance(link, Tag):
+                continue
+            href = link.get("href")
             if not isinstance(href, str):
                 continue
-            assert link is not None
             document_name = link.get_text(" ", strip=True)
             if not document_name:
                 continue

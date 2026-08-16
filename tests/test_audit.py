@@ -1,6 +1,8 @@
 import csv
 from pathlib import Path
 
+import pytest
+
 from tag_edgar.audit import pilot_audit_rows
 
 
@@ -75,7 +77,9 @@ def test_pilot_audit_flags_an_agreement_without_treating_hits_as_verified(tmp_pa
     assert rows[0]["manual_evidence_review_status"] == "pending"
 
 
-def test_pilot_audit_merges_manual_coding(tmp_path: Path) -> None:
+def _complete_manual_inputs(
+    tmp_path: Path, source_url: str = "https://www.sec.gov/Archives/deal/exhibit.htm"
+) -> tuple[Path, Path, Path]:
     review = tmp_path / "review.csv"
     _write(
         review,
@@ -108,11 +112,24 @@ def test_pilot_audit_merges_manual_coding(tmp_path: Path) -> None:
     )
     runs = tmp_path / "runs"
     _write(runs / "run_summary.csv", ["deal_id"], [{"deal_id": "one"}])
+    _write(
+        runs / "one" / "documents.csv",
+        ["document_type", "url"],
+        [
+            {
+                "document_type": "EX-2.1",
+                "url": "https://www.sec.gov/Archives/deal/exhibit.htm",
+            }
+        ],
+    )
+    _write(runs / "one" / "evidence.csv", ["category"], [])
     coding = tmp_path / "coding.csv"
     _write(
         coding,
         [
             "deal_id",
+            "manual_document_review_status",
+            "manual_evidence_review_status",
             "manual_employee_term_code",
             "amount_or_named_package_publicly_disclosed",
             "source_url",
@@ -122,16 +139,43 @@ def test_pilot_audit_merges_manual_coding(tmp_path: Path) -> None:
         [
             {
                 "deal_id": "one",
+                "manual_document_review_status": "reviewed",
+                "manual_evidence_review_status": "reviewed",
                 "manual_employee_term_code": "specific_retention",
                 "amount_or_named_package_publicly_disclosed": "yes",
-                "source_url": "https://example.com",
+                "source_url": source_url,
                 "manual_review_status": "triaged",
                 "manual_finding": "Reviewed.",
             }
         ],
     )
+    return review, runs, coding
+
+
+def test_pilot_audit_merges_manual_coding(tmp_path: Path) -> None:
+    review, runs, coding = _complete_manual_inputs(tmp_path)
 
     rows = pilot_audit_rows(review, runs, coding)
 
     assert rows[0]["manual_employee_term_code"] == "specific_retention"
     assert rows[0]["manual_review_status"] == "triaged"
+    assert rows[0]["manual_document_review_status"] == "reviewed"
+    assert rows[0]["manual_evidence_review_status"] == "reviewed"
+
+
+def test_pilot_audit_rejects_a_manual_source_not_retrieved_for_the_deal(
+    tmp_path: Path,
+) -> None:
+    review, runs, coding = _complete_manual_inputs(tmp_path, "https://example.com/not-sec.htm")
+
+    with pytest.raises(ValueError, match="HTTPS SEC URL"):
+        pilot_audit_rows(review, runs, coding)
+
+
+def test_pilot_audit_rejects_duplicate_manual_deal_ids(tmp_path: Path) -> None:
+    review, runs, coding = _complete_manual_inputs(tmp_path)
+    rows = coding.read_text(encoding="utf-8").splitlines()
+    coding.write_text("\n".join([*rows, rows[-1]]) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate deal_id"):
+        pilot_audit_rows(review, runs, coding)

@@ -116,6 +116,26 @@ uv run tag-edgar summarize-pilot \
   --manual-coding-csv data/derived/pilot_manual_coding.csv
 ```
 
+The manual coding CSV must contain one unique row per reviewed deal and these columns:
+
+| Column | Required values |
+| --- | --- |
+| `deal_id` | A selected pilot deal ID |
+| `manual_document_review_status` | `pending`, `in_progress`, `reviewed`, or `not_applicable` |
+| `manual_evidence_review_status` | `pending`, `in_progress`, `reviewed`, or `not_applicable` |
+| `manual_employee_term_code` | A documented coding label; non-empty for completed rows |
+| `amount_or_named_package_publicly_disclosed` | `yes`, `no`, `unknown`, or `not_applicable` |
+| `source_url` | The exact SEC document URL from that deal's `documents.csv` |
+| `manual_review_status` | `pending`, `in_progress`, `triaged`, or `complete` |
+| `manual_finding` | A concise, source-supported finding |
+
+Rows marked `triaged` or `complete` must have completed document/evidence stages and a source URL
+that resolves to a document retrieved for the same deal. Duplicate deal IDs, arbitrary URLs, and
+manual rows for unselected deals are rejected.
+
 `agreement_exhibit_found` and the `automated_*_hits` fields are discovery signals only. A keyword
 hit does not establish a retention payment, an employee-specific term, or a legal protection; the
 two `manual_*_review_status` columns exist to prevent that inference.
+
+Evidence matching uses token boundaries, records every distinct occurrence with character offsets,
+and prefers the longest configured phrase when patterns overlap at the same position.
