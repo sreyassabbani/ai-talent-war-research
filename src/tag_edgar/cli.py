@@ -6,9 +6,10 @@ from datetime import date
 from pathlib import Path
 
 import typer
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 
 from .cik import fetch_candidates
-from .entity_matches import resolve_seed_file
+from .entity_matches import count_deal_seeds, resolve_seed_file
 from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
 from .pipeline import run_vertical_slice
@@ -90,11 +91,30 @@ def resolve_seed_ciks(
         ..., exists=True, readable=True, help="Output of the ingest command."
     ),
     output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "entity_matches.csv"),
+    progress: bool = typer.Option(
+        True, "--progress/--no-progress", help="Show deal-resolution progress."
+    ),
 ) -> None:
     """Create an acquirer/target CIK review queue from a normalized deal seed file."""
     settings = load_settings(require_user_agent=True)
     with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
-        matches = resolve_seed_file(client, deals_seed_csv)
+        if progress:
+            total = count_deal_seeds(deals_seed_csv)
+            with Progress(
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TimeElapsedColumn(),
+                transient=False,
+            ) as progress_display:
+                task_id = progress_display.add_task("Resolving CIK candidates", total=total)
+                matches = resolve_seed_file(
+                    client,
+                    deals_seed_csv,
+                    lambda completed, _: progress_display.update(task_id, completed=completed),
+                )
+        else:
+            matches = resolve_seed_file(client, deals_seed_csv)
     write_csv(
         output_csv,
         matches,

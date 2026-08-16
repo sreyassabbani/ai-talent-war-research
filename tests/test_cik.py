@@ -11,6 +11,7 @@ REGISTRY: dict[str, object] = {
 
 def test_normalize_company_name_removes_common_legal_suffixes() -> None:
     assert normalize_company_name("Alphabet, Inc.") == "alphabet"
+    assert normalize_company_name("The Carlyle Group Inc") == "carlyle group"
 
 
 def test_exact_ticker_match_is_a_transparent_candidate() -> None:

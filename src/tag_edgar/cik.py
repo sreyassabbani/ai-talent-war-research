@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from dataclasses import dataclass
 
 from .models import CikCandidate, EntityMatch
 from .sec_client import SecClient
@@ -18,10 +20,19 @@ _LEGAL_SUFFIXES = {
     "plc",
     "sa",
 }
+_LEADING_ARTICLES = {"the"}
+
+
+@dataclass(frozen=True)
+class TickerRegistry:
+    by_ticker: dict[str, tuple[dict[str, str], ...]]
+    by_normalized_name: dict[str, tuple[dict[str, str], ...]]
 
 
 def normalize_company_name(name: str) -> str:
     words = re.sub(r"[^a-z0-9 ]", " ", name.lower()).split()
+    while words and words[0] in _LEADING_ARTICLES:
+        words.pop(0)
     while words and words[-1] in _LEGAL_SUFFIXES:
         words.pop()
     return " ".join(words)
@@ -45,42 +56,66 @@ def _registry_rows(payload: dict[str, object]) -> list[dict[str, str]]:
     return rows
 
 
+def build_registry(payload: dict[str, object]) -> TickerRegistry:
+    by_ticker: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
+    by_normalized_name: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in _registry_rows(payload):
+        ticker = row["ticker"].upper().strip()
+        if ticker:
+            by_ticker[ticker].append(row)
+        normalized_name = normalize_company_name(row["name"])
+        if normalized_name:
+            by_normalized_name[normalized_name].append(row)
+    return TickerRegistry(
+        by_ticker={key: tuple(value) for key, value in by_ticker.items()},
+        by_normalized_name={key: tuple(value) for key, value in by_normalized_name.items()},
+    )
+
+
+def _candidate(row: dict[str, str], method: str, confidence: str) -> CikCandidate:
+    return CikCandidate(
+        cik=normalized_cik(row["cik"]),
+        sec_name=row["name"],
+        ticker=row["ticker"].upper().strip() or None,
+        exchange=row["exchange"] or None,
+        match_method=method,
+        confidence=confidence,
+    )
+
+
+def resolve_registry_candidates(
+    registry: TickerRegistry, company_name: str, ticker: str | None = None
+) -> list[CikCandidate]:
+    """Resolve by O(1) indexes; every candidate still requires manual confirmation."""
+    normalized_name = normalize_company_name(company_name)
+    normalized_ticker = ticker.upper().strip() if ticker else None
+    ticker_rows = registry.by_ticker.get(normalized_ticker, ()) if normalized_ticker else ()
+    if ticker_rows:
+        return sorted(
+            [
+                _candidate(
+                    row,
+                    "exact_ticker",
+                    "high" if normalize_company_name(row["name"]) == normalized_name else "medium",
+                )
+                for row in ticker_rows
+            ],
+            key=lambda candidate: (candidate.confidence, candidate.cik),
+        )
+    return sorted(
+        [
+            _candidate(row, "exact_normalized_name", "medium")
+            for row in registry.by_normalized_name.get(normalized_name, ())
+        ],
+        key=lambda candidate: (candidate.confidence, candidate.cik),
+    )
+
+
 def resolve_candidates(
     payload: dict[str, object], company_name: str, ticker: str | None = None
 ) -> list[CikCandidate]:
     """Return transparent exact candidates. Every result still requires manual confirmation."""
-    rows = _registry_rows(payload)
-    normalized_name = normalize_company_name(company_name)
-    normalized_ticker = ticker.upper().strip() if ticker else None
-    candidates: list[CikCandidate] = []
-
-    for row in rows:
-        row_name = normalize_company_name(row["name"])
-        row_ticker = row["ticker"].upper().strip() or None
-        if normalized_ticker and row_ticker == normalized_ticker:
-            candidates.append(
-                CikCandidate(
-                    cik=normalized_cik(row["cik"]),
-                    sec_name=row["name"],
-                    ticker=row_ticker,
-                    exchange=row["exchange"] or None,
-                    match_method="exact_ticker",
-                    confidence="high" if row_name == normalized_name else "medium",
-                )
-            )
-        elif row_name == normalized_name:
-            candidates.append(
-                CikCandidate(
-                    cik=normalized_cik(row["cik"]),
-                    sec_name=row["name"],
-                    ticker=row_ticker,
-                    exchange=row["exchange"] or None,
-                    match_method="exact_normalized_name",
-                    confidence="medium",
-                )
-            )
-
-    return sorted(candidates, key=lambda candidate: (candidate.confidence, candidate.cik))
+    return resolve_registry_candidates(build_registry(payload), company_name, ticker)
 
 
 def fetch_candidates(
@@ -94,9 +129,10 @@ def entity_match_rows(
     party_role: str,
     company_name: str,
     ticker: str | None,
-    registry_payload: dict[str, object],
+    registry: TickerRegistry | dict[str, object],
 ) -> list[EntityMatch]:
-    candidates = resolve_candidates(registry_payload, company_name, ticker)
+    indexed_registry = build_registry(registry) if isinstance(registry, dict) else registry
+    candidates = resolve_registry_candidates(indexed_registry, company_name, ticker)
     if not candidates:
         return [
             EntityMatch(
