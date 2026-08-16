@@ -69,3 +69,19 @@ class DealSeed:
     effective_date: date | None
     source_row_number: int
     raw_source_row: str
+
+
+@dataclass(frozen=True)
+class EntityMatch:
+    deal_id: str
+    party_role: str
+    source_name: str
+    source_ticker: str | None
+    candidate_cik: str | None
+    sec_name: str | None
+    sec_ticker: str | None
+    exchange: str | None
+    match_method: str
+    confidence: str
+    manual_status: str
+    reviewer_note: str | None

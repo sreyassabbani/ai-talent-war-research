@@ -49,3 +49,12 @@ uv run tag-edgar ingest data/raw/your-export.csv --column-map config/sdc_columns
 
 The normalized `deals_seed.csv` retains the original source row in a JSON column. CIK resolution
 and filing retrieval are intentionally separate stages.
+
+After adding your real SEC User-Agent to `.env`, create the review queue with:
+
+```sh
+uv run tag-edgar resolve-seed-ciks data/derived/deals_seed.csv
+```
+
+An exact ticker or name match is only a candidate. Review `entity_matches.csv` and change only
+manually confirmed rows to `confirmed` before passing a CIK to `vertical-slice`.

@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 
 from .cik import fetch_candidates
+from .entity_matches import resolve_seed_file
 from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
 from .pipeline import run_vertical_slice
@@ -76,6 +77,38 @@ def ingest(
         ],
     )
     typer.echo(f"Wrote {len(seeds)} normalized deal seeds to {output_csv}")
+
+
+@app.command("resolve-seed-ciks")
+def resolve_seed_ciks(
+    deals_seed_csv: Path = typer.Argument(
+        ..., exists=True, readable=True, help="Output of the ingest command."
+    ),
+    output_csv: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "entity_matches.csv"),
+) -> None:
+    """Create an acquirer/target CIK review queue from a normalized deal seed file."""
+    settings = load_settings(require_user_agent=True)
+    with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
+        matches = resolve_seed_file(client, deals_seed_csv)
+    write_csv(
+        output_csv,
+        matches,
+        [
+            "deal_id",
+            "party_role",
+            "source_name",
+            "source_ticker",
+            "candidate_cik",
+            "sec_name",
+            "sec_ticker",
+            "exchange",
+            "match_method",
+            "confidence",
+            "manual_status",
+            "reviewer_note",
+        ],
+    )
+    typer.echo(f"Wrote {len(matches)} CIK candidate rows to {output_csv}")
 
 
 @app.command()

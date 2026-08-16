@@ -1,4 +1,4 @@
-from tag_edgar.cik import normalize_company_name, resolve_candidates
+from tag_edgar.cik import entity_match_rows, normalize_company_name, resolve_candidates
 
 REGISTRY: dict[str, object] = {
     "fields": ["cik", "name", "ticker", "exchange"],
@@ -28,3 +28,12 @@ def test_exact_name_match_is_medium_confidence_without_ticker() -> None:
     assert len(candidates) == 1
     assert candidates[0].match_method == "exact_normalized_name"
     assert candidates[0].confidence == "medium"
+
+
+def test_no_candidate_is_recorded_as_unresolved_instead_of_being_dropped() -> None:
+    matches = entity_match_rows("deal-1", "acquirer", "Private Buyer LLC", None, REGISTRY)
+
+    assert len(matches) == 1
+    assert matches[0].candidate_cik is None
+    assert matches[0].confidence == "unresolved"
+    assert matches[0].manual_status == "pending"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from .models import CikCandidate
+from .models import CikCandidate, EntityMatch
 from .sec_client import SecClient
 from .submissions import normalized_cik
 
@@ -87,3 +87,47 @@ def fetch_candidates(
     client: SecClient, company_name: str, ticker: str | None = None
 ) -> list[CikCandidate]:
     return resolve_candidates(client.get_json(TICKER_REGISTRY_URL), company_name, ticker)
+
+
+def entity_match_rows(
+    deal_id: str,
+    party_role: str,
+    company_name: str,
+    ticker: str | None,
+    registry_payload: dict[str, object],
+) -> list[EntityMatch]:
+    candidates = resolve_candidates(registry_payload, company_name, ticker)
+    if not candidates:
+        return [
+            EntityMatch(
+                deal_id=deal_id,
+                party_role=party_role,
+                source_name=company_name,
+                source_ticker=ticker,
+                candidate_cik=None,
+                sec_name=None,
+                sec_ticker=None,
+                exchange=None,
+                match_method="no_exact_candidate",
+                confidence="unresolved",
+                manual_status="pending",
+                reviewer_note=None,
+            )
+        ]
+    return [
+        EntityMatch(
+            deal_id=deal_id,
+            party_role=party_role,
+            source_name=company_name,
+            source_ticker=ticker,
+            candidate_cik=candidate.cik,
+            sec_name=candidate.sec_name,
+            sec_ticker=candidate.ticker,
+            exchange=candidate.exchange,
+            match_method=candidate.match_method,
+            confidence=candidate.confidence,
+            manual_status="pending",
+            reviewer_note=None,
+        )
+        for candidate in candidates
+    ]
