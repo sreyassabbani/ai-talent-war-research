@@ -22,12 +22,14 @@ Run `uv sync`. `uv` can install a compatible Python version when needed.
    uv run tag-edgar show-window --announcement 2024-01-10 --effective 2024-04-10
    ```
 
-4. Run one vertical slice using a *manually confirmed* public-acquirer CIK:
+4. Run one vertical slice using manually confirmed public-party CIKs. The target CIK is optional
+   because many targets are private or are not SEC registrants:
 
    ```sh
    uv run tag-edgar vertical-slice \
      --deal-id example-001 \
      --acquirer-cik 789019 \
+     --target-cik 1002517 \
      --announcement 2024-01-10 \
      --effective 2024-04-10 \
      --target-name "Example Target"
@@ -59,8 +61,8 @@ After adding your real SEC User-Agent to `.env`, create the review queue with:
 uv run tag-edgar resolve-seed-ciks data/derived/deals_seed.csv
 ```
 
-An exact ticker or name match is only a candidate. Review `entity_matches.csv` and change only
-manually confirmed rows to `confirmed` before passing a CIK to `vertical-slice`.
+An exact ticker or name match is only a candidate. Review `entity_matches.csv` for both party
+roles and change only manually confirmed rows to `confirmed` before using a CIK for retrieval.
 
 ## Creating the pilot review queue
 
@@ -86,12 +88,14 @@ uv run tag-edgar make-pilot-queue data/derived/deal_catalog.csv \
   --start 2021-01-01 --end 2022-12-31 --limit 20
 ```
 
-For each chosen row, verify the acquirer CIK, decide whether it belongs in the supervisor-approved
-technology scope, and set these three columns deliberately:
+For each chosen row, verify the acquirer CIK and, when the target is a public SEC registrant, the
+target CIK. Decide whether the deal belongs in the supervisor-approved technology scope and set
+the review columns deliberately:
 
 | Column | Value to approve retrieval |
 | --- | --- |
 | `cik_manual_status` | `confirmed` |
+| `target_cik_manual_status` | `confirmed` only after verifying `target_candidate_cik`; otherwise leave `pending` |
 | `technology_scope_status` | `in_scope` |
 | `pilot_status` | `selected` |
 
@@ -100,6 +104,11 @@ The batch command refuses every other row and writes each accepted deal to its o
 ```sh
 uv run tag-edgar run-reviewed-pilot data/derived/pilot_review_queue.csv
 ```
+
+For approved public targets, the batch retrieves both filing histories and records
+`acquirer_confirmed_cik` or `target_confirmed_cik` on each `deal_filings.csv` link. Unique SEC
+accessions and documents are stored once, while the discovery route remains traceable. The run
+summary reports acquirer-side, target-side, and deduplicated filing counts separately.
 
 Create the audit table after retrieval:
 

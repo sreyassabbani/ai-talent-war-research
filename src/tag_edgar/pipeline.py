@@ -8,7 +8,7 @@ from typing import Any
 from .accessions import enumerate_documents, is_relevant_document
 from .evidence import document_text, find_evidence
 from .linking import deal_filing_links
-from .models import Deal, Document, Evidence
+from .models import Deal, DealFiling, Document, Evidence, Filing
 from .sec_client import SecClient
 from .settings import Settings
 from .storage import write_csv
@@ -17,12 +17,40 @@ from .windows import event_window
 
 
 def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict[str, int]:
-    """Retrieve and rank transaction documents for one manually confirmed acquirer CIK."""
+    """Retrieve transaction documents for every manually confirmed public deal party."""
     window = event_window(deal.announcement_date, deal.effective_date)
+    party_ciks = [("acquirer", deal.acquirer_cik)]
+    if deal.target_cik:
+        party_ciks.append(("target", deal.target_cik))
+
     with SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client:
-        all_filings = fetch_filings(client, deal.acquirer_cik)
-        filings = relevant_filings(all_filings, settings.forms, window.start, window.end)
-        links = deal_filing_links(deal, filings)
+        filings_by_cik: dict[str, list[Filing]] = {}
+        filings_by_accession: dict[str, Filing] = {}
+        party_counts = {"acquirer_filings": 0, "target_filings": 0}
+        links: list[DealFiling] = []
+        for party_role, cik in party_ciks:
+            normalized_party_cik = normalized_cik(cik)
+            if normalized_party_cik not in filings_by_cik:
+                all_filings = fetch_filings(client, normalized_party_cik)
+                filings_by_cik[normalized_party_cik] = relevant_filings(
+                    all_filings, settings.forms, window.start, window.end
+                )
+            party_filings = filings_by_cik[normalized_party_cik]
+            party_counts[f"{party_role}_filings"] = len(party_filings)
+            links.extend(
+                deal_filing_links(
+                    deal,
+                    party_filings,
+                    discovery_route=f"{party_role}_confirmed_cik",
+                )
+            )
+            for filing in party_filings:
+                filings_by_accession.setdefault(filing.accession_number, filing)
+
+        filings = sorted(
+            filings_by_accession.values(),
+            key=lambda filing: (filing.filing_date, filing.accession_number),
+        )
         documents: list[Document] = []
         for filing in filings:
             documents.extend(enumerate_documents(client, filing))
@@ -42,6 +70,7 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
     deal_row = {
         **asdict(deal),
         "acquirer_cik": normalized_cik(deal.acquirer_cik),
+        "target_cik": normalized_cik(deal.target_cik) if deal.target_cik else "",
         "window_start": window.start.isoformat(),
         "window_end": window.end.isoformat(),
         "window_status": window.status,
@@ -108,6 +137,7 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
         ],
     )
     return {
+        **party_counts,
         "filings": len(filings),
         "deal_filing_links": len(links),
         "documents": len(documents),

@@ -16,6 +16,9 @@ SUMMARY_FIELDS = [
     "target_public_status",
     "transaction_value_mil",
     "candidate_cik",
+    "target_candidate_cik",
+    "acquirer_filings_found",
+    "target_filings_found",
     "filings_found",
     "documents_found",
     "relevant_documents_found",
@@ -71,9 +74,7 @@ def _manual_coding(path: Path | None) -> dict[str, dict[str, str]]:
             raise ValueError(
                 f"Manual coding CSV is missing required columns: {sorted(missing_fields)}"
             )
-        rows = [
-            {key: (value or "").strip() for key, value in row.items()} for row in reader
-        ]
+        rows = [{key: (value or "").strip() for key, value in row.items()} for row in reader]
     if any(not row.get("deal_id") for row in rows):
         raise ValueError("Manual coding CSV has a row without deal_id.")
     deal_ids = [row["deal_id"] for row in rows]
@@ -84,9 +85,7 @@ def _manual_coding(path: Path | None) -> dict[str, dict[str, str]]:
         deal_id = row["deal_id"]
         for field in ("manual_document_review_status", "manual_evidence_review_status"):
             if row[field] not in _STAGE_REVIEW_STATUSES:
-                raise ValueError(
-                    f"Manual coding for {deal_id} has invalid {field}={row[field]!r}."
-                )
+                raise ValueError(f"Manual coding for {deal_id} has invalid {field}={row[field]!r}.")
         if row["manual_review_status"] not in _OVERALL_REVIEW_STATUSES:
             raise ValueError(
                 f"Manual coding for {deal_id} has invalid "
@@ -179,6 +178,9 @@ def pilot_audit_rows(
                 "target_public_status": row["target_public_status"],
                 "transaction_value_mil": row["transaction_value_mil"],
                 "candidate_cik": row["candidate_cik"],
+                "target_candidate_cik": row.get("target_candidate_cik", ""),
+                "acquirer_filings_found": run_counts.get("acquirer_filings", "0"),
+                "target_filings_found": run_counts.get("target_filings", "0"),
                 "filings_found": run_counts.get("filings", "0"),
                 "documents_found": run_counts.get("documents", "0"),
                 "relevant_documents_found": run_counts.get("relevant_documents", "0"),

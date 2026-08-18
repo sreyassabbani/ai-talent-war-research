@@ -39,6 +39,15 @@ def approved_deals(review_csv: Path) -> list[Deal]:
             ):
                 continue
             effective = row["effective_date"].strip()
+            target_cik: str | None = None
+            target_status = row.get("target_cik_manual_status", "").strip().lower()
+            target_candidate = row.get("target_candidate_cik", "").strip()
+            if target_status == "confirmed":
+                if not target_candidate:
+                    raise ValueError(
+                        f"Deal {row['deal_id']} confirms a target CIK but has no target_candidate_cik."
+                    )
+                target_cik = target_candidate
             approved.append(
                 Deal(
                     deal_id=row["deal_id"].strip(),
@@ -46,6 +55,7 @@ def approved_deals(review_csv: Path) -> list[Deal]:
                     announcement_date=date.fromisoformat(row["announcement_date"]),
                     effective_date=date.fromisoformat(effective) if effective else None,
                     target_name=row["target_name"].strip() or None,
+                    target_cik=target_cik,
                 )
             )
     return approved

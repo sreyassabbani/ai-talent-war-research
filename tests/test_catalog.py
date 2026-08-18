@@ -3,7 +3,12 @@ import json
 from datetime import date
 from pathlib import Path
 
-from tag_edgar.catalog import _best_acquirer_matches, build_catalog, create_review_queue
+from tag_edgar.catalog import (
+    _best_acquirer_matches,
+    _best_target_matches,
+    build_catalog,
+    create_review_queue,
+)
 from tag_edgar.technology import TechnologyScreen
 
 
@@ -45,7 +50,8 @@ def test_build_catalog_joins_supplement_and_best_acquirer_match(tmp_path: Path) 
     matches.write_text(
         "deal_id,party_role,candidate_cik,sec_name,sec_ticker,exchange,match_method,confidence,manual_status,reviewer_note\n"
         "1,acquirer,2,Buyer Inc,BUY,Nasdaq,name,medium,confirmed,ok\n"
-        "1,acquirer,1,Wrong,WRONG,Nasdaq,ticker_and_name,high,pending,\n",
+        "1,acquirer,1,Wrong,WRONG,Nasdaq,ticker_and_name,high,pending,\n"
+        "1,target,3,Target Inc,TGT,Nasdaq,ticker_and_name,high,confirmed,verified target\n",
         encoding="utf-8",
     )
 
@@ -54,6 +60,8 @@ def test_build_catalog_joins_supplement_and_best_acquirer_match(tmp_path: Path) 
     assert rows[0]["target_public_status"] == "Public"
     assert rows[0]["candidate_cik"] == "2"
     assert rows[0]["cik_manual_status"] == "confirmed"
+    assert rows[0]["target_candidate_cik"] == "3"
+    assert rows[0]["target_cik_manual_status"] == "confirmed"
     assert rows[0]["sdc_form"] == "Merger"
 
 
@@ -71,6 +79,21 @@ def test_best_acquirer_match_preserves_an_unconfirmed_tie_as_ambiguous(tmp_path:
     assert best["candidate_cik"] == ""
     assert best["confidence"] == "ambiguous"
     assert best["match_method"] == "ambiguous_candidates"
+
+
+def test_best_target_match_uses_only_target_rows(tmp_path: Path) -> None:
+    matches = tmp_path / "matches.csv"
+    matches.write_text(
+        "deal_id,party_role,candidate_cik,sec_name,sec_ticker,exchange,match_method,confidence,manual_status,reviewer_note\n"
+        "1,acquirer,1,Buyer,BUY,Nasdaq,name,high,confirmed,\n"
+        "1,target,2,Target,TGT,NYSE,name,medium,confirmed,\n",
+        encoding="utf-8",
+    )
+
+    best = _best_target_matches(matches)["1"]
+
+    assert best["candidate_cik"] == "2"
+    assert best["sec_name"] == "Target"
 
 
 def test_review_queue_balances_available_strata(tmp_path: Path) -> None:

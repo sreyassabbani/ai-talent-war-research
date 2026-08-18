@@ -48,10 +48,20 @@ def test_pilot_audit_flags_an_agreement_without_treating_hits_as_verified(tmp_pa
     runs = tmp_path / "runs"
     _write(
         runs / "run_summary.csv",
-        ["deal_id", "filings", "documents", "relevant_documents", "evidence"],
+        [
+            "deal_id",
+            "acquirer_filings",
+            "target_filings",
+            "filings",
+            "documents",
+            "relevant_documents",
+            "evidence",
+        ],
         [
             {
                 "deal_id": "one",
+                "acquirer_filings": "1",
+                "target_filings": "2",
                 "filings": "1",
                 "documents": "2",
                 "relevant_documents": "1",
@@ -73,6 +83,8 @@ def test_pilot_audit_flags_an_agreement_without_treating_hits_as_verified(tmp_pa
     rows = pilot_audit_rows(review, runs)
 
     assert rows[0]["agreement_exhibit_found"] == "candidate"
+    assert rows[0]["acquirer_filings_found"] == "1"
+    assert rows[0]["target_filings_found"] == "2"
     assert rows[0]["automated_retention_compensation_hits"] == "1"
     assert rows[0]["manual_evidence_review_status"] == "pending"
 
