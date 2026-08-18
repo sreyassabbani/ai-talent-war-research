@@ -21,13 +21,17 @@ _FORM_SCORES = {
 }
 
 
-def deal_filing_links(deal: Deal, filings: list[Filing]) -> list[DealFiling]:
+def deal_filing_links(
+    deal: Deal,
+    filings: list[Filing],
+    discovery_route: str = "acquirer_confirmed_cik",
+) -> list[DealFiling]:
     """Create traceable, review-pending links; score is only a document-triage priority."""
     return [
         DealFiling(
             deal_id=deal.deal_id,
             accession_number=filing.accession_number,
-            discovery_route="acquirer_confirmed_cik",
+            discovery_route=discovery_route,
             days_from_announcement=(filing.filing_date - deal.announcement_date).days,
             days_from_effective=(filing.filing_date - deal.effective_date).days
             if deal.effective_date is not None

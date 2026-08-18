@@ -11,6 +11,7 @@ class Deal:
     announcement_date: date
     effective_date: date | None = None
     target_name: str | None = None
+    target_cik: str | None = None
 
 
 @dataclass(frozen=True)

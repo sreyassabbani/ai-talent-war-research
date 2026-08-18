@@ -201,7 +201,16 @@ def run_reviewed_pilot(
     write_dict_csv(
         output_dir / "run_summary.csv",
         summaries,
-        ["deal_id", "filings", "deal_filing_links", "documents", "relevant_documents", "evidence"],
+        [
+            "deal_id",
+            "acquirer_filings",
+            "target_filings",
+            "filings",
+            "deal_filing_links",
+            "documents",
+            "relevant_documents",
+            "evidence",
+        ],
     )
     typer.echo(f"Wrote {len(deals)} reviewed pilot runs to {output_dir}")
 
@@ -225,6 +234,9 @@ def summarize_pilot(
 def vertical_slice(
     deal_id: str = typer.Option(..., help="Stable local deal identifier."),
     acquirer_cik: str = typer.Option(..., help="Manually confirmed public-acquirer CIK."),
+    target_cik: str | None = typer.Option(
+        None, help="Optional manually confirmed public-target CIK."
+    ),
     announcement: str = typer.Option(..., help="Announcement date in YYYY-MM-DD format."),
     effective: str | None = typer.Option(None, help="Closing/effective date in YYYY-MM-DD format."),
     target_name: str | None = typer.Option(
@@ -232,7 +244,7 @@ def vertical_slice(
     ),
     output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "vertical_slice"),
 ) -> None:
-    """Run the first end-to-end EDGAR retrieval pilot for one verified CIK."""
+    """Run EDGAR retrieval for the confirmed acquirer and, when supplied, target."""
     settings = load_settings(require_user_agent=True)
     deal = Deal(
         deal_id=deal_id,
@@ -240,6 +252,7 @@ def vertical_slice(
         announcement_date=_parse_date(announcement),
         effective_date=_parse_date(effective) if effective else None,
         target_name=target_name,
+        target_cik=target_cik,
     )
     counts = run_vertical_slice(deal, settings, output_dir)
     typer.echo(f"Wrote {output_dir}")

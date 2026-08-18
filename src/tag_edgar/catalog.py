@@ -35,6 +35,14 @@ CATALOG_FIELDS = [
     "cik_match_confidence",
     "cik_manual_status",
     "cik_reviewer_note",
+    "target_candidate_cik",
+    "target_candidate_sec_name",
+    "target_candidate_sec_ticker",
+    "target_candidate_exchange",
+    "target_cik_match_method",
+    "target_cik_match_confidence",
+    "target_cik_manual_status",
+    "target_cik_reviewer_note",
     "pilot_status",
     "technology_scope_status",
     "technology_screen_version",
@@ -68,12 +76,12 @@ def _clean(value: str | None) -> str:
     return value.strip() if value else ""
 
 
-def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
+def _best_party_matches(path: Path, party_role: str) -> dict[str, dict[str, str]]:
     rank = {"high": 0, "medium": 1, "low": 2, "unresolved": 3}
     candidates_by_deal: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
     with path.open(newline="", encoding="utf-8") as file:
         for row in csv.DictReader(file):
-            if row.get("party_role") != "acquirer":
+            if row.get("party_role") != party_role:
                 continue
             deal_id = _clean(row.get("deal_id"))
             if not deal_id:
@@ -87,15 +95,13 @@ def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
         ]
         pool = confirmed or candidates
         best_rank = min(rank.get(_clean(row.get("confidence")), 99) for row in pool)
-        top = [
-            row for row in pool if rank.get(_clean(row.get("confidence")), 99) == best_rank
-        ]
+        top = [row for row in pool if rank.get(_clean(row.get("confidence")), 99) == best_rank]
         distinct_ciks = {_clean(row.get("candidate_cik")) for row in top}
         distinct_ciks.discard("")
         if len(distinct_ciks) > 1:
             if confirmed:
                 raise ValueError(
-                    f"Deal {deal_id} has multiple manually confirmed acquirer CIK values."
+                    f"Deal {deal_id} has multiple manually confirmed {party_role} CIK values."
                 )
             ambiguous = top[0].copy()
             for field in (
@@ -108,7 +114,7 @@ def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
             ambiguous["match_method"] = "ambiguous_candidates"
             ambiguous["confidence"] = "ambiguous"
             ambiguous["manual_status"] = "pending"
-            ambiguous["reviewer_note"] = "Multiple equally ranked acquirer CIK candidates."
+            ambiguous["reviewer_note"] = f"Multiple equally ranked {party_role} CIK candidates."
             best[deal_id] = ambiguous
             continue
         best[deal_id] = min(
@@ -120,6 +126,15 @@ def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
             ),
         )
     return best
+
+
+def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
+    """Preserve the original helper while using the generalized party selector."""
+    return _best_party_matches(path, "acquirer")
+
+
+def _best_target_matches(path: Path) -> dict[str, dict[str, str]]:
+    return _best_party_matches(path, "target")
 
 
 def build_catalog(
@@ -135,14 +150,16 @@ def build_catalog(
         for row in _read_sdc_rows(additional_csv, metadata_rows)
         if _clean(row.get("Deal Number"))
     }
-    matches = _best_acquirer_matches(entity_matches_csv)
+    acquirer_matches = _best_acquirer_matches(entity_matches_csv)
+    target_matches = _best_target_matches(entity_matches_csv)
     rows: list[dict[str, str]] = []
     with deals_seed_csv.open(newline="", encoding="utf-8") as file:
         for seed in csv.DictReader(file):
             deal_id = _clean(seed.get("deal_id"))
             main: dict[str, Any] = json.loads(seed["raw_source_row"])
             extra = supplemental.get(deal_id, {})
-            match = matches.get(deal_id, {})
+            match = acquirer_matches.get(deal_id, {})
+            target_match = target_matches.get(deal_id, {})
             rows.append(
                 {
                     "deal_id": deal_id,
@@ -171,6 +188,16 @@ def build_catalog(
                     "cik_match_confidence": _clean(match.get("confidence")),
                     "cik_manual_status": _clean(match.get("manual_status")) or "pending",
                     "cik_reviewer_note": _clean(match.get("reviewer_note")),
+                    "target_candidate_cik": _clean(target_match.get("candidate_cik")),
+                    "target_candidate_sec_name": _clean(target_match.get("sec_name")),
+                    "target_candidate_sec_ticker": _clean(target_match.get("sec_ticker")),
+                    "target_candidate_exchange": _clean(target_match.get("exchange")),
+                    "target_cik_match_method": _clean(target_match.get("match_method")),
+                    "target_cik_match_confidence": _clean(target_match.get("confidence")),
+                    "target_cik_manual_status": (
+                        _clean(target_match.get("manual_status")) or "pending"
+                    ),
+                    "target_cik_reviewer_note": _clean(target_match.get("reviewer_note")),
                     "pilot_status": "not_selected",
                     "technology_scope_status": "pending",
                     "technology_screen_version": "",
