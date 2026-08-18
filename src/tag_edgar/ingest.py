@@ -6,6 +6,7 @@ import re
 import tomllib
 from datetime import date
 from pathlib import Path
+from time import strptime
 
 from .models import DealSeed
 
@@ -33,7 +34,8 @@ def load_column_map(path: Path) -> dict[str, str]:
 def _parse_date(value: str, field: str, row_number: int) -> date:
     for format_string in DATE_FORMATS:
         try:
-            return date.strptime(value.strip(), format_string)
+            parsed = strptime(value.strip(), format_string)
+            return date(parsed.tm_year, parsed.tm_mon, parsed.tm_mday)
         except ValueError:
             continue
     raise ValueError(f"Row {row_number}: {field}={value!r} is not a supported date format.")

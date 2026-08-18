@@ -3,7 +3,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-from tag_edgar.catalog import build_catalog, create_review_queue
+from tag_edgar.catalog import _best_acquirer_matches, build_catalog, create_review_queue
 from tag_edgar.technology import TechnologyScreen
 
 
@@ -44,16 +44,33 @@ def test_build_catalog_joins_supplement_and_best_acquirer_match(tmp_path: Path) 
     matches = tmp_path / "matches.csv"
     matches.write_text(
         "deal_id,party_role,candidate_cik,sec_name,sec_ticker,exchange,match_method,confidence,manual_status,reviewer_note\n"
-        "1,acquirer,2,Wrong,WRONG,Nasdaq,name,medium,pending,\n"
-        "1,acquirer,1,Buyer Inc,BUY,Nasdaq,ticker_and_name,high,confirmed,ok\n",
+        "1,acquirer,2,Buyer Inc,BUY,Nasdaq,name,medium,confirmed,ok\n"
+        "1,acquirer,1,Wrong,WRONG,Nasdaq,ticker_and_name,high,pending,\n",
         encoding="utf-8",
     )
 
     rows = build_catalog(seed, additional, matches, metadata_rows=1)
 
     assert rows[0]["target_public_status"] == "Public"
-    assert rows[0]["candidate_cik"] == "1"
+    assert rows[0]["candidate_cik"] == "2"
+    assert rows[0]["cik_manual_status"] == "confirmed"
     assert rows[0]["sdc_form"] == "Merger"
+
+
+def test_best_acquirer_match_preserves_an_unconfirmed_tie_as_ambiguous(tmp_path: Path) -> None:
+    matches = tmp_path / "matches.csv"
+    matches.write_text(
+        "deal_id,party_role,candidate_cik,sec_name,sec_ticker,exchange,match_method,confidence,manual_status,reviewer_note\n"
+        "1,acquirer,1,Buyer One,ONE,Nasdaq,name,medium,pending,\n"
+        "1,acquirer,2,Buyer Two,TWO,NYSE,name,medium,pending,\n",
+        encoding="utf-8",
+    )
+
+    best = _best_acquirer_matches(matches)["1"]
+
+    assert best["candidate_cik"] == ""
+    assert best["confidence"] == "ambiguous"
+    assert best["match_method"] == "ambiguous_candidates"
 
 
 def test_review_queue_balances_available_strata(tmp_path: Path) -> None:

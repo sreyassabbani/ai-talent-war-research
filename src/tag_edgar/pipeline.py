@@ -95,7 +95,17 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
     write_csv(
         output_dir / "evidence.csv",
         evidence,
-        ["evidence_id", "deal_id", "document_id", "category", "pattern", "excerpt", "score"],
+        [
+            "evidence_id",
+            "deal_id",
+            "document_id",
+            "category",
+            "pattern",
+            "excerpt",
+            "score",
+            "match_start",
+            "match_end",
+        ],
     )
     return {
         "filings": len(filings),

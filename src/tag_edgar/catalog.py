@@ -70,7 +70,7 @@ def _clean(value: str | None) -> str:
 
 def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
     rank = {"high": 0, "medium": 1, "low": 2, "unresolved": 3}
-    best: dict[str, dict[str, str]] = {}
+    candidates_by_deal: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
     with path.open(newline="", encoding="utf-8") as file:
         for row in csv.DictReader(file):
             if row.get("party_role") != "acquirer":
@@ -78,11 +78,47 @@ def _best_acquirer_matches(path: Path) -> dict[str, dict[str, str]]:
             deal_id = _clean(row.get("deal_id"))
             if not deal_id:
                 continue
-            old = best.get(deal_id)
-            if old is None or rank.get(row.get("confidence", "unresolved"), 99) < rank.get(
-                old.get("confidence", "unresolved"), 99
+            candidates_by_deal[deal_id].append(row)
+
+    best: dict[str, dict[str, str]] = {}
+    for deal_id, candidates in candidates_by_deal.items():
+        confirmed = [
+            row for row in candidates if _clean(row.get("manual_status")).lower() == "confirmed"
+        ]
+        pool = confirmed or candidates
+        best_rank = min(rank.get(_clean(row.get("confidence")), 99) for row in pool)
+        top = [
+            row for row in pool if rank.get(_clean(row.get("confidence")), 99) == best_rank
+        ]
+        distinct_ciks = {_clean(row.get("candidate_cik")) for row in top}
+        distinct_ciks.discard("")
+        if len(distinct_ciks) > 1:
+            if confirmed:
+                raise ValueError(
+                    f"Deal {deal_id} has multiple manually confirmed acquirer CIK values."
+                )
+            ambiguous = top[0].copy()
+            for field in (
+                "candidate_cik",
+                "sec_name",
+                "sec_ticker",
+                "exchange",
             ):
-                best[deal_id] = row
+                ambiguous[field] = ""
+            ambiguous["match_method"] = "ambiguous_candidates"
+            ambiguous["confidence"] = "ambiguous"
+            ambiguous["manual_status"] = "pending"
+            ambiguous["reviewer_note"] = "Multiple equally ranked acquirer CIK candidates."
+            best[deal_id] = ambiguous
+            continue
+        best[deal_id] = min(
+            top,
+            key=lambda row: (
+                _clean(row.get("candidate_cik")),
+                _clean(row.get("sec_ticker")),
+                _clean(row.get("exchange")),
+            ),
+        )
     return best
 
 
