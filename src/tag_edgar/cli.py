@@ -11,6 +11,12 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, T
 from .audit import SUMMARY_FIELDS, pilot_audit_rows
 from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
+from .corpus_relevance_audit import (
+    prepare_corpus_relevance_audit,
+    score_corpus_relevance_audit,
+    write_corpus_relevance_audit,
+    write_corpus_relevance_scores,
+)
 from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
 from .employee_topics import TopicModelConfig
 from .employee_workflow import (
@@ -380,6 +386,59 @@ def build_employee_corpus_command(
     for label, count in summary.counts.items():
         typer.echo(f"{label}: {count}")
     typer.echo(f"Wrote {summary.output_dir}")
+
+
+@app.command("prepare-corpus-relevance-audit")
+def prepare_corpus_relevance_audit_command(
+    candidates_csv: Path = typer.Argument(
+        ...,
+        exists=True,
+        readable=True,
+        help="Complete passages.csv with included and excluded screened candidates.",
+    ),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "corpus_relevance_audit"
+    ),
+    included_limit: int = typer.Option(75, min=1),
+    excluded_limit: int = typer.Option(75, min=1),
+    seed: str = typer.Option(
+        "employee-corpus-relevance-v1", help="Deterministic, prespecified selection seed."
+    ),
+) -> None:
+    """Create an assessor-blinded packet and separate private sampling key."""
+    audit = prepare_corpus_relevance_audit(
+        candidates_csv,
+        included_limit=included_limit,
+        excluded_limit=excluded_limit,
+        seed=seed,
+    )
+    write_corpus_relevance_audit(output_dir, audit)
+    typer.echo("Corpus relevance/recall gate: pending_human_labels")
+    included_count = sum(row["inclusion_decision"] == "included" for row in audit.key_rows)
+    excluded_count = sum(row["inclusion_decision"] == "excluded" for row in audit.key_rows)
+    typer.echo(f"Included audit items: {included_count}")
+    typer.echo(f"Excluded audit items: {excluded_count}")
+    typer.echo(f"Wrote blinded packet and separate private key to {output_dir}")
+
+
+@app.command("score-corpus-relevance-audit")
+def score_corpus_relevance_audit_command(
+    private_key_csv: Path = typer.Argument(..., exists=True, readable=True),
+    completed_packet_csv: Path = typer.Argument(..., exists=True, readable=True),
+    audit_manifest_json: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "corpus_relevance_scores"
+    ),
+) -> None:
+    """Validate complete human labels and score the prespecified 90%/5% gate."""
+    score = score_corpus_relevance_audit(
+        private_key_csv,
+        completed_packet_csv,
+        audit_manifest_json,
+    )
+    write_corpus_relevance_scores(output_dir, score)
+    typer.echo(f"Corpus relevance/recall gate: {score.status}")
+    typer.echo(f"Wrote audit scores to {output_dir}")
 
 
 @app.command("analyze-employee-topics")

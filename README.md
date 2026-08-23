@@ -200,6 +200,21 @@ contribute at least one included passage or the build fails after writing the di
 extraction is block-level by default (`--context-blocks 0`) so unrelated neighboring provisions do
 not inherit an employee screen hit.
 
+Prepare the prespecified offline relevance/recall audit before treating the screen as validated:
+
+```sh
+uv run tag-edgar prepare-corpus-relevance-audit \
+  data/derived/employee_corpus/passages.csv
+```
+
+This writes a deterministic assessor-blinded packet and a separate private key, stratified across
+inclusion decisions, deals, and document families. Its quality gate stays pending until every item
+has a valid, explicitly human-attested label; the workflow never generates labels. After real
+coding, run `score-corpus-relevance-audit` to report point rates and 95% Wilson intervals for the
+included-passage relevance threshold (at least 90%) and excluded-candidate missed-content threshold
+(strictly below 5%). See [`docs/corpus_relevance_audit.md`](docs/corpus_relevance_audit.md) for the
+coding contract and full scoring command.
+
 Run the deterministic topic model and diagnostics, then build the descriptive report:
 
 ```sh
