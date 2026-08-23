@@ -197,3 +197,40 @@ The analysis writes canonical and source-propagated assignments, a complete deal
 diagnostics, sensitivity/stability tables, a JSON manifest, and an SVG heatmap. Deals without a
 stable assignment remain in the matrix with an explicit zero state. The final Markdown report and
 `topic_review.csv` are interpretation aids; topic labels still require human review.
+
+Prepare that review offline from the canonical analysis rows (not the source-propagated copies):
+
+```sh
+uv run tag-edgar prepare-employee-topic-review \
+  data/derived/employee_topics/canonical_topic_assignments.csv \
+  data/derived/employee_corpus/passages.csv
+```
+
+This writes a seeded manifest, a randomized `topic_review_packet.csv`, separate `reviewer_1.csv`
+and `reviewer_2.csv` copies, and a private `topic_review_key.csv`. Give each reviewer only their
+copy; keep the key from both reviewers until coding is complete. Actual topic IDs, model weights,
+deal IDs, and source URLs are omitted from the coding packet. For every row, the reviewer supplies
+one consistent `reviewer_id` and exactly one `fit_code`:
+
+- `fit`: the passage substantively exemplifies the displayed theme terms;
+- `partial`: related language is present, but the displayed theme is not the passage's main
+  substance;
+- `not_fit`: the passage does not substantively exemplify the displayed theme.
+
+Only `fit` counts toward the prespecified 80% theme-fit gate. Do not edit `review_item_id` or
+`blind_topic_id`. When the two reviewers have worked independently, score their files offline:
+
+```sh
+uv run tag-edgar score-employee-topic-review \
+  data/derived/employee_topic_review/topic_review_key.csv \
+  path/to/completed_reviewer_1.csv path/to/completed_reviewer_2.csv
+```
+
+The scorer rejects missing, duplicate, extra, blank, invalid, altered-key, or same-reviewer rows;
+it never fills human codes. `topic_review_scores.csv` reports reviewer-specific and pooled fit and
+partial rates, raw exact agreement, Cohen's kappa, and Gwet's AC1. Kappa is the agreement gate
+unless its denominator is mathematically zero; only then is the disclosed AC1 fallback used.
+`topic_review_diagnostics.csv` passes only with ten completed rows per topic, at least 80% `fit`
+from each reviewer for every topic, at least 80% exact agreement, and an agreement coefficient of
+at least 0.70 at both the topic and overall levels. The score manifest records the three input-file
+hashes and all gate thresholds so the result can be reproduced without network access.

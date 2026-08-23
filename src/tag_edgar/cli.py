@@ -11,6 +11,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, T
 from .audit import SUMMARY_FIELDS, pilot_audit_rows
 from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
+from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
 from .employee_topics import TopicModelConfig
 from .employee_workflow import (
     analyze_employee_topics_workflow,
@@ -383,6 +384,76 @@ def summarize_employee_topics_command(
     for label, count in summary.counts.items():
         typer.echo(f"{label}: {count}")
     typer.echo(f"Wrote {summary.output_dir}")
+
+
+@app.command("prepare-employee-topic-review")
+def prepare_employee_topic_review_command(
+    assignments_csv: Path = typer.Argument(
+        ...,
+        exists=True,
+        readable=True,
+        help="Canonical topic assignments from analyze-employee-topics.",
+    ),
+    passages_csv: Path = typer.Argument(
+        ...,
+        exists=True,
+        readable=True,
+        help="Canonical passages used for the topic analysis.",
+    ),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "employee_topic_review"
+    ),
+    top_n: int = typer.Option(10, min=1, help="Highest-weight primary passages per topic."),
+    seed: int = typer.Option(20260823, help="Seed for topic aliases and packet order."),
+) -> None:
+    """Create blinded, randomized coding files and a private topic-review key."""
+    result = prepare_topic_review(
+        assignments_csv,
+        passages_csv,
+        output_dir,
+        config=TopicReviewConfig(top_n=top_n, seed=seed),
+    )
+    typer.echo(f"Topics: {result.topic_count}")
+    typer.echo(f"Review items: {result.review_item_count}")
+    typer.echo(f"Packet SHA-256: {result.packet_sha256}")
+    typer.echo(f"Wrote {result.output_dir}")
+
+
+@app.command("score-employee-topic-review")
+def score_employee_topic_review_command(
+    key_csv: Path = typer.Argument(..., exists=True, readable=True),
+    reviewer_one_csv: Path = typer.Argument(..., exists=True, readable=True),
+    reviewer_two_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "employee_topic_review_scores"
+    ),
+    top_n: int = typer.Option(10, min=1, help="Required completed passages per topic."),
+    min_fit_rate: float = typer.Option(
+        0.80, min=0.0, max=1.0, help="Minimum reviewer-level 'fit' rate for every topic."
+    ),
+    min_exact_agreement: float = typer.Option(
+        0.80, min=0.0, max=1.0, help="Minimum exact code agreement."
+    ),
+    min_agreement_coefficient: float = typer.Option(
+        0.70, min=0.0, max=1.0, help="Minimum kappa, or AC1 when kappa is undefined."
+    ),
+) -> None:
+    """Validate two independent coding files and emit human-review release gates."""
+    result = score_topic_review(
+        key_csv,
+        reviewer_one_csv,
+        reviewer_two_csv,
+        output_dir,
+        config=TopicReviewConfig(
+            top_n=top_n,
+            min_fit_rate=min_fit_rate,
+            min_exact_agreement=min_exact_agreement,
+            min_agreement_coefficient=min_agreement_coefficient,
+        ),
+    )
+    typer.echo(f"Human review release gate: {result.status}")
+    typer.echo(f"Topics scored: {len(result.topic_scores)}")
+    typer.echo(f"Wrote {result.output_dir}")
 
 
 @app.command()
