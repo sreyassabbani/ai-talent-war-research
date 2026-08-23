@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import heapq
 import itertools
 import math
@@ -68,9 +69,12 @@ class TopicModelConfig:
     min_topic_deals: int = 2
     min_df: int = 2
     max_df_ratio: float = 0.90
-    max_features: int = 2_000
+    max_features: int = 750
+    max_fit_passages: int = 240
     top_terms: int = 10
-    nmf_iterations: int = 80
+    nmf_iterations: int = 20
+    projection_iterations: int = 6
+    stability_iterations: int = 12
     reconstruction_tolerance: float = 0.25
     coherence_tolerance: float = 0.15
     stability_threshold: float = 0.70
@@ -183,6 +187,58 @@ def analyze_employee_topics_csv(
     return analyze_employee_topics(load_passages_csv(path), config)
 
 
+def propagate_duplicate_assignments(
+    source_rows: Iterable[PassageRow | Mapping[str, str]],
+    canonical_assignments: Iterable[AssignmentRow],
+) -> tuple[AssignmentRow, ...]:
+    """Copy canonical topic weights to every included source occurrence in its duplicate group.
+
+    Model fitting still sees one row per global duplicate group. Propagation prevents an exact
+    passage whose canonical row belongs to one deal from disappearing from another deal's
+    source-linked output. Input passage IDs must be unique because they are report join keys.
+    """
+    rows = [row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows]
+    eligible = [
+        row
+        for row in rows
+        if row.inclusion_status.strip().lower() == "included" and row.model_text.strip()
+    ]
+    passage_ids = [row.passage_id for row in eligible]
+    if len(passage_ids) != len(set(passage_ids)):
+        raise ValueError("Included passage_id values must be unique for assignment propagation.")
+
+    grouped: dict[str, list[PassageRow]] = defaultdict(list)
+    for row in eligible:
+        grouped[_duplicate_key(row)].append(row)
+    assignments_by_passage: dict[str, list[AssignmentRow]] = defaultdict(list)
+    for assignment in canonical_assignments:
+        assignments_by_passage[assignment.passage_id].append(assignment)
+
+    output: list[AssignmentRow] = []
+    for group_key in sorted(grouped):
+        canonical = min(grouped[group_key], key=_passage_order_key)
+        source_assignments = assignments_by_passage.get(canonical.passage_id)
+        if not source_assignments:
+            raise ValueError(
+                f"Canonical passage {canonical.passage_id!r} has no topic assignments to propagate."
+            )
+        for row in sorted(grouped[group_key], key=_passage_order_key):
+            for assignment in sorted(source_assignments, key=lambda item: item.topic_id):
+                output.append(
+                    replace(
+                        assignment,
+                        passage_id=row.passage_id,
+                        deal_id=row.deal_id,
+                        document_id=row.document_id,
+                        document_family_id=row.document_family_id,
+                        source_url=row.source_url,
+                    )
+                )
+    return tuple(
+        sorted(output, key=lambda row: (row.deal_id, row.passage_id, row.topic_id))
+    )
+
+
 def analyze_employee_topics(
     source_rows: Iterable[PassageRow | Mapping[str, str]],
     config: TopicModelConfig = TopicModelConfig(),
@@ -193,7 +249,10 @@ def analyze_employee_topics(
     deterministic row in each duplicate group before any statistics are computed.
     """
     _validate_config(config)
-    prepared, input_count, included_count, empty_count = _prepare_passages(source_rows)
+    materialized_rows = [
+        row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows
+    ]
+    prepared, input_count, included_count, empty_count = _prepare_passages(materialized_rows)
     diagnostics: list[DiagnosticRow] = [
         DiagnosticRow("input", "input_rows", input_count, "pass", "Rows supplied."),
         DiagnosticRow(
@@ -215,8 +274,22 @@ def analyze_employee_topics(
         ),
     ]
     deal_count = len({row.deal_id for row in prepared})
+    duplicate_deals: dict[str, set[str]] = defaultdict(set)
+    for row in materialized_rows:
+        if row.inclusion_status.strip().lower() == "included" and row.model_text.strip():
+            duplicate_deals[_duplicate_key(row)].add(row.deal_id)
+    cross_deal_duplicates = sum(len(deals) > 1 for deals in duplicate_deals.values())
     diagnostics.append(
         DiagnosticRow("input", "deal_count", deal_count, "pass", "Deals represented in corpus.")
+    )
+    diagnostics.append(
+        DiagnosticRow(
+            "input",
+            "cross_deal_duplicate_groups",
+            cross_deal_duplicates,
+            "warning" if cross_deal_duplicates else "pass",
+            "Exact groups spanning deals are propagated, but make leave-one-deal-out stability less independent.",
+        )
     )
 
     if len(prepared) < config.min_passages:
@@ -232,7 +305,51 @@ def analyze_employee_topics(
             f"Need at least {config.min_deals} deals; found {deal_count}.",
         )
 
-    corpus = _vectorize(prepared, config)
+    fit_indices = _balanced_fit_indices(prepared, config.max_fit_passages, config.seed)
+    fit_rows = tuple(prepared[index] for index in fit_indices)
+    fit_deal_counts = Counter(row.deal_id for row in fit_rows)
+    corpus = _vectorize(fit_rows, config)
+    full_corpus = _transform(prepared, corpus)
+    zero_vectors = sum(not row for row in full_corpus.matrix)
+    diagnostics.extend(
+        (
+            DiagnosticRow(
+                "sampling",
+                "fit_passages",
+                len(fit_rows),
+                "pass",
+                "Deterministic deal-balanced passage families used to fit candidate models.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "projected_passages",
+                len(prepared) - len(fit_rows),
+                "pass",
+                "Remaining canonical passages assigned with fixed-component NMF projection.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "minimum_fit_passages_per_deal",
+                min(fit_deal_counts.values()),
+                "pass",
+                "Smallest deal contribution to the balanced fit sample.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "maximum_fit_passages_per_deal",
+                max(fit_deal_counts.values()),
+                "pass",
+                "Largest deal contribution to the balanced fit sample.",
+            ),
+            DiagnosticRow(
+                "vectorize",
+                "zero_vector_passages",
+                zero_vectors,
+                "warning" if zero_vectors else "pass",
+                "Canonical passages with no terms in the fitted vocabulary.",
+            ),
+        )
+    )
     diagnostics.append(
         DiagnosticRow(
             "vectorize",
@@ -250,7 +367,7 @@ def analyze_employee_topics(
         )
 
     fits: list[_NmfFit] = []
-    upper_k = min(config.k_max, len(prepared) - 1, len(corpus.vocabulary))
+    upper_k = min(config.k_max, len(fit_rows) - 1, len(corpus.vocabulary))
     for k in range(config.k_min, upper_k + 1):
         fit = _fit_and_describe(corpus, k, config.seed + (k * 10_007), config)
         fits.append(fit)
@@ -275,14 +392,22 @@ def analyze_employee_topics(
         )
     )
 
-    assignments = _assignment_rows(corpus.rows, selected.weights)
-    deal_topics = _deal_topic_rows(corpus.rows, selected.weights)
-    sensitivity = _agglomerative_assignments(corpus, selected.k)
+    projected_weights = _project_weights(
+        full_corpus.matrix,
+        selected.components,
+        config.projection_iterations,
+    )
+    full_fit = replace(selected, weights=projected_weights)
+    canonical_assignments = _assignment_rows(full_corpus.rows, projected_weights)
+    assignments = propagate_duplicate_assignments(materialized_rows, canonical_assignments)
+    deal_rows, deal_weights = _deal_group_rows(materialized_rows, prepared, projected_weights)
+    deal_topics = _deal_topic_rows(deal_rows, deal_weights)
+    sensitivity = _agglomerative_fit_predict(corpus, full_corpus, selected.k)
     sensitivity_rows = tuple(
         SensitivityAssignmentRow(row.passage_id, row.deal_id, f"cluster_{cluster + 1}")
-        for row, cluster in zip(corpus.rows, sensitivity, strict=True)
+        for row, cluster in zip(full_corpus.rows, sensitivity, strict=True)
     )
-    primary_topics = [_argmax(weight) for weight in selected.weights]
+    primary_topics = [_argmax(weight) if sum(weight) else -1 for weight in projected_weights]
     diagnostics.append(
         DiagnosticRow(
             "sensitivity",
@@ -294,7 +419,7 @@ def analyze_employee_topics(
     )
 
     stability = _leave_one_deal_out(corpus, selected, config)
-    topics = _topic_rows(corpus, selected, stability)
+    topics = _topic_rows(full_corpus, full_fit, stability)
     recovered = [row.recovered for row in stability]
     diagnostics.append(
         DiagnosticRow(
@@ -324,8 +449,13 @@ def _validate_config(config: TopicModelConfig) -> None:
         raise ValueError("Minimum passage and deal counts must be positive.")
     if not 0 < config.max_df_ratio <= 1:
         raise ValueError("max_df_ratio must be in (0, 1].")
-    if config.nmf_iterations < 1:
-        raise ValueError("nmf_iterations must be positive.")
+    if min(
+        config.nmf_iterations,
+        config.projection_iterations,
+        config.stability_iterations,
+        config.max_fit_passages,
+    ) < 1:
+        raise ValueError("Iteration and fit-sample limits must be positive.")
 
 
 def _passage_from_mapping(row: Mapping[str, str]) -> PassageRow:
@@ -341,23 +471,67 @@ def _prepare_passages(
     rows = [row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows]
     included = [row for row in rows if row.inclusion_status.strip().lower() == "included"]
     by_duplicate: dict[str, list[PassageRow]] = defaultdict(list)
-    for row in included:
-        duplicate_key = row.duplicate_group.strip() or f"passage:{row.passage_id}"
-        by_duplicate[duplicate_key].append(row)
-
-    canonical: list[PassageRow] = []
     empty_count = 0
-    for group in sorted(by_duplicate):
-        row = min(
-            by_duplicate[group],
-            key=lambda item: (item.passage_id, item.document_id, item.source_url),
-        )
+    for row in included:
         if not row.model_text.strip():
             empty_count += 1
             continue
+        by_duplicate[_duplicate_key(row)].append(row)
+
+    canonical: list[PassageRow] = []
+    for group in sorted(by_duplicate):
+        row = min(
+            by_duplicate[group],
+            key=_passage_order_key,
+        )
         canonical.append(row)
     canonical.sort(key=lambda row: (row.deal_id, row.passage_id, row.document_id))
     return tuple(canonical), len(rows), len(included), empty_count
+
+
+def _duplicate_key(row: PassageRow) -> str:
+    return row.duplicate_group.strip() or f"passage:{row.passage_id}"
+
+
+def _passage_order_key(row: PassageRow) -> tuple[str, str, str]:
+    return row.passage_id, row.document_id, row.source_url
+
+
+def _balanced_fit_indices(
+    rows: Sequence[PassageRow], limit: int, seed: int
+) -> tuple[int, ...]:
+    if len(rows) <= limit:
+        return tuple(range(len(rows)))
+    by_deal: dict[str, list[int]] = defaultdict(list)
+    for index, row in enumerate(rows):
+        by_deal[row.deal_id].append(index)
+    for deal_id, indices in by_deal.items():
+        indices.sort(
+            key=lambda index: (
+                _stable_rank(seed, deal_id, rows[index].passage_id),
+                rows[index].passage_id,
+            )
+        )
+    offsets = {deal_id: 0 for deal_id in by_deal}
+    selected: list[int] = []
+    while len(selected) < limit:
+        advanced = False
+        for deal_id in sorted(by_deal):
+            offset = offsets[deal_id]
+            if offset >= len(by_deal[deal_id]):
+                continue
+            selected.append(by_deal[deal_id][offset])
+            offsets[deal_id] += 1
+            advanced = True
+            if len(selected) == limit:
+                break
+        if not advanced:
+            break
+    return tuple(sorted(selected))
+
+
+def _stable_rank(seed: int, deal_id: str, passage_id: str) -> str:
+    return hashlib.sha256(f"{seed}:{deal_id}:{passage_id}".encode()).hexdigest()
 
 
 def _tokens(text: str) -> list[str]:
@@ -376,7 +550,7 @@ def _vectorize(rows: Sequence[PassageRow], config: TopicModelConfig) -> _Vectori
     document_frequency: Counter[str] = Counter()
     corpus_frequency: Counter[str] = Counter()
     for row_counts in counts:
-        document_frequency.update(row_counts)
+        document_frequency.update(row_counts.keys())
         corpus_frequency.update(row_counts)
 
     n_rows = len(rows)
@@ -413,6 +587,34 @@ def _vectorize(rows: Sequence[PassageRow], config: TopicModelConfig) -> _Vectori
         matrix=tuple(matrix),
         vocabulary=vocabulary,
         document_frequency=tuple(document_frequency[term] for term in vocabulary),
+    )
+
+
+def _transform(
+    rows: Sequence[PassageRow], fitted: _VectorizedCorpus
+) -> _VectorizedCorpus:
+    term_index = {term: index for index, term in enumerate(fitted.vocabulary)}
+    training_count = len(fitted.rows)
+    inverse_document_frequency = tuple(
+        math.log((1 + training_count) / (1 + frequency)) + 1
+        for frequency in fitted.document_frequency
+    )
+    matrix: list[dict[int, float]] = []
+    for row in rows:
+        vector: dict[int, float] = {}
+        for term, count in _terms(row.model_text).items():
+            index = term_index.get(term)
+            if index is not None:
+                vector[index] = (1 + math.log(count)) * inverse_document_frequency[index]
+        norm = math.sqrt(sum(value * value for value in vector.values()))
+        matrix.append(
+            {index: value / norm for index, value in vector.items()} if norm else {}
+        )
+    return _VectorizedCorpus(
+        rows=tuple(rows),
+        matrix=tuple(matrix),
+        vocabulary=fitted.vocabulary,
+        document_frequency=fitted.document_frequency,
     )
 
 
@@ -495,6 +697,40 @@ def _nmf(
         tuple(tuple(value for value in row) for row in weights),
         tuple(tuple(value for value in row) for row in components),
         error,
+    )
+
+
+def _project_weights(
+    matrix: Sequence[Mapping[int, float]],
+    components: Sequence[Sequence[float]],
+    iterations: int,
+) -> tuple[tuple[float, ...], ...]:
+    """Infer nonnegative passage weights while keeping fitted topic components fixed."""
+    k = len(components)
+    epsilon = 1e-12
+    component_gram = _gram(components, k, rows_are_topics=True)
+    numerators: list[list[float]] = []
+    for sparse_row in matrix:
+        numerator = [0.0] * k
+        for feature, value in sparse_row.items():
+            for topic in range(k):
+                numerator[topic] += value * components[topic][feature]
+        numerators.append(numerator)
+    weights = [
+        [max(value, epsilon) for value in numerator] for numerator in numerators
+    ]
+    for _ in range(iterations):
+        for row_index, numerator in enumerate(numerators):
+            for topic in range(k):
+                denominator = sum(
+                    weights[row_index][other] * component_gram[other][topic]
+                    for other in range(k)
+                )
+                weights[row_index][topic] *= numerator[topic] / (denominator + epsilon)
+                weights[row_index][topic] = max(weights[row_index][topic], epsilon)
+    return tuple(
+        _normalize(row) if any(numerator) else tuple(0.0 for _ in range(k))
+        for row, numerator in zip(weights, numerators, strict=True)
     )
 
 
@@ -651,7 +887,7 @@ def _assignment_rows(
 ) -> tuple[AssignmentRow, ...]:
     output: list[AssignmentRow] = []
     for passage, row_weights in zip(passages, weights, strict=True):
-        primary = _argmax(row_weights)
+        primary = _argmax(row_weights) if sum(row_weights) else None
         for topic, weight in enumerate(row_weights):
             output.append(
                 AssignmentRow(
@@ -662,7 +898,7 @@ def _assignment_rows(
                     source_url=passage.source_url,
                     topic_id=f"topic_{topic + 1}",
                     topic_weight=weight,
-                    primary_topic=topic == primary,
+                    primary_topic=primary is not None and topic == primary,
                 )
             )
     return tuple(output)
@@ -677,7 +913,8 @@ def _deal_topic_rows(
         sums.setdefault(passage.deal_id, [0.0] * len(row_weights))
         for topic, weight in enumerate(row_weights):
             sums[passage.deal_id][topic] += weight
-        primary_counts[passage.deal_id][_argmax(row_weights)] += 1
+        if sum(row_weights):
+            primary_counts[passage.deal_id][_argmax(row_weights)] += 1
 
     output: list[DealTopicRow] = []
     for deal_id in sorted(sums):
@@ -695,10 +932,36 @@ def _deal_topic_rows(
     return tuple(output)
 
 
+def _deal_group_rows(
+    source_rows: Sequence[PassageRow],
+    canonical_rows: Sequence[PassageRow],
+    canonical_weights: Sequence[Sequence[float]],
+) -> tuple[tuple[PassageRow, ...], tuple[tuple[float, ...], ...]]:
+    weights_by_group = {
+        _duplicate_key(row): tuple(weights)
+        for row, weights in zip(canonical_rows, canonical_weights, strict=True)
+    }
+    by_deal_group: dict[tuple[str, str], list[PassageRow]] = defaultdict(list)
+    for row in source_rows:
+        if row.inclusion_status.strip().lower() != "included" or not row.model_text.strip():
+            continue
+        group = _duplicate_key(row)
+        if group in weights_by_group:
+            by_deal_group[(row.deal_id, group)].append(row)
+    selected: list[tuple[PassageRow, tuple[float, ...]]] = []
+    for deal_group in sorted(by_deal_group):
+        row = min(by_deal_group[deal_group], key=_passage_order_key)
+        selected.append((row, weights_by_group[deal_group[1]]))
+    return (
+        tuple(row for row, _ in selected),
+        tuple(weights for _, weights in selected),
+    )
+
+
 def _topic_rows(
     corpus: _VectorizedCorpus, fit: _NmfFit, stability: Sequence[StabilityRow]
 ) -> tuple[TopicRow, ...]:
-    primary = [_argmax(row) for row in fit.weights]
+    primary = [_argmax(row) if sum(row) else None for row in fit.weights]
     output: list[TopicRow] = []
     for topic in range(fit.k):
         selected = [index for index, value in enumerate(primary) if value == topic]
@@ -794,6 +1057,42 @@ def _agglomerative_assignments(corpus: _VectorizedCorpus, k: int) -> list[int]:
     return labels
 
 
+def _agglomerative_fit_predict(
+    fitted: _VectorizedCorpus, full: _VectorizedCorpus, k: int
+) -> list[int]:
+    fitted_labels = _agglomerative_assignments(fitted, k)
+    centroid_sums: list[defaultdict[int, float]] = [defaultdict(float) for _ in range(k)]
+    cluster_sizes = Counter(fitted_labels)
+    for sparse_row, label in zip(fitted.matrix, fitted_labels, strict=True):
+        for feature, value in sparse_row.items():
+            centroid_sums[label][feature] += value
+    centroids: list[dict[int, float]] = []
+    for label, values in enumerate(centroid_sums):
+        centroid = {
+            feature: value / cluster_sizes[label] for feature, value in values.items()
+        }
+        norm = math.sqrt(sum(value * value for value in centroid.values()))
+        centroids.append(
+            {feature: value / norm for feature, value in centroid.items()} if norm else {}
+        )
+    fitted_by_passage = {
+        row.passage_id: label
+        for row, label in zip(fitted.rows, fitted_labels, strict=True)
+    }
+    output: list[int] = []
+    for row, sparse_row in zip(full.rows, full.matrix, strict=True):
+        if row.passage_id in fitted_by_passage:
+            output.append(fitted_by_passage[row.passage_id])
+            continue
+        output.append(
+            max(
+                range(k),
+                key=lambda label: (_sparse_dot(sparse_row, centroids[label]), -label),
+            )
+        )
+    return output
+
+
 def _leave_one_deal_out(
     corpus: _VectorizedCorpus, full_fit: _NmfFit, config: TopicModelConfig
 ) -> tuple[StabilityRow, ...]:
@@ -804,12 +1103,13 @@ def _leave_one_deal_out(
         if len(kept) < full_fit.k:
             continue
         held_matrix = tuple(corpus.matrix[index] for index in kept)
+        stability_config = replace(config, nmf_iterations=config.stability_iterations)
         _, held_components, _ = _nmf(
             held_matrix,
             len(corpus.vocabulary),
             full_fit.k,
             config.seed + 900_001 + deal_index,
-            config,
+            stability_config,
         )
         similarities = [
             [_cosine(full, held) for held in held_components] for full in full_fit.components

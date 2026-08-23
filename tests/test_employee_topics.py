@@ -3,9 +3,11 @@ from pathlib import Path
 import pytest
 
 from tag_edgar.employee_topics import (
+    AssignmentRow,
     TopicModelConfig,
     analyze_employee_topics,
     load_passages_csv,
+    propagate_duplicate_assignments,
 )
 
 
@@ -112,6 +114,105 @@ def test_topic_model_is_deterministic() -> None:
     second = analyze_employee_topics(reversed(corpus), config)
 
     assert first == second
+
+
+def test_fit_sample_is_bounded_but_all_passages_receive_assignments() -> None:
+    corpus = _synthetic_corpus()
+    config = TopicModelConfig(
+        min_passages=12,
+        min_deals=3,
+        k_min=3,
+        k_max=3,
+        min_topic_families=2,
+        min_topic_deals=2,
+        max_fit_passages=24,
+        nmf_iterations=30,
+    )
+
+    result = analyze_employee_topics(corpus, config)
+
+    assert result.status == "modeled"
+    fit_count = next(row.value for row in result.diagnostics if row.name == "fit_passages")
+    projected = next(
+        row.value for row in result.diagnostics if row.name == "projected_passages"
+    )
+    assert fit_count == 24
+    assert projected == 12
+    assert len(result.assignments) == len(corpus) * 3
+    assert len(result.sensitivity_assignments) == len(corpus)
+
+
+def test_duplicate_assignments_propagate_across_deals() -> None:
+    source = [
+        _row("p1", "deal_1", "retention bonus employee", duplicate_group="shared"),
+        _row("p2", "deal_2", "retention bonus employee", duplicate_group="shared"),
+    ]
+    canonical = (
+        AssignmentRow(
+            "p1", "deal_1", "document_p1", "family_p1", "https://example.test/p1",
+            "topic_1", 0.8, True,
+        ),
+        AssignmentRow(
+            "p1", "deal_1", "document_p1", "family_p1", "https://example.test/p1",
+            "topic_2", 0.2, False,
+        ),
+    )
+
+    propagated = propagate_duplicate_assignments(source, canonical)
+
+    assert {(row.passage_id, row.deal_id) for row in propagated} == {
+        ("p1", "deal_1"),
+        ("p2", "deal_2"),
+    }
+    assert [row.topic_weight for row in propagated if row.passage_id == "p2"] == [0.8, 0.2]
+    assert all(row.document_id == "document_p2" for row in propagated if row.passage_id == "p2")
+
+
+def test_modeled_cross_deal_duplicate_is_fit_once_but_reported_in_both_deals() -> None:
+    corpus = _synthetic_corpus()
+    duplicate = dict(corpus[0])
+    duplicate.update(
+        passage_id="cross_deal_copy",
+        deal_id="deal_2",
+        document_id="document_cross_deal_copy",
+        document_family_id="family_cross_deal_copy",
+        source_url="https://example.test/cross_deal_copy",
+        duplicate_group=corpus[0]["duplicate_group"],
+    )
+    corpus.append(duplicate)
+
+    result = analyze_employee_topics(corpus, _model_config())
+
+    assert result.status == "modeled"
+    assert any(row.passage_id == "cross_deal_copy" for row in result.assignments)
+    canonical_count = next(
+        row.value for row in result.diagnostics if row.name == "canonical_passages"
+    )
+    assert canonical_count == len(corpus) - 1
+    assert any(row.deal_id == "deal_2" for row in result.deal_topics)
+
+
+def test_document_frequency_counts_documents_not_repeated_tokens() -> None:
+    rows = [
+        _row("p1", "deal_1", "alphaword alphaword alphaword alphaword"),
+        _row("p2", "deal_2", "betaword betaword betaword betaword"),
+        _row("p3", "deal_3", "gammaword gammaword gammaword gammaword"),
+    ]
+    config = TopicModelConfig(
+        min_passages=3,
+        min_deals=3,
+        k_min=2,
+        k_max=2,
+        min_df=2,
+        max_df_ratio=1.0,
+    )
+
+    result = analyze_employee_topics(rows, config)
+
+    assert result.status == "qualitative_only"
+    assert result.reason == "insufficient_vocabulary"
+    vocabulary = next(row for row in result.diagnostics if row.name == "vocabulary_size")
+    assert vocabulary.value == 0
 
 
 def test_load_passages_csv_requires_the_full_contract(tmp_path: Path) -> None:
