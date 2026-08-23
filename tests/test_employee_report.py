@@ -358,6 +358,21 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
             ),
             "numeric_table_noise",
         ),
+        (
+            "First quarter revenue was $102.4 million and net retention rate was 115%.",
+            "generic_financial_metric",
+        ),
+        (
+            (
+                "Permitted Liens include deposits under worker's compensation laws and "
+                "unemployment insurance laws."
+            ),
+            "generic_legal_boilerplate",
+        ),
+        (
+            "Platforms may restrict access and cause loss of our player base.",
+            "no_human_capital_subject",
+        ),
     ],
 )
 def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(

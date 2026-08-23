@@ -317,7 +317,7 @@ def _merged_ranges(
     ranges = [_context_range(blocks, index, context_blocks) for index in matched_indices]
     merged: list[tuple[int, int]] = []
     for start, end in ranges:
-        if merged and start <= merged[-1][1] + 1:
+        if merged and start <= merged[-1][1]:
             prior_start, prior_end = merged[-1]
             if blocks[prior_start].heading == blocks[start].heading:
                 merged[-1] = (prior_start, max(prior_end, end))
@@ -347,7 +347,7 @@ def _passage_candidates(
     matched_indices = [
         block.block_index
         for block in parsed.blocks
-        if screen_employee_terms("\n".join(filter(None, (block.heading, block.text))), terms)
+        if screen_employee_terms(block.text, terms)
     ]
     candidates: list[_PassageCandidate] = []
     for start, end in _merged_ranges(parsed.blocks, matched_indices, context_blocks):
@@ -379,7 +379,7 @@ def build_employee_corpus(
     documents: Iterable[CorpusDocument],
     *,
     screen_terms: Sequence[str] = DEFAULT_EMPLOYEE_SCREEN_TERMS,
-    context_blocks: int = 1,
+    context_blocks: int = 0,
     max_block_words: int = 220,
 ) -> EmployeeCorpus:
     """Build a deterministic, exact-deduplicated employee passage corpus.

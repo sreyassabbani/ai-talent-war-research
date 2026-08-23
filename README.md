@@ -165,7 +165,9 @@ so repeated legal language does not count as independent document-family support
 out unrelated event-window communications and financial/safe-harbor contexts, records every
 document decision in `document_eligibility.csv`, and validates manually positive sources in
 `manual_source_validation.csv` when the pilot coding table is present. A positive source must
-contribute at least one included passage or the build fails after writing the diagnostic.
+contribute at least one included passage or the build fails after writing the diagnostic. Passage
+extraction is block-level by default (`--context-blocks 0`) so unrelated neighboring provisions do
+not inherit an employee screen hit.
 
 Run the deterministic topic model and diagnostics, then build the descriptive report:
 

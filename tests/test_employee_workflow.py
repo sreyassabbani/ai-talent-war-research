@@ -412,6 +412,34 @@ def test_passage_gate_removes_safe_harbor_accounting_and_uncontextualized_generi
     ) == (True, "included_employee_context")
 
 
+def test_passage_gate_disambiguates_retention_and_nonemployee_ip_contexts() -> None:
+    assert _passage_eligibility(
+        ("retention",),
+        "privacy policies govern the retention and use of personal information from individuals",
+    ) == (False, "excluded_nonemployee_privacy_or_ip_context")
+    assert _passage_eligibility(
+        ("retain",), "the combined company will retain a strong office presence in israel"
+    ) == (False, "excluded_generic_term_without_people_context")
+    assert _passage_eligibility(
+        ("personnel",),
+        "personnel with source code access sign confidentiality agreements protecting trade secrets",
+    ) == (False, "excluded_nonemployee_privacy_or_ip_context")
+    assert _passage_eligibility(
+        ("retention", "bonus"), "each key employee receives a retention bonus after closing"
+    ) == (True, "included_employee_context")
+
+
+def test_passage_gate_preserves_leadership_continuity_and_equity_treatment() -> None:
+    assert _passage_eligibility(
+        ("executive officer",),
+        "the chief executive officer will continue to serve and report to the buyer",
+    ) == (True, "included_employee_context")
+    assert _passage_eligibility(
+        ("restricted stock unit", "vesting"),
+        "each unvested restricted stock unit will be assumed at the effective time",
+    ) == (True, "included_employee_context")
+
+
 def test_model_text_masks_party_names_without_changing_other_words() -> None:
     normalized = _normalize_party_names(
         "unity software and ironsource employees will remain with unity after closing",

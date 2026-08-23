@@ -85,8 +85,25 @@ def test_overlapping_context_windows_merge_within_a_heading() -> None:
     assert corpus.passages[0].heading == "Employee Matters"
     assert corpus.passages[0].block_start == 0
     assert corpus.passages[0].block_end == 3
-    assert corpus.blocks_matched == 4
+    assert corpus.blocks_matched == 2
     assert corpus.passages[0].screen_terms == ("employee", "employees", "benefit plan")
+
+
+def test_default_passages_do_not_inherit_neighboring_blocks_or_match_heading_only() -> None:
+    html = """
+    <h2>Workforce Strategy</h2>
+    <p>Opening context about product strategy.</p>
+    <p>Key employees receive a retention bonus.</p>
+    <p>Closing context about office locations.</p>
+    """
+
+    corpus = build_employee_corpus([_document("doc-1", html)])
+
+    assert corpus.blocks_matched == 1
+    assert len(corpus.passages) == 1
+    assert corpus.passages[0].block_start == 1
+    assert corpus.passages[0].block_end == 1
+    assert corpus.passages[0].text == "Key employees receive a retention bonus."
 
 
 def test_exact_duplicates_model_once_and_keep_every_source_occurrence() -> None:

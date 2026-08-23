@@ -137,6 +137,21 @@ _SPECIFIC_EMPLOYEE_TERM = re.compile(
     re.IGNORECASE,
 )
 _NUMERIC_TOKEN = re.compile(r"(?:\$?\d[\d,]*(?:\.\d+)?%?|—)")
+_TRANSACTION_EMPLOYEE_ACTION = re.compile(
+    r"\b(?:upon closing|will receive|converted|exercise price|vested|vesting|eligible|"
+    r"severance|retention (?:bonus|pool|award)|continued service)\b",
+    re.IGNORECASE,
+)
+_GENERIC_LEGAL_PARTY_LIST = re.compile(
+    r"\b(?:limitation on liability|commitment parties|related person|permitted liens|"
+    r"representatives and agents|worker'?s compensation laws|unemployment insurance laws)\b",
+    re.IGNORECASE,
+)
+_FINANCIAL_METRIC_NOISE = re.compile(
+    r"\b(?:net retention rate|quarter revenue|financial results|year-over-year|"
+    r"quarter-over-quarter|adjusted ebitda|effective tax rate)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -290,16 +305,28 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         reasons.append("generic_accounting_noise")
     if _TITLE_OR_CONTACT_NOISE.search(normalized) and not _SUBSTANTIVE_ACTION.search(body):
         reasons.append("title_or_contact_block")
-    if _PRIVACY_OR_IP_NOISE.search(normalized) and not _HUMAN_CAPITAL_ARRANGEMENT.search(body):
+    if _PRIVACY_OR_IP_NOISE.search(normalized):
         reasons.append("privacy_or_ip_noise")
     if _NON_HUMAN_RETAIN_USE.search(normalized) and not _HUMAN_SUBJECT.search(body):
         reasons.append("non_human_retain_use")
     if _GENERIC_RISK_BOILERPLATE.search(normalized) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
         reasons.append("generic_risk_boilerplate")
+    if _GENERIC_LEGAL_PARTY_LIST.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(
+        body
+    ):
+        reasons.append("generic_legal_boilerplate")
+    if _FINANCIAL_METRIC_NOISE.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(
+        body
+    ):
+        reasons.append("generic_financial_metric")
+    if not _HUMAN_SUBJECT.search(body) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
+        reasons.append("no_human_capital_subject")
     word_count = len(_WORD.findall(body))
     numeric_count = len(_NUMERIC_TOKEN.findall(body))
-    if numeric_count >= 8 and numeric_count > word_count / 2 and not _SPECIFIC_EMPLOYEE_TERM.search(
-        body
+    if (
+        numeric_count >= 8
+        and numeric_count > word_count / 3
+        and not _TRANSACTION_EMPLOYEE_ACTION.search(body)
     ):
         reasons.append("numeric_table_noise")
     if not has_employee_language:

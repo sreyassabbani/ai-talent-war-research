@@ -312,6 +312,12 @@ def _passage_eligibility(screen_terms: Sequence[str], model_text: str) -> tuple[
         return False, "excluded_safe_harbor_or_forward_looking_context"
     if _ACCOUNTING_CONTEXT.search(model_text):
         return False, "excluded_accounting_or_financial_context"
+    if (
+        _PRIVACY_IP_CONTEXT.search(model_text)
+        and not term_set & _STRONG_EMPLOYEE_SCREEN_TERMS
+        and not _LEADERSHIP_CONTINUITY_CONTEXT.search(model_text)
+    ):
+        return False, "excluded_nonemployee_privacy_or_ip_context"
     substantive_terms = term_set - _GENERIC_SCREEN_TERMS
     if not substantive_terms:
         award_terms = term_set & _AWARD_SCREEN_TERMS
@@ -319,6 +325,7 @@ def _passage_eligibility(screen_terms: Sequence[str], model_text: str) -> tuple[
             (award_terms and _AWARD_TREATMENT_CONTEXT.search(model_text))
             or _HUMAN_CONTEXT.search(model_text)
             or _GENERIC_PEOPLE_CONTEXT.search(model_text)
+            or _COMPENSATION_CONTEXT.search(model_text)
         )
         if not contextual:
             return False, "excluded_generic_term_without_people_context"
@@ -343,14 +350,33 @@ _SAFE_HARBOR_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _HUMAN_CONTEXT = re.compile(
-    r"\b(?:employees?|employment|personnel|workforce|workers?|retention|severance|"
+    r"\b(?:employees?|employment|personnel|workforce|workers?|severance|"
     r"continued service|remain employed|benefit plans?|pension|labor|labour|union|"
     r"award holders?|participants?)\b",
     re.IGNORECASE,
 )
 _GENERIC_PEOPLE_CONTEXT = re.compile(
     r"\b(?:remain|continue|serve|report(?:ing)? to|appoint(?:ed|ment)?|lead(?:er|ership)?|"
-    r"employ(?:ed|ment)?|retain(?:ed)?|terminate|service|closing|individual|person)\b",
+    r"employ(?:ed|ment)?|terminate)\b",
+    re.IGNORECASE,
+)
+_LEADERSHIP_CONTINUITY_CONTEXT = re.compile(
+    r"\b(?:chief executive|chief financial|ceo|cfo|executive|officer|founder|management)\b"
+    r".{0,100}\b(?:remain|continue|serve|report(?:ing)? to|appoint(?:ed|ment)?|lead)\b|"
+    r"\b(?:remain|continue|serve|report(?:ing)? to|appoint(?:ed|ment)?|lead)\b"
+    r".{0,100}\b(?:chief executive|chief financial|ceo|cfo|executive|officer|founder|"
+    r"management)\b",
+    re.IGNORECASE,
+)
+_COMPENSATION_CONTEXT = re.compile(
+    r"\b(?:retention|stay|transaction) bonus(?:es)?\b|"
+    r"\b(?:salary|salaries|wages?|payroll|severance|compensation|incentive)\b",
+    re.IGNORECASE,
+)
+_PRIVACY_IP_CONTEXT = re.compile(
+    r"\b(?:privacy polic(?:y|ies)|personal information|data protection|source code|"
+    r"intellectual property|trade secrets?|non-disclosure|confidentiality|"
+    r"information security)\b",
     re.IGNORECASE,
 )
 _AWARD_TREATMENT_CONTEXT = re.compile(
@@ -377,6 +403,31 @@ _GENERIC_SCREEN_TERMS = frozenset(
         "compensation",
         "bonus",
         "change in control",
+        "retention",
+        "retain",
+        *_AWARD_SCREEN_TERMS,
+    }
+)
+_STRONG_EMPLOYEE_SCREEN_TERMS = frozenset(
+    {
+        "employment",
+        "continued employment",
+        "continued service",
+        "remain employed",
+        "key employee",
+        "stay bonus",
+        "transaction bonus",
+        "salary",
+        "wages",
+        "payroll",
+        "severance",
+        "benefit plan",
+        "employee benefit",
+        "pension",
+        "collective bargaining",
+        "union",
+        "labor",
+        "labour",
         *_AWARD_SCREEN_TERMS,
     }
 )
@@ -584,7 +635,7 @@ def build_employee_corpus_workflow(
     output_dir: Path,
     cache_dir: Path,
     *,
-    context_blocks: int = 1,
+    context_blocks: int = 0,
     max_block_words: int = 220,
     manual_coding_csv: Path | None = None,
 ) -> WorkflowSummary:

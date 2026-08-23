@@ -263,7 +263,7 @@ def build_employee_corpus_command(
         readable=True,
         help="Optional manual coding file used only as a positive-source recall gate.",
     ),
-    context_blocks: int = typer.Option(1, min=0),
+    context_blocks: int = typer.Option(0, min=0),
     max_block_words: int = typer.Option(220, min=20),
 ) -> None:
     """Build a source-linked employee passage corpus from the reviewed pilot cache."""
