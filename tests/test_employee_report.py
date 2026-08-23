@@ -373,6 +373,19 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
             "Platforms may restrict access and cause loss of our player base.",
             "no_human_capital_subject",
         ),
+        (
+            "Representative means any director, officer, employee, agent, or adviser of a party.",
+            "definition_or_proxy_noise",
+        ),
+        (
+            "Employees may institute a charge under employment discrimination laws.",
+            "generic_litigation_language",
+        ),
+        (
+            "Participating employees may contribute compensation to the savings plan.",
+            "no_acquisition_employee_context",
+        ),
+        ("Converted Parent RSU", "too_short"),
     ],
 )
 def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(

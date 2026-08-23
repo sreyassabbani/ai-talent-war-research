@@ -152,6 +152,28 @@ _FINANCIAL_METRIC_NOISE = re.compile(
     r"quarter-over-quarter|adjusted ebitda|effective tax rate)\b",
     re.IGNORECASE,
 )
+_ACQUISITION_EMPLOYEE_CONTEXT = re.compile(
+    r"\b(?:merger|acquisition|transaction|combination|upon closing|at closing|post-closing|"
+    r"prior to (?:the )?close|effective time|continuing employees?|key employees?|"
+    r"converted parent|assumed rsu|change in control)\b",
+    re.IGNORECASE,
+)
+_HIGH_SIGNAL_EMPLOYEE_TERM = re.compile(
+    r"\b(?:retention (?:bonus|pool|award)|transaction bonus|continued employment|"
+    r"continuing employees?|key employees? (?:receive|must remain)|change in control|"
+    r"employment matters)\b",
+    re.IGNORECASE,
+)
+_DEFINITION_OR_PROXY_NOISE = re.compile(
+    r"\b(?:means any|shall mean|as defined in|representative means|proxy solicitation|"
+    r"solicitation of proxies|proxy card|vote your shares|beneficial owner)\b",
+    re.IGNORECASE,
+)
+_LITIGATION_PARTY_LIST = re.compile(
+    r"\b(?:litigation|lawsuit|legal proceeding|claims? against|civil rights|"
+    r"employment discrimination laws?)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -295,7 +317,9 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
     reasons: list[str] = []
     has_employee_language = bool(_SUBSTANTIVE_EMPLOYEE_LANGUAGE.search(normalized))
     has_action = bool(_SUBSTANTIVE_ACTION.search(body))
-    if len(_WORD.findall(body)) < 8 and not (has_employee_language and has_action):
+    word_count = len(_WORD.findall(body))
+    high_signal = bool(_HIGH_SIGNAL_EMPLOYEE_TERM.search(normalized))
+    if word_count < 12 and not high_signal:
         reasons.append("too_short")
     if _CALL_TRANSCRIPT_NOISE.search(normalized):
         reasons.append("call_transcript_noise")
@@ -319,9 +343,14 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         body
     ):
         reasons.append("generic_financial_metric")
+    if _DEFINITION_OR_PROXY_NOISE.search(normalized):
+        reasons.append("definition_or_proxy_noise")
+    if _LITIGATION_PARTY_LIST.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(body):
+        reasons.append("generic_litigation_language")
     if not _HUMAN_SUBJECT.search(body) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
         reasons.append("no_human_capital_subject")
-    word_count = len(_WORD.findall(body))
+    if not _ACQUISITION_EMPLOYEE_CONTEXT.search(normalized) and not high_signal:
+        reasons.append("no_acquisition_employee_context")
     numeric_count = len(_NUMERIC_TOKEN.findall(body))
     if (
         numeric_count >= 8
@@ -331,7 +360,7 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         reasons.append("numeric_table_noise")
     if not has_employee_language:
         reasons.append("no_substantive_employee_language")
-    if not has_action:
+    if not has_action and not high_signal:
         reasons.append("no_substantive_action")
     return reasons
 
@@ -733,6 +762,7 @@ def _representatives(
     ordered = sorted(
         substantive_rows,
         key=lambda row: (
+            -min(len(_WORD.findall(passage_by_id[row["passage_id"]]["text"])), 120),
             -_parse_nonnegative_float(row["topic_weight"], "topic_weight"),
             row["passage_id"],
         ),
