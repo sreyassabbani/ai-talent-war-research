@@ -41,6 +41,24 @@ are review queues, not verified datasets.
 
 Read [PLAN.md](PLAN.md) for the full research and implementation plan.
 
+## Offline H-1B pilot coverage audit
+
+The H-1B coverage check reads already-downloaded official FY Q4 LCA workbooks and never downloads
+data. Supply every workbook explicitly; the command records their SHA-256 values and the fixed
+matching/counting rules in a manifest:
+
+```sh
+uv run tag-edgar audit-h1b-coverage data/derived/pilot_review_queue.csv \
+  --workbook 2020=/path/to/LCA_Disclosure_Data_FY2020_Q4.xlsx \
+  --workbook 2021=/path/to/LCA_Disclosure_Data_FY2021_Q4.xlsx \
+  --workbook 2022=/path/to/LCA_Disclosure_Data_FY2022_Q4.xlsx \
+  --workbook 2023=/path/to/LCA_Disclosure_Data_FY2023_Q4.xlsx
+```
+
+The resulting certified-case counts and summed `NEW_EMPLOYMENT` application fields are narrow
+sponsorship-demand observables. They are not hires, retention, total hiring, worker outcomes, or a
+causal acquisition effect, and the broad historical hiring-outcome branch remains no-go.
+
 ## Ingesting the SDC/LSEG export
 
 Do not edit the licensed export. The current repository includes a mapping for the supplied Thomson

@@ -19,6 +19,7 @@ from .employee_workflow import (
     summarize_employee_topics_workflow,
 )
 from .entity_matches import count_deal_seeds, resolve_seed_file
+from .h1b_coverage import audit_h1b_coverage
 from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
 from .pipeline import run_vertical_slice
@@ -38,6 +39,22 @@ def _parse_date(value: str) -> date:
         return date.fromisoformat(value)
     except ValueError as error:
         raise typer.BadParameter("Dates must use ISO format: YYYY-MM-DD.") from error
+
+
+def _parse_year_workbooks(values: list[str]) -> dict[int, Path]:
+    parsed: dict[int, Path] = {}
+    for value in values:
+        year_text, separator, path_text = value.partition("=")
+        if not separator or not year_text.isdigit() or not path_text:
+            raise typer.BadParameter("Each --workbook must use YEAR=PATH format.")
+        year = int(year_text)
+        path = Path(path_text)
+        if year in parsed:
+            raise typer.BadParameter(f"Duplicate workbook fiscal year: {year}")
+        if not path.is_file():
+            raise typer.BadParameter(f"Workbook does not exist or is not a file: {path}")
+        parsed[year] = path
+    return parsed
 
 
 @app.command()
@@ -290,6 +307,38 @@ def summarize_pilot(
     rows = pilot_audit_rows(review_csv, runs_dir, manual_coding_csv)
     write_dict_csv(output_csv, rows, SUMMARY_FIELDS)
     typer.echo(f"Wrote {len(rows)} per-deal audit rows to {output_csv}")
+
+
+@app.command("audit-h1b-coverage")
+def audit_h1b_coverage_command(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    workbook: list[str] = typer.Option(
+        ...,
+        "--workbook",
+        help="Local official FY Q4 workbook as YEAR=PATH; repeat for each fiscal year.",
+    ),
+    aliases_csv: Path = typer.Option(
+        PROJECT_ROOT / "config" / "h1b_pilot_aliases.csv",
+        exists=True,
+        readable=True,
+        help="Versioned exact employer-alias crosswalk.",
+    ),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "h1b_coverage"),
+) -> None:
+    """Audit narrow H-1B LCA pilot coverage from local workbooks only."""
+    manifest = audit_h1b_coverage(
+        review_csv,
+        aliases_csv,
+        _parse_year_workbooks(workbook),
+        output_dir,
+    )
+    typer.echo("Broad hiring-outcome decision: no-go")
+    typer.echo(
+        "Both-period certified-case presence: "
+        f"{manifest['deals_with_both_period_case_presence']}/{manifest['deal_count']}"
+    )
+    typer.echo("NEW_EMPLOYMENT is an application field, not verified hiring.")
+    typer.echo(f"Wrote offline coverage artifacts to {output_dir}")
 
 
 @app.command("build-employee-corpus")
