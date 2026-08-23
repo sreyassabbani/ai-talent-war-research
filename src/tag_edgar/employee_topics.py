@@ -44,6 +44,70 @@ _STOP_WORDS = frozenset(
     )
 )
 
+# Fixed before inspecting model output. These terms describe contract structure or transaction
+# parties rather than employee substance. Employee-domain terms intentionally do not appear here.
+_LEGAL_BOILERPLATE_STOP_WORDS = frozenset(
+    {
+        "agreement",
+        "agreements",
+        "applicable",
+        "article",
+        "articles",
+        "business",
+        "businesses",
+        "buyer",
+        "buyers",
+        "closing",
+        "closings",
+        "companies",
+        "company",
+        "course",
+        "date",
+        "dates",
+        "entities",
+        "entity",
+        "herein",
+        "hereof",
+        "hereunder",
+        "including",
+        "law",
+        "laws",
+        "material",
+        "materially",
+        "ordinary",
+        "parent",
+        "parties",
+        "party",
+        "person",
+        "persons",
+        "provided",
+        "provision",
+        "provisions",
+        "purchaser",
+        "purchasers",
+        "pursuant",
+        "representations",
+        "respect",
+        "section",
+        "sections",
+        "seller",
+        "sellers",
+        "shall",
+        "subsidiaries",
+        "subsidiary",
+        "target",
+        "thereof",
+        "thereto",
+        "thereunder",
+        "warranties",
+    }
+)
+
+_MODEL_MARKER_TOKEN = re.compile(
+    r"(?:date|entity|money|number|percent|person|url)tokens?\Z",
+    re.IGNORECASE,
+)
+
 _GENERIC_TOPIC_TOKENS = frozenset(
     {
         "agreement",
@@ -607,7 +671,13 @@ def _stable_rank(seed: int, deal_id: str, passage_id: str) -> str:
 
 
 def _tokens(text: str) -> list[str]:
-    return [token for token in _TOKEN.findall(text.lower()) if token not in _STOP_WORDS]
+    return [
+        token
+        for token in _TOKEN.findall(text.lower())
+        if token not in _STOP_WORDS
+        and token not in _LEGAL_BOILERPLATE_STOP_WORDS
+        and not _MODEL_MARKER_TOKEN.fullmatch(token)
+    ]
 
 
 def _terms(text: str) -> Counter[str]:

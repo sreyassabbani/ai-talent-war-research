@@ -318,6 +318,55 @@ def test_generic_legal_topic_terms_cannot_pass_quality_gate(
     assert diagnostic.status == "warning"
 
 
+def test_legal_scaffolding_and_model_markers_cannot_be_top_terms() -> None:
+    scaffolding = (
+        "company numbertoken section shall party material agreement business person entitytoken "
+        "pursuant provision applicable parent seller purchaser"
+    )
+    corpus = _synthetic_corpus()
+    for row in corpus:
+        row["model_text"] = f"{scaffolding} {scaffolding} {row['model_text']}"
+
+    result = analyze_employee_topics(corpus, _model_config())
+
+    assert result.status == "modeled"
+    prohibited = {
+        "agreement",
+        "applicable",
+        "business",
+        "company",
+        "entitytoken",
+        "material",
+        "numbertoken",
+        "parent",
+        "party",
+        "person",
+        "provision",
+        "purchaser",
+        "pursuant",
+        "section",
+        "seller",
+        "shall",
+    }
+    employee_terms = {
+        "benefit",
+        "bonus",
+        "compensation",
+        "employee",
+        "equity",
+        "retention",
+        "service",
+        "vesting",
+        "welfare",
+    }
+    for topic in result.topics:
+        top_tokens = {
+            token for term in topic.top_terms for token in term.casefold().split()
+        }
+        assert top_tokens.isdisjoint(prohibited)
+        assert top_tokens & employee_terms
+
+
 def test_load_passages_csv_requires_the_full_contract(tmp_path: Path) -> None:
     source = tmp_path / "passages.csv"
     source.write_text("passage_id,deal_id\np1,d1\n", encoding="utf-8")
