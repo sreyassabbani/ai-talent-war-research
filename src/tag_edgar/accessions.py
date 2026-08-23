@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -22,6 +22,24 @@ def filing_index_url(cik: str, accession_number: str) -> str:
 def _document_id(accession_number: str, document_name: str) -> str:
     digest = hashlib.sha256(f"{accession_number}:{document_name}".encode()).hexdigest()[:16]
     return f"doc_{digest}"
+
+
+def canonical_document_url(directory_url: str, href: str) -> str:
+    """Resolve an index link to the underlying SEC archive document.
+
+    Inline-XBRL filing indexes often link the primary document through ``/ix?doc=``.  That URL
+    serves the SEC viewer application, not the filing body, so corpus consumers must follow the
+    embedded archive path instead.
+    """
+    resolved = urljoin(directory_url, href)
+    parts = urlsplit(resolved)
+    query = parse_qs(parts.query)
+    archive_paths = query.get("doc", ())
+    if parts.path.rstrip("/") in {"/ix", "/ixviewer/doc/action"} and archive_paths:
+        archive_path = archive_paths[0]
+        if archive_path.startswith("/Archives/"):
+            return urljoin("https://www.sec.gov", archive_path)
+    return resolved
 
 
 def enumerate_documents(client: SecClient, filing: Filing) -> list[Document]:
@@ -69,7 +87,7 @@ def enumerate_documents(client: SecClient, filing: Filing) -> list[Document]:
                     description=description,
                     document_name=document_name,
                     document_type=document_type,
-                    url=urljoin(directory_url, href),
+                    url=canonical_document_url(directory_url, href),
                     is_primary=document_name == filing.primary_document,
                 )
             )

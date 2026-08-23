@@ -1,6 +1,11 @@
 from datetime import date
 
-from tag_edgar.accessions import accession_directory_url, enumerate_documents, filing_index_url
+from tag_edgar.accessions import (
+    accession_directory_url,
+    canonical_document_url,
+    enumerate_documents,
+    filing_index_url,
+)
 from tag_edgar.models import Filing
 from tag_edgar.sec_client import CachedResponse
 
@@ -45,3 +50,34 @@ def test_filing_index_enumerates_primary_document_and_exhibits() -> None:
     assert [document.document_type for document in documents] == ["8-K", "EX-2.1", "EX-99.1"]
     assert documents[0].is_primary is True
     assert documents[1].url.endswith("/ex2-1.htm")
+
+
+def test_inline_viewer_link_resolves_to_archive_document_without_changing_identity() -> None:
+    directory = "https://www.sec.gov/Archives/edgar/data/789019/000119312524123456/"
+    href = "/ix?doc=/Archives/edgar/data/789019/000119312524123456/form8k.htm"
+
+    assert canonical_document_url(directory, href) == (
+        "https://www.sec.gov/Archives/edgar/data/789019/000119312524123456/form8k.htm"
+    )
+
+    filing = Filing(
+        accession_number="0001193125-24-123456",
+        cik="0000789019",
+        form="8-K",
+        filing_date=date(2024, 1, 10),
+        report_date=None,
+        primary_document="form8k.htm",
+    )
+    wrapped = """
+    <table>
+      <tr><th>Seq</th><th>Description</th><th>Document</th><th>Type</th></tr>
+      <tr><td>1</td><td>8-K</td><td><a href="/ix?doc=/Archives/edgar/data/789019/000119312524123456/form8k.htm">form8k.htm</a></td><td>8-K</td></tr>
+    </table>
+    """
+    direct = wrapped.replace(href, "form8k.htm")
+
+    wrapped_document = enumerate_documents(FakeSecClient(wrapped), filing)[0]  # type: ignore[arg-type]
+    direct_document = enumerate_documents(FakeSecClient(direct), filing)[0]  # type: ignore[arg-type]
+
+    assert wrapped_document.url == canonical_document_url(directory, href)
+    assert wrapped_document.document_id == direct_document.document_id
