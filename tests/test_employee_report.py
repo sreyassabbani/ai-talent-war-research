@@ -162,6 +162,7 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
 
     assert first == second
     assert first.gate_passed is True
+    assert first.taxonomy_ready is False
     assert "**PASS**" in first.markdown
     assert "deal-1" in first.markdown
     assert "deal-2" in first.markdown
@@ -176,7 +177,12 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert first.topic_review_rows[0]["passage_count"] == "1"
     assert first.topic_review_rows[0]["deal_count"] == "1"
     assert first.topic_review_rows[0]["representative_quality_status"] == "pass"
+    assert first.topic_review_rows[0]["representative_fit_status"] == "pending"
+    assert first.topic_review_rows[0]["coherence_score_1_to_5"] == ""
     assert first.topic_review_rows[0]["review_status"] == "pending"
+    assert "human_review / representative_theme_fit: NOT_APPLICABLE" in first.markdown
+    assert "PENDING HUMAN REVIEW" in first.markdown
+    assert "taxonomy withheld" in first.markdown
 
 
 def test_failed_diagnostic_produces_an_explicit_fail_verdict(tmp_path: Path) -> None:
@@ -313,6 +319,75 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
     )
 
     assert lint_representative_passage(text, "Restricted Stock Units") == []
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        (
+            (
+                "The company may retain copies of confidential information under its records "
+                "retention policy."
+            ),
+            "privacy_or_ip_noise",
+        ),
+        (
+            "The seller retains title and ownership of all intellectual property rights.",
+            "non_human_retain_use",
+        ),
+        ("The studio expects to retain its players.", "non_human_retain_use"),
+        ("We will retain a strong presence in Israel.", "non_human_retain_use"),
+        (
+        (
+            "We provide non-GAAP information about non-cash expenses including stock-based "
+                "compensation and varying valuation methodologies for award types."
+            ),
+            "generic_accounting_noise",
+        ),
+        (
+            (
+                "The merger may cause disruptions and adverse changes in relationships with "
+                "customers, suppliers, and employees."
+            ),
+            "generic_risk_boilerplate",
+        ),
+        (
+            (
+                "Travis Dalton 19,876 1,888,220 24,361 1,661,364 Mark Erceg 44,244 "
+                "4,203,180 86,408 8,208,760"
+            ),
+            "numeric_table_noise",
+        ),
+    ],
+)
+def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(
+    text: str, reason: str
+) -> None:
+    assert reason in lint_representative_passage(text)
+
+
+def test_representatives_skip_higher_weight_noise_for_substantive_primary_passage(
+    tmp_path: Path,
+) -> None:
+    inputs = list(_inputs(tmp_path))
+    passages = inputs[1]
+    topics = inputs[2]
+    passage_rows = list(csv.DictReader(passages.open(newline="", encoding="utf-8")))
+    topic_rows = list(csv.DictReader(topics.open(newline="", encoding="utf-8")))
+    passage_rows[0]["heading"] = "Records Retention"
+    passage_rows[0]["text"] = "The company may retain copies of confidential information."
+    topic_rows[0]["primary_topic"] = "true"
+    topic_rows[0]["topic_weight"] = "0.7"
+    topic_rows[1]["topic_weight"] = "0.99"
+    _write(passages, list(passage_rows[0]), passage_rows)
+    _write(topics, list(topic_rows[0]), topic_rows)
+
+    report = build_employee_report(*inputs, expected_deal_count=2)
+
+    assert report.topic_review_rows[0]["representative_passage_ids"] == "p-2"
+    assert "p-1" not in report.markdown.split(
+        "## Candidate-topic diagnostics and source-linked representative passages", 1
+    )[1]
 
 
 def test_writer_emits_markdown_and_review_csv(tmp_path: Path) -> None:
