@@ -14,6 +14,7 @@ from tag_edgar.employee_topics import (
     TopicRow,
 )
 from tag_edgar.employee_workflow import (
+    _document_eligibility,
     _normalize_party_names,
     _passage_eligibility,
     _provision_family_ids,
@@ -328,6 +329,30 @@ def test_document_gate_excludes_unrelated_earnings_and_validates_positive_source
     assert summary.counts["documents_included"] == 1
 
 
+def test_8k_transaction_accession_does_not_blanket_include_unrelated_exhibits() -> None:
+    row = {"document_type": "EX-10.1", "accession_number": "transaction-accession"}
+
+    excluded = _document_eligibility(
+        row,
+        "8-K",
+        frozenset({"transaction-accession"}),
+        0,
+        "Target One",
+        "Target One acquisition amended and restated credit agreement with the lenders.",
+    )
+    included = _document_eligibility(
+        row,
+        "8-K",
+        frozenset({"transaction-accession"}),
+        0,
+        "Target One",
+        "After the Target One acquisition, continuing employees receive transaction bonuses.",
+    )
+
+    assert excluded[:2] == (False, "excluded_nontransaction_8k_exhibit")
+    assert included[:2] == (True, "included_transaction_employee_action_exhibit")
+
+
 def test_manual_positive_source_requires_an_included_passage_and_persists_diagnostic(
     tmp_path: Path,
 ) -> None:
@@ -437,6 +462,29 @@ def test_passage_gate_preserves_leadership_continuity_and_equity_treatment() -> 
     assert _passage_eligibility(
         ("restricted stock unit", "vesting"),
         "each unvested restricted stock unit will be assumed at the effective time",
+    ) == (True, "included_employee_context")
+
+
+def test_passage_gate_excludes_generic_proxy_litigation_and_representative_language() -> None:
+    assert _passage_eligibility(
+        ("employees",),
+        "proxies may be solicited by directors officers and employees by mail telephone or facsimile",
+    ) == (False, "excluded_proxy_solicitation_logistics")
+    assert _passage_eligibility(
+        ("employees",),
+        "the individual defendants controlled the company and all employees and are liable pursuant to the exchange act",
+    ) == (False, "excluded_litigation_allegation_context")
+    assert _passage_eligibility(
+        ("employees",),
+        "representative shall mean a person's directors officers employees agents advisors and consultants",
+    ) == (False, "excluded_generic_representative_definition")
+    assert _passage_eligibility(
+        ("employees",),
+        "the merger may divert the attention of management and employee teams toward completion of the transaction",
+    ) == (False, "excluded_generic_term_without_people_context")
+    assert _passage_eligibility(
+        ("employees", "benefit plan"),
+        "continuing employees will receive benefits under the parent benefit plan after closing",
     ) == (True, "included_employee_context")
 
 

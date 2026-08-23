@@ -293,14 +293,31 @@ def _document_eligibility(
     accession = row.get("accession_number", "")
     target_proximity = _has_target_proximity(text, target_name)
     transaction_language = bool(_TRANSACTION_LANGUAGE.search(text))
+    employee_action = bool(_ACQUISITION_EMPLOYEE_ACTION.search(text))
     if document_type.startswith("EX-2."):
         return True, "included_ex2_transaction_agreement", target_proximity, transaction_language
     if filing_form.upper() in _TRANSACTION_FORMS:
         return True, "included_transaction_specific_form", target_proximity, transaction_language
-    if accession in transaction_accessions:
-        return True, "included_transaction_accession", target_proximity, transaction_language
     if transaction_evidence_hits:
         return True, "included_transaction_evidence", target_proximity, transaction_language
+    if filing_form.upper() == "8-K" and document_type.startswith("EX-") and not document_type.startswith(
+        ("EX-2.", "EX-99.")
+    ):
+        if target_proximity and transaction_language and employee_action:
+            return (
+                True,
+                "included_transaction_employee_action_exhibit",
+                target_proximity,
+                transaction_language,
+            )
+        return (
+            False,
+            "excluded_nontransaction_8k_exhibit",
+            target_proximity,
+            transaction_language,
+        )
+    if accession in transaction_accessions:
+        return True, "included_transaction_accession", target_proximity, transaction_language
     if target_proximity and transaction_language:
         return True, "included_target_transaction_proximity", target_proximity, transaction_language
     return False, "excluded_unrelated_event_window_document", target_proximity, transaction_language
@@ -312,17 +329,31 @@ def _passage_eligibility(screen_terms: Sequence[str], model_text: str) -> tuple[
         return False, "excluded_safe_harbor_or_forward_looking_context"
     if _ACCOUNTING_CONTEXT.search(model_text):
         return False, "excluded_accounting_or_financial_context"
+    if _NONEMPLOYEE_UNION_CONTEXT.search(model_text) and not _LABOR_CONTEXT.search(model_text):
+        return False, "excluded_nonemployee_union_context"
     if (
         _PRIVACY_IP_CONTEXT.search(model_text)
         and not term_set & _STRONG_EMPLOYEE_SCREEN_TERMS
         and not _LEADERSHIP_CONTINUITY_CONTEXT.search(model_text)
     ):
         return False, "excluded_nonemployee_privacy_or_ip_context"
+    substantive_action = bool(
+        _EMPLOYEE_TREATMENT_CONTEXT.search(model_text)
+        or _LEADERSHIP_CONTINUITY_CONTEXT.search(model_text)
+        or _COMPENSATION_CONTEXT.search(model_text)
+    )
+    if _PROXY_SOLICITATION_CONTEXT.search(model_text) and not substantive_action:
+        return False, "excluded_proxy_solicitation_logistics"
+    if _LITIGATION_CONTEXT.search(model_text) and not substantive_action:
+        return False, "excluded_litigation_allegation_context"
+    if _GENERIC_REPRESENTATIVE_DEFINITION.search(model_text) and not substantive_action:
+        return False, "excluded_generic_representative_definition"
     substantive_terms = term_set - _GENERIC_SCREEN_TERMS
     if not substantive_terms:
         award_terms = term_set & _AWARD_SCREEN_TERMS
         contextual = bool(
             (award_terms and _AWARD_TREATMENT_CONTEXT.search(model_text))
+            or _EMPLOYEE_TREATMENT_CONTEXT.search(model_text)
             or _HUMAN_CONTEXT.search(model_text)
             or _GENERIC_PEOPLE_CONTEXT.search(model_text)
             or _COMPENSATION_CONTEXT.search(model_text)
@@ -338,6 +369,17 @@ _TRANSACTION_LANGUAGE = re.compile(
     r"purchase agreement|transaction)\b",
     re.IGNORECASE,
 )
+_ACQUISITION_EMPLOYEE_ACTION = re.compile(
+    r"\b(?:acquisition|acquire[ds]?|merger|transaction|closing|effective time)\b.{0,240}"
+    r"\b(?:continu(?:ing|ed) employees?|continued (?:employment|service)|remain employed|"
+    r"employee benefits?|retention bonus|transaction bonus|equity awards?|stock options?|"
+    r"restricted stock units?|severance|management team)\b|"
+    r"\b(?:continu(?:ing|ed) employees?|continued (?:employment|service)|remain employed|"
+    r"employee benefits?|retention bonus|transaction bonus|equity awards?|stock options?|"
+    r"restricted stock units?|severance|management team)\b.{0,240}"
+    r"\b(?:acquisition|acquire[ds]?|merger|transaction|closing|effective time)\b",
+    re.IGNORECASE | re.DOTALL,
+)
 _ACCOUNTING_CONTEXT = re.compile(
     r"\b(?:stock[- ]based compensation expense|share[- ]based compensation expense|"
     r"consolidated statements?|unaudited|three months ended|six months ended|fiscal year|"
@@ -350,7 +392,7 @@ _SAFE_HARBOR_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _HUMAN_CONTEXT = re.compile(
-    r"\b(?:employees?|employment|personnel|workforce|workers?|severance|"
+    r"\b(?:employment|severance|"
     r"continued service|remain employed|benefit plans?|pension|labor|labour|union|"
     r"award holders?|participants?)\b",
     re.IGNORECASE,
@@ -370,7 +412,47 @@ _LEADERSHIP_CONTINUITY_CONTEXT = re.compile(
 )
 _COMPENSATION_CONTEXT = re.compile(
     r"\b(?:retention|stay|transaction) bonus(?:es)?\b|"
-    r"\b(?:salary|salaries|wages?|payroll|severance|compensation|incentive)\b",
+    r"\b(?:salary|salaries|wages?|payroll|severance|incentive)\b|"
+    r"\b(?:employees?|executive|officers?|personnel|management)\b.{0,80}\bcompensation\b|"
+    r"\bcompensation\b.{0,80}\b(?:employees?|executive|officers?|personnel|management)\b",
+    re.IGNORECASE,
+)
+_EMPLOYEE_TREATMENT_CONTEXT = re.compile(
+    r"\b(?:continuing employees?|continued employment|continued service|remain employed|"
+    r"post-transaction employment|employee benefits?|benefit plans?|retention bonus|"
+    r"transaction bonus|severance|salary|salaries|wages?|payroll|collective bargaining)\b|"
+    r"\b(?:employees?|executive|officers?|personnel|workforce|management)\b.{0,100}"
+    r"\b(?:remain|continue|retain|receive|provide|pay|compensation|bonus|benefits?|severance|"
+    r"terminate|employment|service)\b|"
+    r"\b(?:equity awards?|stock options?|restricted stock units?|rsus?)\b.{0,100}"
+    r"\b(?:effective time|convert(?:ed)?|assum(?:e|ed)|cancel(?:led)?|vest(?:ed|ing)?|"
+    r"cash(?:ed)? out|continued service)\b",
+    re.IGNORECASE,
+)
+_PROXY_SOLICITATION_CONTEXT = re.compile(
+    r"\b(?:solicit(?:ed|ing|ation)? proxies|proxy solicitation|proxies may be solicited|"
+    r"bear the (?:entire )?cost of soliciting|by mail|telephone|facsimile|messenger)\b",
+    re.IGNORECASE,
+)
+_LITIGATION_CONTEXT = re.compile(
+    r"\b(?:plaintiffs?|defendants?|complaint|alleg(?:e|ed|ation)|wrongful conduct|"
+    r"liable pursuant|violat(?:e|ed|or|ion)|cause of action|individual defendants)\b",
+    re.IGNORECASE,
+)
+_GENERIC_REPRESENTATIVE_DEFINITION = re.compile(
+    r"\brepresentatives?\b.{0,40}\b(?:shall )?mean\b|"
+    r"\b(?:shall )?mean\b.{0,180}\b(?:directors?|officers?|employees?|agents?|advisors?|"
+    r"consultants?)\b.{0,80}\brepresentatives?\b|"
+    r"\b(?:directors?|officers?)\b.{0,100}\bemployees?\b.{0,100}"
+    r"\b(?:agents?|advisors?|consultants?|representatives?)\b",
+    re.IGNORECASE,
+)
+_NONEMPLOYEE_UNION_CONTEXT = re.compile(
+    r"\b(?:european union|united nations|union security council|eu member state)\b",
+    re.IGNORECASE,
+)
+_LABOR_CONTEXT = re.compile(
+    r"\b(?:employees?|labor|labour|collective bargaining|trade union|workforce|workers?)\b",
     re.IGNORECASE,
 )
 _PRIVACY_IP_CONTEXT = re.compile(
@@ -397,6 +479,12 @@ _AWARD_SCREEN_TERMS = frozenset(
 )
 _GENERIC_SCREEN_TERMS = frozenset(
     {
+        "employee",
+        "employees",
+        "personnel",
+        "workforce",
+        "worker",
+        "workers",
         "executive officer",
         "management team",
         "founder",
