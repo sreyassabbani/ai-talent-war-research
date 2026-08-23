@@ -2,7 +2,12 @@
 
 ## Bottom line
 
-The 10-deal pilot now supports a reproducible exploratory analysis, but it does **not** yet support releasing a validated disclosure taxonomy. The final corpus contains 2,708 included, exact-text-deduplicated passages from 358 transaction-linked SEC documents. All 469 candidate documents parsed successfully, all eight manually positive source documents produced qualifying passages, and Fastly–Glitch is retained as an explicit zero-passage case.
+The 10-deal pilot now supports a reproducible exploratory analysis. The current three-component
+output is **rejected for taxonomy release** under the prespecified stability and human-review gate;
+it must not be presented as a validated disclosure taxonomy. The final corpus contains 2,708
+included, exact-text-deduplicated passages from 358 transaction-linked SEC documents. All 469
+candidate documents parsed successfully, all eight manually positive source documents produced
+qualifying passages, and Fastly–Glitch is retained as an explicit zero-passage case.
 
 The fixed-seed word/bigram TF-IDF + NMF analysis selected three candidate components:
 
@@ -60,8 +65,9 @@ reviewer copies and a private re-identification key. The next evidence gate is c
 actual reviewers; automated or agent-generated labels must not substitute for that review. If at
 least 80% of the ten highest-weight passages fit each candidate theme and the prespecified
 agreement gates pass, the stable benefits and equity components can advance as provisional
-taxonomy entries. The unstable second component must remain provisional or be decomposed in the
-next repair cycle.
+taxonomy entries. This would not retroactively validate the rejected three-component output. The
+unstable second component must remain rejected or be decomposed in a new, prespecified repair
+cycle.
 
 ## Scale and outcome branches
 

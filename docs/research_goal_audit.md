@@ -8,10 +8,11 @@ to later hiring/retention-outcome research. The governing scope and safeguards a
 ## Current decision
 
 The 10-deal retrieval, corpus, modeling, provenance, and descriptive reporting pipeline is proved
-as a reproducible pilot. The goal is **not complete as a validated taxonomy**: human
+as a reproducible pilot. The current three-component taxonomy is **rejected for release**: human
 representative-to-theme review is blank, and topic 2 recovers in only 6 of 9 leave-one-deal-out
-folds (0.667, below the prespecified 0.80 threshold). Hiring/retention-outcome research remains a
-later phase and is not supported by these filings alone.
+folds (0.667, below the prespecified 0.80 threshold). The broad historical hiring branch is also a
+documented no-go; these filings and the audited free sources do not support retention or causal
+workforce claims.
 
 Status meanings:
 
@@ -44,8 +45,8 @@ Status meanings:
 
 ## Verified implementation state
 
-The latest implementation check passes 123 tests, Ruff on `src` and `tests`, and basedpyright on
-`src`; the final integration run must reconfirm those results after the remaining documentation and
-manifest edits. These checks prove implementation consistency, not research validity. The next
-evidence step is two-human review plus supervisor decisions; topic 2 remains rejected for taxonomy
-release unless a prespecified repair/refit passes the stability gate.
+The final integrated state passes 123 tests, Ruff on `src` and `tests`, basedpyright on `src`,
+fixed-seed byte comparisons for the core topic outputs, and machine-readable artifact-gate checks.
+These checks prove implementation consistency, not research validity. Any later promotion now
+requires two-human review plus supervisor decisions; topic 2 remains rejected for taxonomy release
+unless a new prespecified repair/refit passes the stability gate.
