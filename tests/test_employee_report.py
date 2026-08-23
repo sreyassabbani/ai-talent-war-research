@@ -55,7 +55,10 @@ def _inputs(tmp_path: Path, *, gate_status: str = "pass") -> tuple[Path, ...]:
                 "document_id": "doc-2",
                 "source_url": "https://www.sec.gov/Archives/doc-2.htm",
                 "heading": "Benefits",
-                "text": "The agreement describes benefits for continuing employees.",
+                "text": (
+                    "At closing, the agreement provides continuing employees with specified "
+                    "benefits and bonus protections."
+                ),
             },
         ],
     )
@@ -386,6 +389,20 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
             "no_acquisition_employee_context",
         ),
         ("Converted Parent RSU", "too_short"),
+        (
+            (
+                "The interests of directors and executive officers may be different from, "
+                "or in addition to, those of other stockholders."
+            ),
+            "proxy_interest_or_counsel_noise",
+        ),
+        (
+            (
+                "The shares of common stock multiplied by the merger consideration of $56.00 "
+                "per share determine the aggregate value."
+            ),
+            "aggregate_securities_valuation",
+        ),
     ],
 )
 def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(

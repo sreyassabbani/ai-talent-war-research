@@ -71,7 +71,7 @@ _SUBSTANTIVE_EMPLOYEE_LANGUAGE = re.compile(
 )
 _SUBSTANTIVE_ACTION = re.compile(
     r"\b(?:shall|will|must|may|receive|eligible|continue|remain|vest|vested|convert|converted|"
-    r"pay|paid|provide|provided|terminate|terminated|assume|assumed|retain|retained|forfeit|"
+    r"pay|paid|provide|provides|provided|terminate|terminated|assume|assumed|retain|retained|"
     r"forfeited|accelerate|accelerated|describes?|requires?|excludes?)\b",
     re.IGNORECASE,
 )
@@ -127,7 +127,8 @@ _HUMAN_SUBJECT = re.compile(
 )
 _GENERIC_RISK_BOILERPLATE = re.compile(
     r"\b(?:risk that|adverse (?:effect|changes?)|disruptions?(?: to)?|forward-looking statements?|"
-    r"relationships? with (?:their|our) (?:respective )?(?:customers|partners|suppliers))\b",
+    r"impact of announcement|announcement and pendency|relationships? with (?:their|our) "
+    r"(?:respective )?(?:customers|partners|suppliers))\b",
     re.IGNORECASE,
 )
 _SPECIFIC_EMPLOYEE_TERM = re.compile(
@@ -159,9 +160,8 @@ _ACQUISITION_EMPLOYEE_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _HIGH_SIGNAL_EMPLOYEE_TERM = re.compile(
-    r"\b(?:retention (?:bonus|pool|award)|transaction bonus|continued employment|"
-    r"continuing employees?|key employees? (?:receive|must remain)|change in control|"
-    r"employment matters)\b",
+    r"\b(?:retention (?:bonus|pool|award)|transaction bonus|"
+    r"key employees? (?:receive|must remain))\b",
     re.IGNORECASE,
 )
 _DEFINITION_OR_PROXY_NOISE = re.compile(
@@ -172,6 +172,17 @@ _DEFINITION_OR_PROXY_NOISE = re.compile(
 _LITIGATION_PARTY_LIST = re.compile(
     r"\b(?:litigation|lawsuit|legal proceeding|claims? against|civil rights|"
     r"employment discrimination laws?)\b",
+    re.IGNORECASE,
+)
+_PROXY_INTEREST_OR_COUNSEL_NOISE = re.compile(
+    r"\b(?:interests? of .{0,40}(?:directors?|executive officers?)|may be different from,? "
+    r"or in addition to|serves as counsel to|currently serves as counsel|attorney-client "
+    r"privilege|negotiation, preparation, execution)\b",
+    re.IGNORECASE,
+)
+_AGGREGATE_SECURITIES_VALUATION = re.compile(
+    r"\b(?:shares? of common stock multiplied by|aggregate value|merger consideration of "
+    r"\$?[\d,.]+ per share)\b",
     re.IGNORECASE,
 )
 
@@ -347,6 +358,10 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         reasons.append("definition_or_proxy_noise")
     if _LITIGATION_PARTY_LIST.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(body):
         reasons.append("generic_litigation_language")
+    if _PROXY_INTEREST_OR_COUNSEL_NOISE.search(normalized):
+        reasons.append("proxy_interest_or_counsel_noise")
+    if _AGGREGATE_SECURITIES_VALUATION.search(normalized) and not _HUMAN_SUBJECT.search(body):
+        reasons.append("aggregate_securities_valuation")
     if not _HUMAN_SUBJECT.search(body) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
         reasons.append("no_human_capital_subject")
     if not _ACQUISITION_EMPLOYEE_CONTEXT.search(normalized) and not high_signal:
