@@ -403,6 +403,20 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
             ),
             "aggregate_securities_valuation",
         ),
+        (
+            (
+                "The company will cause its directors, officers, and employees not to solicit "
+                "an acquisition proposal before the merger closes."
+            ),
+            "no_employee_arrangement_evidence",
+        ),
+        (
+            (
+                "Completion of the merger may trigger change-in-control provisions in certain "
+                "commercial agreements and counterparties may terminate those agreements."
+            ),
+            "no_employee_arrangement_evidence",
+        ),
     ],
 )
 def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(

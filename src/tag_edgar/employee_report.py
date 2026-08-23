@@ -107,9 +107,19 @@ _PRIVACY_OR_IP_NOISE = re.compile(
     r"data retention|records retention|proprietary information|trade secrets?)\b",
     re.IGNORECASE,
 )
-_HUMAN_CAPITAL_ARRANGEMENT = re.compile(
-    r"\b(?:employment|retention (?:bonus|pool|award)|bonus|benefit|severance|vest|vested|"
-    r"vesting|award|salary|wage|incentive|continued service|termination)\b",
+_EMPLOYEE_ARRANGEMENT_EVIDENCE = re.compile(
+    r"\b(?:employment agreement|employment terms?|retention (?:bonus|pool|award)|"
+    r"transaction bonus|severance|stock options?|restricted stock(?: units?)?|"
+    r"rsus?|equity awards?|vesting|vested|unvested|salary|salaries|wages?|incentives?|"
+    r"continued service|employee compensation)\b",
+    re.IGNORECASE,
+)
+_EMPLOYEE_BENEFIT_EVIDENCE = re.compile(
+    r"(?:\b(?:employee|employees|worker|workers|executive|executives|personnel|you|your)\b"
+    r".{0,80}\b(?:benefits?|bonuses?|compensation|incentives?)\b|"
+    r"\b(?:benefits?|bonuses?|compensation|incentives?)\b.{0,80}"
+    r"\b(?:employee|employees|worker|workers|executive|executives|personnel|you|your)\b|"
+    r"\bcontinue on .{0,30}\bbenefits?\b)",
     re.IGNORECASE,
 )
 _NON_HUMAN_RETAIN_USE = re.compile(
@@ -129,12 +139,6 @@ _GENERIC_RISK_BOILERPLATE = re.compile(
     r"\b(?:risk that|adverse (?:effect|changes?)|disruptions?(?: to)?|forward-looking statements?|"
     r"impact of announcement|announcement and pendency|relationships? with (?:their|our) "
     r"(?:respective )?(?:customers|partners|suppliers))\b",
-    re.IGNORECASE,
-)
-_SPECIFIC_EMPLOYEE_TERM = re.compile(
-    r"\b(?:employment agreement|retention (?:bonus|pool|award)|transaction bonus|benefit|"
-    r"severance|vest|vested|vesting|restricted stock|stock options?|rsus?|salary|wage|"
-    r"incentive|continued service|termination|change in control)\b",
     re.IGNORECASE,
 )
 _NUMERIC_TOKEN = re.compile(r"(?:\$?\d[\d,]*(?:\.\d+)?%?|—)")
@@ -344,7 +348,11 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         reasons.append("privacy_or_ip_noise")
     if _NON_HUMAN_RETAIN_USE.search(normalized) and not _HUMAN_SUBJECT.search(body):
         reasons.append("non_human_retain_use")
-    if _GENERIC_RISK_BOILERPLATE.search(normalized) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
+    arrangement_evidence = bool(
+        _EMPLOYEE_ARRANGEMENT_EVIDENCE.search(body)
+        or _EMPLOYEE_BENEFIT_EVIDENCE.search(body)
+    )
+    if _GENERIC_RISK_BOILERPLATE.search(normalized) and not arrangement_evidence:
         reasons.append("generic_risk_boilerplate")
     if _GENERIC_LEGAL_PARTY_LIST.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(
         body
@@ -362,7 +370,9 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         reasons.append("proxy_interest_or_counsel_noise")
     if _AGGREGATE_SECURITIES_VALUATION.search(normalized) and not _HUMAN_SUBJECT.search(body):
         reasons.append("aggregate_securities_valuation")
-    if not _HUMAN_SUBJECT.search(body) and not _SPECIFIC_EMPLOYEE_TERM.search(body):
+    if not arrangement_evidence and not high_signal:
+        reasons.append("no_employee_arrangement_evidence")
+    if not _HUMAN_SUBJECT.search(body) and not arrangement_evidence:
         reasons.append("no_human_capital_subject")
     if not _ACQUISITION_EMPLOYEE_CONTEXT.search(normalized) and not high_signal:
         reasons.append("no_acquisition_employee_context")
