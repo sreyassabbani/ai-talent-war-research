@@ -176,6 +176,7 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert deal_lines
     assert all("](https://" in line for line in deal_lines)
     assert "descriptive-only" in first.markdown
+    assert "2 source-linked passage rows" in first.markdown
     assert first.topic_review_rows[0]["representative_passage_ids"] == "p-1"
     assert first.topic_review_rows[0]["passage_count"] == "1"
     assert first.topic_review_rows[0]["deal_count"] == "1"
@@ -417,6 +418,20 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
             ),
             "no_employee_arrangement_evidence",
         ),
+        (
+            (
+                "Management provided the board a financial overview of the transaction's "
+                "potential benefits and the committee vested authority in its advisers."
+            ),
+            "no_employee_arrangement_evidence",
+        ),
+        (
+            (
+                "The directors disclosed personal interests and said discussions about future "
+                "employment terms would occur after the merger agreement was signed."
+            ),
+            "no_employee_arrangement_evidence",
+        ),
     ],
 )
 def test_representative_lint_rejects_privacy_ip_and_non_human_retain_uses(
@@ -447,6 +462,15 @@ def test_representatives_skip_higher_weight_noise_for_substantive_primary_passag
     assert "p-1" not in report.markdown.split(
         "## Candidate-topic diagnostics and source-linked representative passages", 1
     )[1]
+
+
+def test_representative_lint_accepts_employee_facing_equity_tax_treatment() -> None:
+    text = (
+        "This summary outlines employee tax responsibilities for equity awards converted upon "
+        "the transaction closing."
+    )
+
+    assert lint_representative_passage(text, "Employee tax treatment") == []
 
 
 def test_writer_emits_markdown_and_review_csv(tmp_path: Path) -> None:

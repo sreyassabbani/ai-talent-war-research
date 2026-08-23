@@ -70,9 +70,9 @@ _SUBSTANTIVE_EMPLOYEE_LANGUAGE = re.compile(
     re.IGNORECASE,
 )
 _SUBSTANTIVE_ACTION = re.compile(
-    r"\b(?:shall|will|must|may|receive|eligible|continue|remain|vest|vested|convert|converted|"
+    r"\b(?:shall|will|must|receive|eligible|continue|remain|vest|vested|convert|converted|"
     r"pay|paid|provide|provides|provided|terminate|terminated|assume|assumed|retain|retained|"
-    r"forfeited|accelerate|accelerated|describes?|requires?|excludes?)\b",
+    r"forfeited|accelerate|accelerated|describes?|outlines?|applies?|requires?|excludes?)\b",
     re.IGNORECASE,
 )
 _CALL_TRANSCRIPT_NOISE = re.compile(
@@ -108,10 +108,19 @@ _PRIVACY_OR_IP_NOISE = re.compile(
     re.IGNORECASE,
 )
 _EMPLOYEE_ARRANGEMENT_EVIDENCE = re.compile(
-    r"\b(?:employment agreement|employment terms?|retention (?:bonus|pool|award)|"
-    r"transaction bonus|severance|stock options?|restricted stock(?: units?)?|"
-    r"rsus?|equity awards?|vesting|vested|unvested|salary|salaries|wages?|incentives?|"
+    r"\b(?:employment agreement|retention (?:bonus|pool|award)|transaction bonus|severance|"
+    r"salary|salaries|wages?|incentives?|"
     r"continued service|employee compensation)\b",
+    re.IGNORECASE,
+)
+_EQUITY_AWARD_SUBJECT = re.compile(
+    r"\b(?:stock options?|restricted stock(?: units?)?|rsus?|equity awards?|"
+    r"performance(?:-based)? restricted stock units?|psus?)\b",
+    re.IGNORECASE,
+)
+_EQUITY_AWARD_TREATMENT = re.compile(
+    r"\b(?:vest|vested|unvested|vesting|convert|converted|exchange|receive|cash|"
+    r"exercise price|withholding|tax(?:es|able)?|responsibilit(?:y|ies)|treatment)\b",
     re.IGNORECASE,
 )
 _EMPLOYEE_BENEFIT_EVIDENCE = re.compile(
@@ -351,6 +360,10 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
     arrangement_evidence = bool(
         _EMPLOYEE_ARRANGEMENT_EVIDENCE.search(body)
         or _EMPLOYEE_BENEFIT_EVIDENCE.search(body)
+        or (
+            _EQUITY_AWARD_SUBJECT.search(body)
+            and _EQUITY_AWARD_TREATMENT.search(body)
+        )
     )
     if _GENERIC_RISK_BOILERPLATE.search(normalized) and not arrangement_evidence:
         reasons.append("generic_risk_boilerplate")
@@ -1019,7 +1032,7 @@ def _authored_report_sections(
 
     method_note = (
         "## Reproducibility note\n\n"
-        f"The report covers {len(deals)} deals, {len(passages)} canonical passages, and "
+        f"The report covers {len(deals)} deals, {len(passages)} source-linked passage rows, and "
         f"{len({row['topic_id'] for row in assignments})} candidate topic components. Topic labels "
         "remain "
         "blank in the review template until a reviewer examines the source-linked representatives."
