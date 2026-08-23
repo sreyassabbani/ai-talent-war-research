@@ -184,6 +184,11 @@ def make_pilot_queue(
 def run_reviewed_pilot(
     review_csv: Path = typer.Argument(..., exists=True, readable=True),
     output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "pilot_runs"),
+    include_expanded: bool = typer.Option(
+        False,
+        "--include-expanded/--core-only",
+        help="Include configured communications and foreign-issuer forms in addition to core forms.",
+    ),
 ) -> None:
     """Retrieve EDGAR only for pilot rows explicitly approved by a human reviewer."""
     deals = approved_deals(review_csv)
@@ -195,7 +200,12 @@ def run_reviewed_pilot(
     settings = load_settings(require_user_agent=True)
     summaries: list[dict[str, str | int]] = []
     for deal in deals:
-        counts = run_vertical_slice(deal, settings, output_dir / deal.deal_id)
+        counts = run_vertical_slice(
+            deal,
+            settings,
+            output_dir / deal.deal_id,
+            settings.selected_forms(include_expanded),
+        )
         summaries.append({"deal_id": deal.deal_id, **counts})
         typer.echo(f"Completed {deal.deal_id}: {counts['documents']} documents")
     write_dict_csv(
@@ -243,6 +253,11 @@ def vertical_slice(
         None, help="Optional target name, used only as a ranking feature."
     ),
     output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "vertical_slice"),
+    include_expanded: bool = typer.Option(
+        False,
+        "--include-expanded/--core-only",
+        help="Include configured communications and foreign-issuer forms in addition to core forms.",
+    ),
 ) -> None:
     """Run EDGAR retrieval for the confirmed acquirer and, when supplied, target."""
     settings = load_settings(require_user_agent=True)
@@ -254,7 +269,12 @@ def vertical_slice(
         target_name=target_name,
         target_cik=target_cik,
     )
-    counts = run_vertical_slice(deal, settings, output_dir)
+    counts = run_vertical_slice(
+        deal,
+        settings,
+        output_dir,
+        settings.selected_forms(include_expanded),
+    )
     typer.echo(f"Wrote {output_dir}")
     for label, count in counts.items():
         typer.echo(f"{label}: {count}")
