@@ -44,6 +44,29 @@ _STOP_WORDS = frozenset(
     )
 )
 
+_GENERIC_TOPIC_TOKENS = frozenset(
+    {
+        "agreement",
+        "applicable",
+        "article",
+        "business",
+        "closing",
+        "company",
+        "date",
+        "hereof",
+        "merger",
+        "parent",
+        "parties",
+        "party",
+        "purchaser",
+        "pursuant",
+        "section",
+        "seller",
+        "shall",
+        "thereof",
+    }
+)
+
 
 @dataclass(frozen=True)
 class PassageRow:
@@ -77,7 +100,11 @@ class TopicModelConfig:
     stability_iterations: int = 12
     reconstruction_tolerance: float = 0.25
     coherence_tolerance: float = 0.15
+    min_topic_coherence: float = 0.0
+    max_generic_top_term_ratio: float = 0.50
+    min_agglomerative_ari: float = 0.20
     stability_threshold: float = 0.70
+    min_topic_recovery_rate: float = 0.80
 
 
 @dataclass(frozen=True)
@@ -308,6 +335,7 @@ def analyze_employee_topics(
     fit_indices = _balanced_fit_indices(prepared, config.max_fit_passages, config.seed)
     fit_rows = tuple(prepared[index] for index in fit_indices)
     fit_deal_counts = Counter(row.deal_id for row in fit_rows)
+    fit_family_count = len({(row.deal_id, _family_key(row)) for row in fit_rows})
     corpus = _vectorize(fit_rows, config)
     full_corpus = _transform(prepared, corpus)
     zero_vectors = sum(not row for row in full_corpus.matrix)
@@ -326,6 +354,13 @@ def analyze_employee_topics(
                 len(prepared) - len(fit_rows),
                 "pass",
                 "Remaining canonical passages assigned with fixed-component NMF projection.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "fit_family_count",
+                fit_family_count,
+                "pass",
+                "Unique deal/provision families represented in model fitting.",
             ),
             DiagnosticRow(
                 "sampling",
@@ -371,7 +406,7 @@ def analyze_employee_topics(
     for k in range(config.k_min, upper_k + 1):
         fit = _fit_and_describe(corpus, k, config.seed + (k * 10_007), config)
         fits.append(fit)
-        diagnostics.extend(_candidate_diagnostics(fit))
+        diagnostics.extend(_candidate_diagnostics(fit, config))
 
     selected = _select_fit(fits, config)
     if selected is None:
@@ -408,26 +443,35 @@ def analyze_employee_topics(
         for row, cluster in zip(full_corpus.rows, sensitivity, strict=True)
     )
     primary_topics = [_argmax(weight) if sum(weight) else -1 for weight in projected_weights]
+    agglomerative_ari = _adjusted_rand_index(primary_topics, sensitivity)
     diagnostics.append(
         DiagnosticRow(
             "sensitivity",
             "agglomerative_adjusted_rand",
-            _adjusted_rand_index(primary_topics, sensitivity),
-            "pass",
-            "Agreement between primary NMF topic and TF-IDF average-linkage clustering.",
+            agglomerative_ari,
+            "pass" if agglomerative_ari >= config.min_agglomerative_ari else "warning",
+            "Agreement between primary NMF topic and TF-IDF average-linkage clustering; "
+            f"requires at least {config.min_agglomerative_ari:.2f}.",
         )
     )
 
     stability = _leave_one_deal_out(corpus, selected, config)
     topics = _topic_rows(full_corpus, full_fit, stability)
+    diagnostics.extend(_topic_quality_diagnostics(topics, config))
     recovered = [row.recovered for row in stability]
+    every_topic_stable = all(
+        topic.stability_recovery_rate is not None
+        and topic.stability_recovery_rate >= config.min_topic_recovery_rate
+        for topic in topics
+    )
     diagnostics.append(
         DiagnosticRow(
             "stability",
             "overall_recovery_rate",
             sum(recovered) / len(recovered) if recovered else 0.0,
-            "pass",
-            f"Topic alignment at cosine >= {config.stability_threshold:.2f}.",
+            "pass" if every_topic_stable else "warning",
+            f"Topic alignment at cosine >= {config.stability_threshold:.2f}; every topic must "
+            f"recover in at least {config.min_topic_recovery_rate:.0%} of folds.",
         )
     )
     return EmployeeTopicResult(
@@ -449,6 +493,16 @@ def _validate_config(config: TopicModelConfig) -> None:
         raise ValueError("Minimum passage and deal counts must be positive.")
     if not 0 < config.max_df_ratio <= 1:
         raise ValueError("max_df_ratio must be in (0, 1].")
+    if not -1 <= config.min_topic_coherence <= 1:
+        raise ValueError("min_topic_coherence must be between -1 and 1.")
+    if not 0 <= config.max_generic_top_term_ratio <= 1:
+        raise ValueError("max_generic_top_term_ratio must be between 0 and 1.")
+    if not -1 <= config.min_agglomerative_ari <= 1:
+        raise ValueError("min_agglomerative_ari must be between -1 and 1.")
+    if not 0 <= config.stability_threshold <= 1:
+        raise ValueError("stability_threshold must be between 0 and 1.")
+    if not 0 <= config.min_topic_recovery_rate <= 1:
+        raise ValueError("min_topic_recovery_rate must be between 0 and 1.")
     if min(
         config.nmf_iterations,
         config.projection_iterations,
@@ -497,13 +551,31 @@ def _passage_order_key(row: PassageRow) -> tuple[str, str, str]:
     return row.passage_id, row.document_id, row.source_url
 
 
+def _family_key(row: PassageRow) -> str:
+    return row.document_family_id.strip() or f"passage:{row.passage_id}"
+
+
 def _balanced_fit_indices(
     rows: Sequence[PassageRow], limit: int, seed: int
 ) -> tuple[int, ...]:
-    if len(rows) <= limit:
-        return tuple(range(len(rows)))
-    by_deal: dict[str, list[int]] = defaultdict(list)
+    by_deal_family: dict[tuple[str, str], list[int]] = defaultdict(list)
     for index, row in enumerate(rows):
+        by_deal_family[(row.deal_id, _family_key(row))].append(index)
+    representatives = [
+        min(
+            indices,
+            key=lambda index: (
+                _stable_rank(seed, deal_id, rows[index].passage_id),
+                rows[index].passage_id,
+            ),
+        )
+        for (deal_id, _), indices in sorted(by_deal_family.items())
+    ]
+    if len(representatives) <= limit:
+        return tuple(sorted(representatives))
+    by_deal: dict[str, list[int]] = defaultdict(list)
+    for index in representatives:
+        row = rows[index]
         by_deal[row.deal_id].append(index)
     for deal_id, indices in by_deal.items():
         indices.sort(
@@ -803,7 +875,9 @@ def _model_coherence(
     return sum(topic_scores) / len(topic_scores)
 
 
-def _candidate_diagnostics(fit: _NmfFit) -> list[DiagnosticRow]:
+def _candidate_diagnostics(
+    fit: _NmfFit, config: TopicModelConfig
+) -> list[DiagnosticRow]:
     prefix = f"k_{fit.k}"
     return [
         DiagnosticRow(
@@ -819,6 +893,13 @@ def _candidate_diagnostics(fit: _NmfFit) -> list[DiagnosticRow]:
             fit.coherence,
             "pass",
             "Mean top-term normalized pointwise mutual information; higher is better.",
+        ),
+        DiagnosticRow(
+            "candidate",
+            f"{prefix}_absolute_coherence_valid",
+            int(fit.coherence >= config.min_topic_coherence),
+            "pass",
+            f"One when mean NPMI meets the absolute {config.min_topic_coherence:.2f} floor.",
         ),
         DiagnosticRow(
             "candidate",
@@ -845,7 +926,13 @@ def _candidate_diagnostics(fit: _NmfFit) -> list[DiagnosticRow]:
 
 
 def _select_fit(fits: Sequence[_NmfFit], config: TopicModelConfig) -> _NmfFit | None:
-    supported = [fit for fit in fits if fit.support_valid and math.isfinite(fit.reconstruction_error)]
+    supported = [
+        fit
+        for fit in fits
+        if fit.support_valid
+        and fit.coherence >= config.min_topic_coherence
+        and math.isfinite(fit.reconstruction_error)
+    ]
     if not supported:
         return None
     best_error = min(fit.reconstruction_error for fit in supported)
@@ -993,6 +1080,60 @@ def _topic_rows(
             )
         )
     return tuple(output)
+
+
+def _topic_quality_diagnostics(
+    topics: Sequence[TopicRow], config: TopicModelConfig
+) -> tuple[DiagnosticRow, ...]:
+    diagnostics: list[DiagnosticRow] = []
+    for topic in topics:
+        recovery = topic.stability_recovery_rate
+        diagnostics.append(
+            DiagnosticRow(
+                "stability",
+                f"{topic.topic_id}_recovery_rate",
+                recovery if recovery is not None else 0.0,
+                "pass"
+                if recovery is not None and recovery >= config.min_topic_recovery_rate
+                else "warning",
+                f"Requires recovery in at least {config.min_topic_recovery_rate:.0%} of "
+                "leave-one-deal-out folds.",
+            )
+        )
+        diagnostics.append(
+            DiagnosticRow(
+                "topic_quality",
+                f"{topic.topic_id}_npmi_coherence",
+                topic.coherence,
+                "pass" if topic.coherence >= config.min_topic_coherence else "warning",
+                f"Requires NPMI coherence of at least {config.min_topic_coherence:.2f}.",
+            )
+        )
+        generic_ratio = _generic_top_term_ratio(topic.top_terms)
+        diagnostics.append(
+            DiagnosticRow(
+                "topic_quality",
+                f"{topic.topic_id}_generic_top_term_ratio",
+                generic_ratio,
+                "pass"
+                if generic_ratio <= config.max_generic_top_term_ratio
+                else "warning",
+                "Share of top terms composed only of generic legal tokens; requires at most "
+                f"{config.max_generic_top_term_ratio:.0%}.",
+            )
+        )
+    return tuple(diagnostics)
+
+
+def _generic_top_term_ratio(terms: Sequence[str]) -> float:
+    if not terms:
+        return 1.0
+    generic = sum(
+        bool(tokens) and all(token in _GENERIC_TOPIC_TOKENS for token in tokens)
+        for term in terms
+        if (tokens := _TOKEN.findall(term.lower()))
+    )
+    return generic / len(terms)
 
 
 def _topic_coherence(component: Sequence[float], corpus: _VectorizedCorpus) -> float:

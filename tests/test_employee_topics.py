@@ -1,9 +1,12 @@
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from tag_edgar import employee_topics
 from tag_edgar.employee_topics import (
     AssignmentRow,
+    StabilityRow,
     TopicModelConfig,
     analyze_employee_topics,
     load_passages_csv,
@@ -142,6 +145,22 @@ def test_fit_sample_is_bounded_but_all_passages_receive_assignments() -> None:
     assert len(result.sensitivity_assignments) == len(corpus)
 
 
+def test_fit_sampling_uses_one_passage_per_deal_provision_family() -> None:
+    corpus = _synthetic_corpus()
+    corpus[1]["document_family_id"] = corpus[0]["document_family_id"]
+
+    result = analyze_employee_topics(corpus, _model_config())
+
+    assert result.status == "modeled"
+    fit_count = next(row.value for row in result.diagnostics if row.name == "fit_passages")
+    fit_families = next(
+        row.value for row in result.diagnostics if row.name == "fit_family_count"
+    )
+    assert fit_count == len(corpus) - 1
+    assert fit_families == fit_count
+    assert len(result.assignments) == len(corpus) * 3
+
+
 def test_duplicate_assignments_propagate_across_deals() -> None:
     source = [
         _row("p1", "deal_1", "retention bonus employee", duplicate_group="shared"),
@@ -213,6 +232,90 @@ def test_document_frequency_counts_documents_not_repeated_tokens() -> None:
     assert result.reason == "insufficient_vocabulary"
     vocabulary = next(row for row in result.diagnostics if row.name == "vocabulary_size")
     assert vocabulary.value == 0
+
+
+def test_low_agglomerative_agreement_is_a_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        employee_topics,
+        "_agglomerative_fit_predict",
+        lambda fitted, full, k: [0] * len(full.rows),
+    )
+
+    result = analyze_employee_topics(_synthetic_corpus(), _model_config())
+
+    diagnostic = next(
+        row for row in result.diagnostics if row.name == "agglomerative_adjusted_rand"
+    )
+    assert float(diagnostic.value) == pytest.approx(0.0)
+    assert diagnostic.status == "warning"
+
+
+def test_each_unstable_topic_is_provisional_and_overall_gate_warns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unstable(corpus, fit, config):  # type: ignore[no-untyped-def]
+        output = []
+        for deal_id in sorted({row.deal_id for row in corpus.rows}):
+            for topic in range(fit.k):
+                similarity = 0.10 if topic == 0 else 0.99
+                output.append(
+                    StabilityRow(
+                        left_out_deal_id=deal_id,
+                        topic_id=f"topic_{topic + 1}",
+                        aligned_topic_id=f"held_topic_{topic + 1}",
+                        cosine_similarity=similarity,
+                        recovered=similarity >= config.stability_threshold,
+                    )
+                )
+        return tuple(output)
+
+    monkeypatch.setattr(employee_topics, "_leave_one_deal_out", unstable)
+
+    result = analyze_employee_topics(_synthetic_corpus(), _model_config())
+
+    topic_one = next(row for row in result.diagnostics if row.name == "topic_1_recovery_rate")
+    topic_two = next(row for row in result.diagnostics if row.name == "topic_2_recovery_rate")
+    overall = next(row for row in result.diagnostics if row.name == "overall_recovery_rate")
+    assert topic_one.status == "warning"
+    assert topic_two.status == "pass"
+    assert overall.status == "warning"
+
+
+def test_generic_legal_topic_terms_cannot_pass_quality_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = employee_topics._topic_rows
+
+    def generic_first_topic(*args, **kwargs):  # type: ignore[no-untyped-def]
+        topics = list(original(*args, **kwargs))
+        topics[0] = replace(
+            topics[0],
+            top_terms=(
+                "agreement",
+                "section",
+                "company",
+                "parent",
+                "party",
+                "purchaser",
+                "seller",
+                "shall",
+                "pursuant",
+                "thereof",
+            ),
+        )
+        return tuple(topics)
+
+    monkeypatch.setattr(employee_topics, "_topic_rows", generic_first_topic)
+
+    result = analyze_employee_topics(_synthetic_corpus(), _model_config())
+
+    diagnostic = next(
+        row for row in result.diagnostics if row.name == "topic_1_generic_top_term_ratio"
+    )
+    assert diagnostic.value == 1.0
+    assert diagnostic.status == "warning"
 
 
 def test_load_passages_csv_requires_the_full_contract(tmp_path: Path) -> None:
