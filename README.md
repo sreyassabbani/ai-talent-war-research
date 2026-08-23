@@ -161,7 +161,11 @@ uv run tag-edgar build-employee-corpus \
 
 The corpus output preserves canonical passages in `passages.csv` and every deal/document source
 location in `passage_sources.csv`. It also assigns deterministic near-duplicate provision families
-so repeated legal language does not count as independent document-family support.
+so repeated legal language does not count as independent document-family support. The build screens
+out unrelated event-window communications and financial/safe-harbor contexts, records every
+document decision in `document_eligibility.csv`, and validates manually positive sources in
+`manual_source_validation.csv` when the pilot coding table is present. A positive source must
+contribute at least one included passage or the build fails after writing the diagnostic.
 
 Run the deterministic topic model and diagnostics, then build the descriptive report:
 

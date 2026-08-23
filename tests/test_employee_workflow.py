@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from tag_edgar.cli import app
@@ -13,6 +14,8 @@ from tag_edgar.employee_topics import (
     TopicRow,
 )
 from tag_edgar.employee_workflow import (
+    _normalize_party_names,
+    _passage_eligibility,
     _provision_family_ids,
     analyze_employee_topics_workflow,
     build_employee_corpus_workflow,
@@ -223,3 +226,199 @@ def test_near_duplicate_legal_provisions_share_a_deterministic_family() -> None:
     assert first == second
     assert first["passage-a"] == first["passage-b"]
     assert first["passage-a"] != first["passage-c"]
+
+
+def test_document_gate_excludes_unrelated_earnings_and_validates_positive_source(
+    tmp_path: Path,
+) -> None:
+    review = tmp_path / "review.csv"
+    runs = tmp_path / "runs"
+    cache = tmp_path / "cache"
+    output = tmp_path / "corpus"
+    _review(review)
+    announcement_url = "https://www.sec.gov/Archives/announcement.htm"
+    earnings_url = "https://www.sec.gov/Archives/earnings.htm"
+    _write(
+        runs / "deal-1" / "documents.csv",
+        [
+            "document_id",
+            "accession_number",
+            "description",
+            "document_name",
+            "document_type",
+            "url",
+            "is_primary",
+        ],
+        [
+            {
+                "document_id": "announcement",
+                "accession_number": "accession-announcement",
+                "description": "Acquisition announcement",
+                "document_name": "announcement.htm",
+                "document_type": "EX-99.1",
+                "url": announcement_url,
+                "is_primary": "False",
+            },
+            {
+                "document_id": "earnings",
+                "accession_number": "accession-earnings",
+                "description": "Quarterly earnings",
+                "document_name": "earnings.htm",
+                "document_type": "EX-99.1",
+                "url": earnings_url,
+                "is_primary": "False",
+            },
+        ],
+    )
+    _write(
+        runs / "deal-1" / "filings.csv",
+        ["accession_number", "form"],
+        [
+            {"accession_number": "accession-announcement", "form": "8-K"},
+            {"accession_number": "accession-earnings", "form": "8-K"},
+        ],
+    )
+    _write(runs / "deal-1" / "evidence.csv", ["document_id", "category"], [])
+    bodies = {
+        announcement_url: (
+            b"<h2>Acquisition</h2><p>Buyer One will acquire Target One. Its chief executive "
+            b"officer will remain and report to Buyer One.</p>"
+        ),
+        earnings_url: (
+            b"<h2>Quarterly results</h2><p>Stock-based compensation expense increased in the "
+            b"three months ended.</p>"
+        ),
+    }
+    cache.mkdir(parents=True)
+    for url, body in bodies.items():
+        digest = hashlib.sha256(url.encode()).hexdigest()
+        (cache / f"{digest}.body").write_bytes(body)
+        (cache / f"{digest}.json").write_text(
+            json.dumps({"content_type": "text/html"}), encoding="utf-8"
+        )
+    manual = tmp_path / "manual.csv"
+    _write(
+        manual,
+        ["deal_id", "source_url", "manual_employee_term_code"],
+        [
+            {
+                "deal_id": "deal-1",
+                "source_url": announcement_url,
+                "manual_employee_term_code": "leadership_continuity",
+            }
+        ],
+    )
+
+    summary = build_employee_corpus_workflow(
+        review,
+        runs,
+        output,
+        cache,
+        manual_coding_csv=manual,
+    )
+
+    eligibility = {row["document_id"]: row for row in _rows(output / "document_eligibility.csv")}
+    assert eligibility["announcement"]["decision_reason"] == (
+        "included_target_transaction_proximity"
+    )
+    assert eligibility["earnings"]["decision_reason"] == (
+        "excluded_unrelated_event_window_document"
+    )
+    assert _rows(output / "manual_source_validation.csv")[0]["validation_status"] == "pass"
+    assert summary.counts["documents_included"] == 1
+
+
+def test_manual_positive_source_requires_an_included_passage_and_persists_diagnostic(
+    tmp_path: Path,
+) -> None:
+    review = tmp_path / "review.csv"
+    runs = tmp_path / "runs"
+    cache = tmp_path / "cache"
+    output = tmp_path / "corpus"
+    _review(review)
+    source_url = "https://www.sec.gov/Archives/safe-harbor.htm"
+    _write(
+        runs / "deal-1" / "documents.csv",
+        [
+            "document_id",
+            "accession_number",
+            "description",
+            "document_name",
+            "document_type",
+            "url",
+            "is_primary",
+        ],
+        [
+            {
+                "document_id": "safe-harbor",
+                "accession_number": "accession-safe-harbor",
+                "description": "Merger agreement",
+                "document_name": "safe-harbor.htm",
+                "document_type": "EX-2.1",
+                "url": source_url,
+                "is_primary": "False",
+            }
+        ],
+    )
+    body = b"<h2>Forward-Looking Statements</h2><p>Employee retention risks may increase.</p>"
+    digest = hashlib.sha256(source_url.encode()).hexdigest()
+    cache.mkdir(parents=True)
+    (cache / f"{digest}.body").write_bytes(body)
+    (cache / f"{digest}.json").write_text(
+        json.dumps({"content_type": "text/html"}), encoding="utf-8"
+    )
+    manual = tmp_path / "manual.csv"
+    _write(
+        manual,
+        ["deal_id", "source_url", "manual_employee_term_code"],
+        [
+            {
+                "deal_id": "deal-1",
+                "source_url": source_url,
+                "manual_employee_term_code": "retention",
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="positive_source_has_no_qualifying_passage"):
+        build_employee_corpus_workflow(
+            review,
+            runs,
+            output,
+            cache,
+            manual_coding_csv=manual,
+        )
+
+    diagnostic = _rows(output / "manual_source_validation.csv")[0]
+    assert diagnostic["document_inclusion_status"] == "included"
+    assert diagnostic["qualifying_passage_count"] == "0"
+    assert diagnostic["validation_status"] == "positive_source_has_no_qualifying_passage"
+
+
+def test_passage_gate_removes_safe_harbor_accounting_and_uncontextualized_generic_hits() -> None:
+    assert _passage_eligibility(
+        ("retention",), "forward-looking statements discuss employee retention risks"
+    ) == (False, "excluded_safe_harbor_or_forward_looking_context")
+    assert _passage_eligibility(
+        ("employee", "compensation"),
+        "employee stock-based compensation expense for the three months ended",
+    ) == (False, "excluded_accounting_or_financial_context")
+    assert _passage_eligibility(("executive officer",), "chief executive officer address") == (
+        False,
+        "excluded_generic_term_without_people_context",
+    )
+    assert _passage_eligibility(
+        ("executive officer",), "the chief executive officer will remain and report to the buyer"
+    ) == (True, "included_employee_context")
+
+
+def test_model_text_masks_party_names_without_changing_other_words() -> None:
+    normalized = _normalize_party_names(
+        "unity software and ironsource employees will remain with unity after closing",
+        "Unity Software Inc",
+        "ironSource Ltd",
+    )
+
+    assert normalized == (
+        "entitytoken and entitytoken employees will remain with entitytoken after closing"
+    )

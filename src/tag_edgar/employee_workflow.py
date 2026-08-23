@@ -45,6 +45,7 @@ PASSAGE_FIELDS = [
     "duplicate_group_id",
     "occurrence_count",
     "inclusion_status",
+    "exclusion_reason",
 ]
 
 PASSAGE_SOURCE_FIELDS = [
@@ -62,6 +63,8 @@ PASSAGE_SOURCE_FIELDS = [
     "block_end",
     "char_start",
     "char_end",
+    "inclusion_status",
+    "exclusion_reason",
 ]
 
 DOCUMENT_FIELDS = [
@@ -86,6 +89,31 @@ DOCUMENT_TEXT_FIELDS = [
     "block_count",
     "extraction_status",
     "extraction_error",
+]
+
+DOCUMENT_ELIGIBILITY_FIELDS = [
+    "deal_id",
+    "document_id",
+    "accession_number",
+    "filing_form",
+    "document_type",
+    "source_url",
+    "transaction_evidence_hits",
+    "target_name_proximity",
+    "transaction_language_found",
+    "inclusion_status",
+    "decision_reason",
+]
+
+MANUAL_SOURCE_VALIDATION_FIELDS = [
+    "deal_id",
+    "source_url",
+    "manual_employee_term_code",
+    "expected_positive",
+    "retrieved_document_id",
+    "document_inclusion_status",
+    "qualifying_passage_count",
+    "validation_status",
 ]
 
 TOPIC_ASSIGNMENT_FIELDS = [
@@ -206,7 +234,194 @@ def _document_family_id(deal_id: str, row: Mapping[str, str]) -> str:
     return f"family_{hashlib.sha256(family_seed.encode()).hexdigest()[:16]}"
 
 
+def _target_aliases(target_name: str) -> tuple[str, ...]:
+    normalized = " ".join(re.findall(r"[a-z0-9]+", target_name.casefold()))
+    if not normalized:
+        return ()
+    suffixes = {
+        "inc",
+        "incorporated",
+        "corp",
+        "corporation",
+        "llc",
+        "ltd",
+        "limited",
+        "plc",
+        "company",
+        "co",
+    }
+    tokens = normalized.split()
+    stripped = " ".join(token for token in tokens if token not in suffixes)
+    aliases = {normalized, stripped}
+    if len(tokens) == 2 and tokens[-1] in suffixes and len(tokens[0]) >= 5:
+        aliases.add(tokens[0])
+    return tuple(sorted(alias for alias in aliases if len(alias) >= 4))
+
+
+def _party_aliases(party_name: str) -> tuple[str, ...]:
+    aliases = set(_target_aliases(party_name))
+    normalized = " ".join(re.findall(r"[a-z0-9]+", party_name.casefold()))
+    for token in normalized.split():
+        if len(token) >= 5 and token not in _GENERIC_ENTITY_TOKENS:
+            aliases.add(token)
+    return tuple(sorted(aliases, key=lambda alias: (-len(alias), alias)))
+
+
+def _normalize_party_names(model_text: str, acquirer_name: str, target_name: str) -> str:
+    normalized = model_text
+    for alias in (*_party_aliases(acquirer_name), *_party_aliases(target_name)):
+        normalized = re.sub(
+            rf"(?<!\w){re.escape(alias)}(?!\w)", " entitytoken ", normalized
+        )
+    return " ".join(normalized.split())
+
+
+def _has_target_proximity(text: str, target_name: str) -> bool:
+    normalized = " ".join(re.findall(r"[a-z0-9]+", text.casefold()))
+    return any(re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", normalized) for alias in _target_aliases(target_name))
+
+
+def _document_eligibility(
+    row: Mapping[str, str],
+    filing_form: str,
+    transaction_accessions: frozenset[str],
+    transaction_evidence_hits: int,
+    target_name: str,
+    text: str,
+) -> tuple[bool, str, bool, bool]:
+    document_type = row.get("document_type", "").upper()
+    accession = row.get("accession_number", "")
+    target_proximity = _has_target_proximity(text, target_name)
+    transaction_language = bool(_TRANSACTION_LANGUAGE.search(text))
+    if document_type.startswith("EX-2."):
+        return True, "included_ex2_transaction_agreement", target_proximity, transaction_language
+    if filing_form.upper() in _TRANSACTION_FORMS:
+        return True, "included_transaction_specific_form", target_proximity, transaction_language
+    if accession in transaction_accessions:
+        return True, "included_transaction_accession", target_proximity, transaction_language
+    if transaction_evidence_hits:
+        return True, "included_transaction_evidence", target_proximity, transaction_language
+    if target_proximity and transaction_language:
+        return True, "included_target_transaction_proximity", target_proximity, transaction_language
+    return False, "excluded_unrelated_event_window_document", target_proximity, transaction_language
+
+
+def _passage_eligibility(screen_terms: Sequence[str], model_text: str) -> tuple[bool, str]:
+    term_set = set(screen_terms)
+    if _SAFE_HARBOR_CONTEXT.search(model_text):
+        return False, "excluded_safe_harbor_or_forward_looking_context"
+    if _ACCOUNTING_CONTEXT.search(model_text):
+        return False, "excluded_accounting_or_financial_context"
+    substantive_terms = term_set - _GENERIC_SCREEN_TERMS
+    if not substantive_terms:
+        award_terms = term_set & _AWARD_SCREEN_TERMS
+        contextual = bool(
+            (award_terms and _AWARD_TREATMENT_CONTEXT.search(model_text))
+            or _HUMAN_CONTEXT.search(model_text)
+            or _GENERIC_PEOPLE_CONTEXT.search(model_text)
+        )
+        if not contextual:
+            return False, "excluded_generic_term_without_people_context"
+    return True, "included_employee_context"
+
+
 _MODEL_TOKEN = re.compile(r"[a-z][a-z0-9]*(?:[-'][a-z0-9]+)*")
+_TRANSACTION_LANGUAGE = re.compile(
+    r"\b(?:acqui(?:re|red|res|ring|sition)|merger|business combination|tender offer|"
+    r"purchase agreement|transaction)\b",
+    re.IGNORECASE,
+)
+_ACCOUNTING_CONTEXT = re.compile(
+    r"\b(?:stock[- ]based compensation expense|share[- ]based compensation expense|"
+    r"consolidated statements?|unaudited|three months ended|six months ended|fiscal year|"
+    r"non-gaap|cash flows?|operating expenses?|compensation expense|in millions)\b",
+    re.IGNORECASE,
+)
+_SAFE_HARBOR_CONTEXT = re.compile(
+    r"\b(?:safe harbor|forward-looking statements?|actual results (?:may|could) differ|"
+    r"risks? and uncertainties|cautionary statement|sec filings)\b",
+    re.IGNORECASE,
+)
+_HUMAN_CONTEXT = re.compile(
+    r"\b(?:employees?|employment|personnel|workforce|workers?|retention|severance|"
+    r"continued service|remain employed|benefit plans?|pension|labor|labour|union|"
+    r"award holders?|participants?)\b",
+    re.IGNORECASE,
+)
+_GENERIC_PEOPLE_CONTEXT = re.compile(
+    r"\b(?:remain|continue|serve|report(?:ing)? to|appoint(?:ed|ment)?|lead(?:er|ership)?|"
+    r"employ(?:ed|ment)?|retain(?:ed)?|terminate|service|closing|individual|person)\b",
+    re.IGNORECASE,
+)
+_AWARD_TREATMENT_CONTEXT = re.compile(
+    r"\b(?:award holders?|participants?|employees?|service|closing|converted?|cancelled?|"
+    r"assumed?|cashed out|vested|unvested)\b",
+    re.IGNORECASE,
+)
+_AWARD_SCREEN_TERMS = frozenset(
+    {
+        "equity award",
+        "stock option",
+        "restricted stock",
+        "restricted stock unit",
+        "rsu",
+        "vesting",
+        "incentive award",
+    }
+)
+_GENERIC_SCREEN_TERMS = frozenset(
+    {
+        "executive officer",
+        "management team",
+        "founder",
+        "compensation",
+        "bonus",
+        "change in control",
+        *_AWARD_SCREEN_TERMS,
+    }
+)
+_GENERIC_ENTITY_TOKENS = frozenset(
+    {
+        "company",
+        "group",
+        "holdings",
+        "interactive",
+        "solutions",
+        "software",
+        "systems",
+        "technologies",
+        "technology",
+        "communications",
+    }
+)
+_TRANSACTION_FORMS = frozenset(
+    {
+        "S-4",
+        "S-4/A",
+        "424B3",
+        "PREM14A",
+        "PREM14A/A",
+        "DEFM14A",
+        "DEFM14A/A",
+        "SC 14D9",
+        "SC 14D9/A",
+        "SC TO-T",
+        "SC TO-T/A",
+        "SC TO-I",
+        "SC TO-I/A",
+        "425",
+        "DEFA14A",
+        "PREM14C",
+        "PREM14C/A",
+        "DEFM14C",
+        "DEFM14C/A",
+        "SC TO-C",
+        "SC14D9C",
+        "F-4",
+        "F-4/A",
+        "CB",
+    }
+)
 
 
 def _provision_shingles(model_text: str) -> frozenset[str]:
@@ -301,6 +516,68 @@ def _cache_content_type(metadata_path: Path) -> str:
     return str(value.get("content_type", "")) if isinstance(value, dict) else ""
 
 
+def _canonical_sec_url(value: str) -> str:
+    return canonical_document_url("https://www.sec.gov/", value).replace(
+        "https://www.sec.gov/", "https://sec.gov/"
+    )
+
+
+def _manual_source_validation(
+    manual_coding_csv: Path | None,
+    document_rows: Mapping[str, Mapping[str, object]],
+    eligibility_by_document: Mapping[tuple[str, str], bool],
+    source_rows: Sequence[Mapping[str, object]],
+) -> tuple[list[dict[str, object]], int, tuple[str, ...]]:
+    if manual_coding_csv is None:
+        return [], 0, ()
+    manual_rows = _read_rows(manual_coding_csv)
+    documents_by_url: dict[tuple[str, str], str] = {}
+    for document_id, document in document_rows.items():
+        deal_id = str(document["deal_id"])
+        documents_by_url[(deal_id, _canonical_sec_url(str(document["url"])))] = document_id
+
+    output: list[dict[str, object]] = []
+    failures: list[str] = []
+    positive_count = 0
+    qualifying_passages = Counter(
+        (str(row["deal_id"]), str(row["document_id"]))
+        for row in source_rows
+        if str(row.get("inclusion_status", "")).lower() == "included"
+    )
+    for row in sorted(manual_rows, key=lambda item: item.get("deal_id", "")):
+        deal_id = row.get("deal_id", "")
+        source_url = row.get("source_url", "")
+        manual_code = row.get("manual_employee_term_code", "")
+        expected_positive = bool(manual_code) and not manual_code.casefold().startswith("no_")
+        positive_count += int(expected_positive)
+        document_id = documents_by_url.get((deal_id, _canonical_sec_url(source_url)), "") if source_url else ""
+        included = bool(document_id) and eligibility_by_document.get((deal_id, document_id), False)
+        qualifying_count = qualifying_passages[(deal_id, document_id)] if document_id else 0
+        if not document_id:
+            status = "source_not_retrieved"
+        elif expected_positive and not included:
+            status = "positive_source_excluded"
+        elif expected_positive and not qualifying_count:
+            status = "positive_source_has_no_qualifying_passage"
+        else:
+            status = "pass"
+        if expected_positive and status != "pass":
+            failures.append(f"{deal_id}: {status}")
+        output.append(
+            {
+                "deal_id": deal_id,
+                "source_url": source_url,
+                "manual_employee_term_code": manual_code,
+                "expected_positive": str(expected_positive).lower(),
+                "retrieved_document_id": document_id,
+                "document_inclusion_status": "included" if included else "excluded",
+                "qualifying_passage_count": qualifying_count,
+                "validation_status": status,
+            }
+        )
+    return output, positive_count, tuple(failures)
+
+
 def build_employee_corpus_workflow(
     review_csv: Path,
     runs_dir: Path,
@@ -309,12 +586,15 @@ def build_employee_corpus_workflow(
     *,
     context_blocks: int = 1,
     max_block_words: int = 220,
+    manual_coding_csv: Path | None = None,
 ) -> WorkflowSummary:
     """Build the source-linked passage corpus entirely from reviewed runs and cached bodies."""
     deals = _selected_deals(review_csv)
     corpus_documents: list[CorpusDocument] = []
     document_rows: dict[str, dict[str, object]] = {}
     document_text_rows: list[dict[str, object]] = []
+    document_eligibility_rows: list[dict[str, object]] = []
+    eligibility_by_document: dict[tuple[str, str], bool] = {}
     family_by_occurrence: dict[tuple[str, str], str] = {}
 
     for deal in deals:
@@ -322,7 +602,28 @@ def build_employee_corpus_workflow(
         documents_path = runs_dir / deal_id / "documents.csv"
         if not documents_path.exists():
             continue
-        for row in _read_rows(documents_path):
+        filings_path = runs_dir / deal_id / "filings.csv"
+        filing_rows = _read_rows(filings_path) if filings_path.exists() else []
+        form_by_accession = {
+            row.get("accession_number", ""): row.get("form", "").upper()
+            for row in filing_rows
+        }
+        evidence_path = runs_dir / deal_id / "evidence.csv"
+        evidence_rows = _read_rows(evidence_path) if evidence_path.exists() else []
+        transaction_hits = Counter(
+            row.get("document_id", "")
+            for row in evidence_rows
+            if row.get("category", "") == "transaction"
+        )
+        all_document_rows = _read_rows(documents_path)
+        transaction_accessions = frozenset(
+            row.get("accession_number", "")
+            for row in all_document_rows
+            if row.get("document_type", "").upper().startswith("EX-2.")
+            or form_by_accession.get(row.get("accession_number", ""), "")
+            in _TRANSACTION_FORMS
+        )
+        for row in all_document_rows:
             if not _relevant_document(row):
                 continue
             document_id = row.get("document_id", "")
@@ -349,6 +650,22 @@ def build_employee_corpus_workflow(
 
             body_path, metadata_path = _cache_paths(cache_dir, url)
             if not body_path.exists():
+                eligibility_by_document[(deal_id, document_id)] = False
+                document_eligibility_rows.append(
+                    {
+                        "deal_id": deal_id,
+                        "document_id": document_id,
+                        "accession_number": row.get("accession_number", ""),
+                        "filing_form": form_by_accession.get(row.get("accession_number", ""), ""),
+                        "document_type": row.get("document_type", ""),
+                        "source_url": url,
+                        "transaction_evidence_hits": transaction_hits[document_id],
+                        "target_name_proximity": "false",
+                        "transaction_language_found": "false",
+                        "inclusion_status": "excluded",
+                        "decision_reason": "excluded_cache_missing",
+                    }
+                )
                 document_text_rows.append(
                     {
                         "deal_id": deal_id,
@@ -372,6 +689,22 @@ def build_employee_corpus_workflow(
                     max_block_words=max_block_words,
                 )
             except (UnicodeError, ValueError) as error:
+                eligibility_by_document[(deal_id, document_id)] = False
+                document_eligibility_rows.append(
+                    {
+                        "deal_id": deal_id,
+                        "document_id": document_id,
+                        "accession_number": row.get("accession_number", ""),
+                        "filing_form": form_by_accession.get(row.get("accession_number", ""), ""),
+                        "document_type": row.get("document_type", ""),
+                        "source_url": url,
+                        "transaction_evidence_hits": transaction_hits[document_id],
+                        "target_name_proximity": "false",
+                        "transaction_language_found": "false",
+                        "inclusion_status": "excluded",
+                        "decision_reason": "excluded_parse_error",
+                    }
+                )
                 document_text_rows.append(
                     {
                         "deal_id": deal_id,
@@ -399,6 +732,35 @@ def build_employee_corpus_workflow(
                     "extraction_error": "",
                 }
             )
+            filing_form = form_by_accession.get(row.get("accession_number", ""), "")
+            included, decision_reason, target_proximity, transaction_language = (
+                _document_eligibility(
+                    row,
+                    filing_form,
+                    transaction_accessions,
+                    transaction_hits[document_id],
+                    deal.get("target_name", ""),
+                    parsed.text,
+                )
+            )
+            eligibility_by_document[(deal_id, document_id)] = included
+            document_eligibility_rows.append(
+                {
+                    "deal_id": deal_id,
+                    "document_id": document_id,
+                    "accession_number": row.get("accession_number", ""),
+                    "filing_form": filing_form,
+                    "document_type": row.get("document_type", ""),
+                    "source_url": url,
+                    "transaction_evidence_hits": transaction_hits[document_id],
+                    "target_name_proximity": str(target_proximity).lower(),
+                    "transaction_language_found": str(transaction_language).lower(),
+                    "inclusion_status": "included" if included else "excluded",
+                    "decision_reason": decision_reason,
+                }
+            )
+            if not included:
+                continue
             corpus_documents.append(
                 CorpusDocument(
                     deal_id=deal_id,
@@ -416,9 +778,19 @@ def build_employee_corpus_workflow(
         context_blocks=context_blocks,
         max_block_words=max_block_words,
     )
+    deal_by_id = {deal["deal_id"]: deal for deal in deals}
     passage_rows: list[dict[str, object]] = []
     for passage in corpus.passages:
         family_id = family_by_occurrence[(passage.deal_id, passage.document_id)]
+        deal = deal_by_id[passage.deal_id]
+        model_text = _normalize_party_names(
+            passage.model_text,
+            deal.get("acquirer_name", ""),
+            deal.get("target_name", ""),
+        )
+        passage_included, passage_reason = _passage_eligibility(
+            passage.screen_terms, model_text
+        )
         passage_rows.append(
             {
                 "passage_id": passage.passage_id,
@@ -437,14 +809,15 @@ def build_employee_corpus_workflow(
                 "char_end": passage.char_end,
                 "text": passage.text,
                 "raw_text": passage.text,
-                "model_text": passage.model_text,
+                "model_text": model_text,
                 "token_count": passage.token_count,
                 "screen_terms": "|".join(passage.screen_terms),
                 "content_sha256": passage.content_sha256,
                 "duplicate_group": passage.duplicate_group_id,
                 "duplicate_group_id": passage.duplicate_group_id,
                 "occurrence_count": passage.occurrence_count,
-                "inclusion_status": "included",
+                "inclusion_status": "included" if passage_included else "excluded",
+                "exclusion_reason": "" if passage_included else passage_reason,
             }
         )
     provision_family_by_passage = _provision_family_ids(passage_rows)
@@ -452,7 +825,15 @@ def build_employee_corpus_workflow(
         row["document_family_id"] = provision_family_by_passage[str(row["passage_id"])]
 
     source_rows: list[dict[str, object]] = []
+    passage_status = {
+        str(row["passage_id"]): (
+            str(row["inclusion_status"]),
+            str(row["exclusion_reason"]),
+        )
+        for row in passage_rows
+    }
     for occurrence in corpus.occurrences:
+        inclusion_status, exclusion_reason = passage_status[occurrence.passage_id]
         source_rows.append(
             {
                 **asdict(occurrence),
@@ -461,11 +842,14 @@ def build_employee_corpus_workflow(
                     (occurrence.deal_id, occurrence.document_id)
                 ],
                 "heading": occurrence.heading or "",
+                "inclusion_status": inclusion_status,
+                "exclusion_reason": exclusion_reason,
             }
         )
 
     documents_path = output_dir / "documents.csv"
     document_texts_path = output_dir / "document_texts.csv"
+    document_eligibility_path = output_dir / "document_eligibility.csv"
     passages_path = output_dir / "passages.csv"
     sources_path = output_dir / "passage_sources.csv"
     _write_rows(documents_path, DOCUMENT_FIELDS, sorted(document_rows.values(), key=lambda row: str(row["document_id"])))
@@ -474,10 +858,44 @@ def build_employee_corpus_workflow(
         DOCUMENT_TEXT_FIELDS,
         sorted(document_text_rows, key=lambda row: (str(row["deal_id"]), str(row["document_id"]))),
     )
+    _write_rows(
+        document_eligibility_path,
+        DOCUMENT_ELIGIBILITY_FIELDS,
+        sorted(
+            document_eligibility_rows,
+            key=lambda row: (str(row["deal_id"]), str(row["document_id"])),
+        ),
+    )
     _write_rows(passages_path, PASSAGE_FIELDS, passage_rows)
     _write_rows(sources_path, PASSAGE_SOURCE_FIELDS, source_rows)
 
+    manual_validation_rows, manual_positive_count, manual_validation_failures = (
+        _manual_source_validation(
+            manual_coding_csv,
+            document_rows,
+            eligibility_by_document,
+            source_rows,
+        )
+    )
+    _write_rows(
+        output_dir / "manual_source_validation.csv",
+        MANUAL_SOURCE_VALIDATION_FIELDS,
+        manual_validation_rows,
+    )
+    if manual_validation_failures:
+        raise ValueError(
+            "Employee document gate failed manually positive source recall: "
+            + "; ".join(manual_validation_failures)
+        )
+
     extraction_counts = Counter(str(row["extraction_status"]) for row in document_text_rows)
+    document_decisions = Counter(str(row["decision_reason"]) for row in document_eligibility_rows)
+    passage_decisions = Counter(
+        "included_employee_context"
+        if row["inclusion_status"] == "included"
+        else str(row["exclusion_reason"])
+        for row in passage_rows
+    )
     manifest: dict[str, object] = {
         "schema_version": 1,
         "review_sha256": _file_sha256(review_csv),
@@ -486,12 +904,23 @@ def build_employee_corpus_workflow(
         "max_block_words": max_block_words,
         "documents_considered": len(document_text_rows),
         "documents_parsed": extraction_counts["parsed"],
+        "documents_included": sum(
+            row["inclusion_status"] == "included" for row in document_eligibility_rows
+        ),
+        "documents_excluded": sum(
+            row["inclusion_status"] == "excluded" for row in document_eligibility_rows
+        ),
+        "document_decision_counts": dict(sorted(document_decisions.items())),
         "extraction_status_counts": dict(sorted(extraction_counts.items())),
         "canonical_passages": len(corpus.passages),
+        "included_passages": sum(row["inclusion_status"] == "included" for row in passage_rows),
+        "excluded_passages": sum(row["inclusion_status"] == "excluded" for row in passage_rows),
+        "passage_decision_counts": dict(sorted(passage_decisions.items())),
         "provision_families": len(set(provision_family_by_passage.values())),
         "passage_occurrences": len(corpus.occurrences),
         "blocks_scanned": corpus.blocks_scanned,
         "blocks_matched": corpus.blocks_matched,
+        "manual_positive_sources_validated": manual_positive_count,
         "passages_sha256": _file_sha256(passages_path),
         "passage_sources_sha256": _file_sha256(sources_path),
     }
@@ -503,7 +932,10 @@ def build_employee_corpus_workflow(
             "deals": len(deals),
             "documents": len(document_text_rows),
             "documents_parsed": extraction_counts["parsed"],
-            "passages": len(corpus.passages),
+            "documents_included": sum(
+                row["inclusion_status"] == "included" for row in document_eligibility_rows
+            ),
+            "passages": sum(row["inclusion_status"] == "included" for row in passage_rows),
             "passage_occurrences": len(corpus.occurrences),
         },
     )
@@ -720,11 +1152,14 @@ def analyze_employee_topics_workflow(
     deals = _selected_deals(review_csv)
     canonical_passages = _read_rows(passages_path)
     source_rows = _read_rows(sources_path)
+    included_source_rows = [
+        row for row in source_rows if row.get("inclusion_status", "").lower() == "included"
+    ]
     result = analyze_employee_topics_csv(passages_path, config)
-    source_passage_rows = _source_passages(canonical_passages, source_rows)
+    source_passage_rows = _source_passages(canonical_passages, included_source_rows)
     canonical_assignment_rows = _assignment_rows(result)
     assignment_rows = _propagated_assignment_rows(result, source_passage_rows)
-    deal_topic_rows = _propagated_deal_topics(deals, result, source_rows)
+    deal_topic_rows = _propagated_deal_topics(deals, result, included_source_rows)
 
     _write_rows(output_dir / "source_passages.csv", PASSAGE_FIELDS, source_passage_rows)
     _write_rows(output_dir / "topic_assignments.csv", TOPIC_ASSIGNMENT_FIELDS, assignment_rows)

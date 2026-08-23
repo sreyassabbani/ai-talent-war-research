@@ -257,11 +257,21 @@ def build_employee_corpus_command(
         file_okay=False,
         help="SEC cache directory; defaults to TAG_EDGAR_CACHE_DIR or cache/http.",
     ),
+    manual_coding_csv: Path | None = typer.Option(
+        None,
+        exists=True,
+        readable=True,
+        help="Optional manual coding file used only as a positive-source recall gate.",
+    ),
     context_blocks: int = typer.Option(1, min=0),
     max_block_words: int = typer.Option(220, min=20),
 ) -> None:
     """Build a source-linked employee passage corpus from the reviewed pilot cache."""
     selected_cache = cache_dir or load_settings(require_user_agent=False).cache_dir
+    default_manual_coding = PROJECT_ROOT / "data" / "derived" / "pilot_manual_coding.csv"
+    selected_manual_coding = manual_coding_csv or (
+        default_manual_coding if default_manual_coding.exists() else None
+    )
     summary = build_employee_corpus_workflow(
         review_csv,
         runs_dir,
@@ -269,6 +279,7 @@ def build_employee_corpus_command(
         selected_cache,
         context_blocks=context_blocks,
         max_block_words=max_block_words,
+        manual_coding_csv=selected_manual_coding,
     )
     typer.echo(f"Corpus status: {summary.status}")
     for label, count in summary.counts.items():
