@@ -34,6 +34,13 @@ These filings disclose contractual language and communications. They do not esta
 - Manual positive-source recall: pass for 8/8 reviewed-positive documents.
 - NMF/agglomerative sensitivity: pass; adjusted Rand index 0.306 versus the prespecified 0.20 floor.
 - Leave-one-deal-out stability: two components pass; the executive/compensation/tax component fails at 0.667.
+- Within-deal family bootstrap: topics 1 and 3 recover in 80/100 and 81/100 replicates; topic 2
+  recovers in only 21/100, reinforcing its rejection.
+- Local LSA robustness: all 240 fit passages embedded; LSA agglomerative ARI is 0.325, while
+  HDBSCAN discovers five clusters and labels 142 passages noise. These are diagnostics, not a
+  replacement taxonomy.
+- Corpus relevance/missed-content audit: pending actual human coding; the deterministic blinded
+  packet contains 75 included and 75 excluded candidates.
 - Human representative fit: pending; the review queue intentionally contains blank reviewer fields.
 - Overall taxonomy release: fail/provisional.
 
@@ -68,6 +75,12 @@ agreement gates pass, the stable benefits and equity components can advance as p
 taxonomy entries. This would not retroactively validate the rejected three-component output. The
 unstable second component must remain rejected or be decomposed in a new, prespecified repair
 cycle.
+
+A separate corpus-screen audit packet is ready at
+`data/derived/corpus_relevance_audit/assessor_packet.csv`. One actual assessor must label all 150
+rows and attest that the judgments are human-made. The corpus gate requires at least 90% relevance
+among included candidates and less than 5% missed relevant content among excluded candidates; the
+workflow will not infer or autofill those results.
 
 ## Scale and outcome branches
 
