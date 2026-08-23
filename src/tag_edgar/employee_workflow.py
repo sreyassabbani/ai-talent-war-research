@@ -1036,7 +1036,7 @@ def build_employee_corpus_workflow(
         for row in passage_rows
     )
     manifest: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "review_sha256": _file_sha256(review_csv),
         "selected_deal_ids": [deal["deal_id"] for deal in deals],
         "context_blocks": context_blocks,
@@ -1051,9 +1051,16 @@ def build_employee_corpus_workflow(
         ),
         "document_decision_counts": dict(sorted(document_decisions.items())),
         "extraction_status_counts": dict(sorted(extraction_counts.items())),
-        "canonical_passages": len(corpus.passages),
-        "included_passages": sum(row["inclusion_status"] == "included" for row in passage_rows),
-        "excluded_passages": sum(row["inclusion_status"] == "excluded" for row in passage_rows),
+        # ``corpus.passages`` contains the exact-text-deduplicated screening universe. Keep that
+        # distinct from the included model universe, which topic diagnostics call canonical after
+        # their own duplicate-group and non-empty-text filter.
+        "screened_candidate_passages": len(corpus.passages),
+        "included_screened_passages": sum(
+            row["inclusion_status"] == "included" for row in passage_rows
+        ),
+        "excluded_screened_passages": sum(
+            row["inclusion_status"] == "excluded" for row in passage_rows
+        ),
         "passage_decision_counts": dict(sorted(passage_decisions.items())),
         "provision_families": len(set(provision_family_by_passage.values())),
         "passage_occurrences": len(corpus.occurrences),

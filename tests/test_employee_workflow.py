@@ -123,6 +123,12 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     assert {row["deal_id"] for row in sources} == {"deal-1", "deal-2"}
     assert passages[0]["inclusion_status"] == "included"
     assert passages[0]["raw_text"] == passages[0]["text"]
+    corpus_manifest = json.loads((corpus_dir / "corpus_manifest.json").read_text())
+    assert corpus_manifest["schema_version"] == 2
+    assert corpus_manifest["screened_candidate_passages"] == 1
+    assert corpus_manifest["included_screened_passages"] == 1
+    assert corpus_manifest["excluded_screened_passages"] == 0
+    assert "canonical_passages" not in corpus_manifest
 
     passage = passages[0]
     fake_result = EmployeeTopicResult(
