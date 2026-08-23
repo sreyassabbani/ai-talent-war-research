@@ -98,6 +98,18 @@ def test_topic_model_returns_long_assignments_deal_matrix_and_sensitivity() -> N
     assert len(result.sensitivity_assignments) == len(corpus)
     assert len({row.cluster_id for row in result.sensitivity_assignments}) == selected_k
     assert len(result.stability) == 3 * selected_k
+    sensitivity_count = next(
+        row.value for row in result.diagnostics if row.name == "agglomerative_fit_passages"
+    )
+    sensitivity_ari = next(
+        row for row in result.diagnostics if row.name == "agglomerative_adjusted_rand"
+    )
+    assert sensitivity_count == len(corpus)
+    assert float(sensitivity_ari.value) == pytest.approx(1.0)
+    assert "Identical fit universe" in sensitivity_ari.detail
+    assert "cosine metric" in sensitivity_ari.detail
+    assert "average linkage" in sensitivity_ari.detail
+    assert "permutation-invariant" in sensitivity_ari.detail
 
     for passage_id in {row["passage_id"] for row in corpus}:
         weights = [row for row in result.assignments if row.passage_id == passage_id]
@@ -239,8 +251,8 @@ def test_low_agglomerative_agreement_is_a_warning(
 ) -> None:
     monkeypatch.setattr(
         employee_topics,
-        "_agglomerative_fit_predict",
-        lambda fitted, full, k: [0] * len(full.rows),
+        "_agglomerative_assignments",
+        lambda corpus, k: [0] * len(corpus.rows),
     )
 
     result = analyze_employee_topics(_synthetic_corpus(), _model_config())

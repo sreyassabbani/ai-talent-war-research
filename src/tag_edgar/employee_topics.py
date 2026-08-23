@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import heapq
 import itertools
 import math
 import random
@@ -11,6 +10,10 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+import numpy as np
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import adjusted_rand_score
 
 _REQUIRED_COLUMNS = frozenset(
     {
@@ -501,21 +504,74 @@ def analyze_employee_topics(
     assignments = propagate_duplicate_assignments(materialized_rows, canonical_assignments)
     deal_rows, deal_weights = _deal_group_rows(materialized_rows, prepared, projected_weights)
     deal_topics = _deal_topic_rows(deal_rows, deal_weights)
-    sensitivity = _agglomerative_fit_predict(corpus, full_corpus, selected.k)
+    fitted_sensitivity = _agglomerative_assignments(corpus, selected.k)
+    sensitivity = _agglomerative_fit_predict(
+        corpus,
+        full_corpus,
+        selected.k,
+        fitted_labels=fitted_sensitivity,
+    )
     sensitivity_rows = tuple(
-        SensitivityAssignmentRow(row.passage_id, row.deal_id, f"cluster_{cluster + 1}")
+        SensitivityAssignmentRow(
+            row.passage_id,
+            row.deal_id,
+            f"cluster_{cluster + 1}" if cluster >= 0 else "cluster_unassigned",
+        )
         for row, cluster in zip(full_corpus.rows, sensitivity, strict=True)
     )
-    primary_topics = [_argmax(weight) if sum(weight) else -1 for weight in projected_weights]
-    agglomerative_ari = _adjusted_rand_index(primary_topics, sensitivity)
-    diagnostics.append(
-        DiagnosticRow(
-            "sensitivity",
-            "agglomerative_adjusted_rand",
-            agglomerative_ari,
-            "pass" if agglomerative_ari >= config.min_agglomerative_ari else "warning",
-            "Agreement between primary NMF topic and TF-IDF average-linkage clustering; "
-            f"requires at least {config.min_agglomerative_ari:.2f}.",
+    sensitivity_indices = [
+        index
+        for index, (weights, label) in enumerate(
+            zip(selected.weights, fitted_sensitivity, strict=True)
+        )
+        if sum(weights) and label >= 0
+    ]
+    fitted_primary_topics = [_argmax(selected.weights[index]) for index in sensitivity_indices]
+    fitted_cluster_labels = [fitted_sensitivity[index] for index in sensitivity_indices]
+    nmf_sizes = Counter(fitted_primary_topics)
+    agglomerative_sizes = Counter(fitted_cluster_labels)
+    agglomerative_ari = (
+        float(adjusted_rand_score(fitted_primary_topics, fitted_cluster_labels))
+        if len(sensitivity_indices) >= 2
+        else 0.0
+    )
+    diagnostics.extend(
+        (
+            DiagnosticRow(
+                "sensitivity",
+                "agglomerative_fit_passages",
+                len(sensitivity_indices),
+                "pass" if len(sensitivity_indices) == len(corpus.rows) else "warning",
+                "Nonzero fit-sample rows shared identically by NMF and agglomerative comparison.",
+            ),
+            DiagnosticRow(
+                "sensitivity",
+                "nmf_fit_cluster_sizes",
+                ",".join(
+                    f"topic_{topic + 1}:{nmf_sizes[topic]}" for topic in sorted(nmf_sizes)
+                ),
+                "pass",
+                "Primary NMF assignments on the shared sensitivity fit universe.",
+            ),
+            DiagnosticRow(
+                "sensitivity",
+                "agglomerative_fit_cluster_sizes",
+                ",".join(
+                    f"cluster_{cluster + 1}:{agglomerative_sizes[cluster]}"
+                    for cluster in sorted(agglomerative_sizes)
+                ),
+                "pass",
+                "Cosine/average agglomerative assignments on the shared fit universe.",
+            ),
+            DiagnosticRow(
+                "sensitivity",
+                "agglomerative_adjusted_rand",
+                agglomerative_ari,
+                "pass" if agglomerative_ari >= config.min_agglomerative_ari else "warning",
+                "Identical fit universe; L2 word/bigram TF-IDF; sklearn cosine metric and "
+                "average linkage; ARI is permutation-invariant, so label alignment is not "
+                f"required; threshold={config.min_agglomerative_ari:.2f}.",
+            ),
         )
     )
 
@@ -1224,57 +1280,34 @@ def _topic_coherence(component: Sequence[float], corpus: _VectorizedCorpus) -> f
 
 
 def _agglomerative_assignments(corpus: _VectorizedCorpus, k: int) -> list[int]:
-    target = min(k, len(corpus.rows))
-    count = len(corpus.matrix)
-    active = set(range(count))
-    sizes = {index: 1 for index in range(count)}
-    members = {index: [index] for index in range(count)}
-    distances: dict[tuple[int, int], float] = {}
-    heap: list[tuple[float, int, int]] = []
-    for left in range(count):
-        for right in range(left + 1, count):
-            distance = 1.0 - _sparse_dot(corpus.matrix[left], corpus.matrix[right])
-            distances[(left, right)] = distance
-            heapq.heappush(heap, (distance, left, right))
-
-    next_cluster = count
-    while len(active) > target:
-        while True:
-            _, left, right = heapq.heappop(heap)
-            if left in active and right in active:
-                break
-        active.remove(left)
-        active.remove(right)
-        others = sorted(active)
-        active.add(next_cluster)
-        sizes[next_cluster] = sizes[left] + sizes[right]
-        members[next_cluster] = members[left] + members[right]
-        for other in others:
-            left_key = _pair(left, other)
-            right_key = _pair(right, other)
-            distance = (
-                sizes[left] * distances[left_key] + sizes[right] * distances[right_key]
-            ) / sizes[next_cluster]
-            key = _pair(next_cluster, other)
-            distances[key] = distance
-            heapq.heappush(heap, (distance, key[0], key[1]))
-        next_cluster += 1
-
-    ordered = sorted(active, key=lambda cluster: min(members[cluster]))
-    labels = [0] * count
-    for label, cluster in enumerate(ordered):
-        for member in members[cluster]:
-            labels[member] = label
+    nonzero = [index for index, row in enumerate(corpus.matrix) if row]
+    labels = [-1] * len(corpus.matrix)
+    if len(nonzero) < k:
+        return labels
+    dense = _dense_rows(corpus, nonzero)
+    fitted = AgglomerativeClustering(
+        n_clusters=k,
+        metric="cosine",
+        linkage="average",
+    ).fit_predict(dense)
+    for index, label in zip(nonzero, fitted.tolist(), strict=True):
+        labels[index] = int(label)
     return labels
 
 
 def _agglomerative_fit_predict(
-    fitted: _VectorizedCorpus, full: _VectorizedCorpus, k: int
+    fitted: _VectorizedCorpus,
+    full: _VectorizedCorpus,
+    k: int,
+    *,
+    fitted_labels: Sequence[int] | None = None,
 ) -> list[int]:
-    fitted_labels = _agglomerative_assignments(fitted, k)
+    labels = list(fitted_labels) if fitted_labels is not None else _agglomerative_assignments(fitted, k)
     centroid_sums: list[defaultdict[int, float]] = [defaultdict(float) for _ in range(k)]
-    cluster_sizes = Counter(fitted_labels)
-    for sparse_row, label in zip(fitted.matrix, fitted_labels, strict=True):
+    cluster_sizes = Counter(label for label in labels if label >= 0)
+    for sparse_row, label in zip(fitted.matrix, labels, strict=True):
+        if label < 0:
+            continue
         for feature, value in sparse_row.items():
             centroid_sums[label][feature] += value
     centroids: list[dict[int, float]] = []
@@ -1288,12 +1321,15 @@ def _agglomerative_fit_predict(
         )
     fitted_by_passage = {
         row.passage_id: label
-        for row, label in zip(fitted.rows, fitted_labels, strict=True)
+        for row, label in zip(fitted.rows, labels, strict=True)
     }
     output: list[int] = []
     for row, sparse_row in zip(full.rows, full.matrix, strict=True):
         if row.passage_id in fitted_by_passage:
             output.append(fitted_by_passage[row.passage_id])
+            continue
+        if not sparse_row:
+            output.append(-1)
             continue
         output.append(
             max(
@@ -1302,6 +1338,14 @@ def _agglomerative_fit_predict(
             )
         )
     return output
+
+
+def _dense_rows(corpus: _VectorizedCorpus, indices: Sequence[int]) -> np.ndarray:
+    dense = np.zeros((len(indices), len(corpus.vocabulary)), dtype=np.float64)
+    for dense_index, corpus_index in enumerate(indices):
+        for feature, value in corpus.matrix[corpus_index].items():
+            dense[dense_index, feature] = value
+    return dense
 
 
 def _leave_one_deal_out(
@@ -1351,33 +1395,10 @@ def _best_topic_alignment(similarities: Sequence[Sequence[float]]) -> tuple[int,
     )
 
 
-def _adjusted_rand_index(left: Sequence[int], right: Sequence[int]) -> float:
-    if len(left) != len(right):
-        raise ValueError("Cluster label arrays must have equal length.")
-    if len(left) < 2:
-        return 1.0
-    contingency: Counter[tuple[int, int]] = Counter(zip(left, right, strict=True))
-    left_counts = Counter(left)
-    right_counts = Counter(right)
-    combinations = lambda value: value * (value - 1) / 2
-    observed = sum(combinations(value) for value in contingency.values())
-    left_sum = sum(combinations(value) for value in left_counts.values())
-    right_sum = sum(combinations(value) for value in right_counts.values())
-    total = combinations(len(left))
-    expected = (left_sum * right_sum / total) if total else 0.0
-    maximum = (left_sum + right_sum) / 2
-    denominator = maximum - expected
-    return (observed - expected) / denominator if denominator else 1.0
-
-
 def _sparse_dot(left: Mapping[int, float], right: Mapping[int, float]) -> float:
     if len(left) > len(right):
         left, right = right, left
     return sum(value * right.get(index, 0.0) for index, value in left.items())
-
-
-def _pair(left: int, right: int) -> tuple[int, int]:
-    return (left, right) if left < right else (right, left)
 
 
 def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
