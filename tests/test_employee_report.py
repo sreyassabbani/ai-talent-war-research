@@ -5,9 +5,11 @@ import pytest
 
 from tag_edgar.employee_report import (
     TOPIC_REVIEW_FIELDS,
+    assert_deal_claim_links,
     assert_descriptive_claims,
     build_employee_report,
     lint_claims,
+    lint_deal_claim_links,
     write_employee_report,
 )
 
@@ -164,6 +166,10 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert "deal-2" in first.markdown
     assert "no stable topic assignment" in first.markdown
     assert "https://sec.gov/Archives/doc-1.htm" in first.markdown
+    assert "([Employee Matters](https://sec.gov/Archives/doc-1.htm))" in first.markdown
+    deal_lines = [line for line in first.markdown.splitlines() if "deal-1" in line]
+    assert deal_lines
+    assert all("](https://" in line for line in deal_lines)
     assert "descriptive-only" in first.markdown
     assert first.topic_review_rows[0]["representative_passage_ids"] == "p-1|p-2"
     assert first.topic_review_rows[0]["review_status"] == "pending"
@@ -188,11 +194,44 @@ def test_report_rejects_a_passage_source_not_retrieved_for_its_document(tmp_path
     inputs = list(_inputs(tmp_path))
     passages = inputs[1]
     rows = list(csv.DictReader(passages.open(newline="", encoding="utf-8")))
-    rows[0]["source_url"] = "https://example.com/not-the-document"
+    rows[0]["source_url"] = "https://www.sec.gov/Archives/not-the-document.htm"
     _write(passages, list(rows[0]), rows)
 
     with pytest.raises(ValueError, match="does not match"):
         build_employee_report(*inputs, expected_deal_count=2)
+
+
+def test_report_rejects_a_non_sec_source_even_when_document_and_passage_match(
+    tmp_path: Path,
+) -> None:
+    inputs = list(_inputs(tmp_path))
+    documents = inputs[0]
+    passages = inputs[1]
+    topics = inputs[2]
+    document_rows = list(csv.DictReader(documents.open(newline="", encoding="utf-8")))
+    passage_rows = list(csv.DictReader(passages.open(newline="", encoding="utf-8")))
+    topic_rows = list(csv.DictReader(topics.open(newline="", encoding="utf-8")))
+    document_rows[0]["url"] = "https://example.com/document"
+    passage_rows[0]["source_url"] = "https://example.com/document"
+    topic_rows[1]["source_url"] = "https://example.com/document"
+    _write(documents, list(document_rows[0]), document_rows)
+    _write(passages, list(passage_rows[0]), passage_rows)
+    _write(topics, list(topic_rows[0]), topic_rows)
+
+    with pytest.raises(ValueError, match="HTTPS SEC URL"):
+        build_employee_report(*inputs, expected_deal_count=2)
+
+
+def test_deal_claim_link_lint_rejects_unlinked_claims_and_allows_zero_states() -> None:
+    bad = "Buyer–Target (deal-1) disclosed a package."
+    zero = (
+        "Buyer–Target (deal-1) — pipeline zero state; no document-content claim"
+    )
+
+    assert lint_deal_claim_links(bad, {"deal-1"})
+    with pytest.raises(ValueError, match="lack an inline SEC source"):
+        assert_deal_claim_links(bad, {"deal-1"})
+    assert lint_deal_claim_links(zero, {"deal-1"}) == []
 
 
 @pytest.mark.parametrize(

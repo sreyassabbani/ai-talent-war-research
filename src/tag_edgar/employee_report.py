@@ -66,6 +66,12 @@ class ClaimLintIssue:
 
 
 @dataclass(frozen=True)
+class DealClaimLinkIssue:
+    deal_id: str
+    line: str
+
+
+@dataclass(frozen=True)
 class EmployeeReport:
     markdown: str
     topic_review_rows: tuple[dict[str, str], ...]
@@ -149,6 +155,37 @@ def assert_descriptive_claims(text: str) -> None:
     raise ValueError(f"Prohibited research claim(s): {rendered}")
 
 
+def lint_deal_claim_links(markdown: str, deal_ids: set[str]) -> list[DealClaimLinkIssue]:
+    """Find deal-specific report lines without an inline SEC source.
+
+    The sole exception is an explicit pipeline zero state for a deal with no qualifying passage;
+    that is a statement about the analysis table, not the contents of an SEC document.
+    """
+    issues: list[DealClaimLinkIssue] = []
+    for line in markdown.splitlines():
+        if not line.strip() or line.lstrip().startswith(">"):
+            continue
+        for deal_id in sorted(deal_ids):
+            if deal_id not in line:
+                continue
+            if "pipeline zero state; no document-content claim" in line:
+                continue
+            markdown_urls = re.findall(r"\]\((https://[^)]+)\)", line)
+            if any(_is_sec_url(url) for url in markdown_urls):
+                continue
+            issues.append(DealClaimLinkIssue(deal_id=deal_id, line=line))
+    return issues
+
+
+def assert_deal_claim_links(markdown: str, deal_ids: set[str]) -> None:
+    """Reject rendered deal-specific claims that lack an inline SEC citation."""
+    issues = lint_deal_claim_links(markdown, deal_ids)
+    if not issues:
+        return
+    rendered = "; ".join(f"{issue.deal_id}: {issue.line!r}" for issue in issues)
+    raise ValueError(f"Deal-specific claim(s) lack an inline SEC source: {rendered}")
+
+
 def build_employee_report(
     documents_csv: Path,
     passages_csv: Path,
@@ -200,6 +237,7 @@ def build_employee_report(
         representative_limit,
     )
     markdown = "\n\n".join([*authored_sections, representative_section]).rstrip() + "\n"
+    assert_deal_claim_links(markdown, set(deals))
     return EmployeeReport(
         markdown=markdown,
         topic_review_rows=tuple(review_rows),
@@ -252,9 +290,19 @@ def _canonical_url(value: str) -> str:
     if parts.scheme.lower() != "https" or not parts.hostname:
         raise ValueError(f"Source URL must be an absolute HTTPS URL, got {value!r}.")
     host = parts.hostname.lower()
+    if not (host == "sec.gov" or host.endswith(".sec.gov")):
+        raise ValueError(f"Source URL must be an HTTPS SEC URL, got {value!r}.")
     if host in {"sec.gov", "www.sec.gov"}:
         host = "sec.gov"
     return urlunsplit(("https", host, parts.path.rstrip("/"), "", ""))
+
+
+def _is_sec_url(value: str) -> bool:
+    try:
+        _canonical_url(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _validate_passages(
@@ -358,6 +406,7 @@ def _validate_deal_topics(
     if not deal_topics:
         raise ValueError("Deal topics CSV must contain one or more rows.")
     topic_ids = {row["topic_id"] for row in assignments}
+    assigned_deal_topics = {(row["deal_id"], row["topic_id"]) for row in assignments}
     seen: set[tuple[str, str]] = set()
     deals: dict[str, dict[str, str]] = {}
     zero_states: dict[str, list[str]] = defaultdict(list)
@@ -384,6 +433,8 @@ def _validate_deal_topics(
                 raise ValueError(f"Modeled deal/topic row {key} cannot also have zero_state.")
             if topic_id not in topic_ids:
                 raise ValueError(f"Deal/topic row references unknown topic_id={topic_id!r}.")
+            if key not in assigned_deal_topics:
+                raise ValueError(f"Deal/topic row {key} has no source-linked passage assignment.")
         else:
             if not row["zero_state"]:
                 raise ValueError(
@@ -548,6 +599,12 @@ def _authored_report_sections(
     )
 
     passage_counts = Counter(row["deal_id"] for row in passages)
+    passage_sources: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for passage in passages:
+        passage_sources[passage["deal_id"]].append(passage)
+    assignment_sources: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
+    for assignment in assignments:
+        assignment_sources[(assignment["deal_id"], assignment["topic_id"])].append(assignment)
     profile_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
     zero_states: dict[str, str] = {}
     for row in deal_topics:
@@ -563,6 +620,11 @@ def _authored_report_sections(
     for deal_id in sorted(deals):
         deal = deals[deal_id]
         display = _deal_display(deal)
+        deal_passages = sorted(passage_sources.get(deal_id, []), key=lambda row: row["passage_id"])
+        if deal_passages:
+            display = f"{display} {_source_citation(deal_passages[0])}"
+        else:
+            display = f"{display} — pipeline zero state; no document-content claim"
         profiles = sorted(
             profile_rows.get(deal_id, []),
             key=lambda row: (
@@ -571,11 +633,20 @@ def _authored_report_sections(
             ),
         )
         if profiles:
-            profile = "; ".join(
-                f"{row['topic_id']} {_format_percent(row['normalized_weight'])} "
-                f"(primary n={row['primary_passage_count']})"
-                for row in profiles
-            )
+            rendered_profiles: list[str] = []
+            for row in profiles:
+                sources = sorted(
+                    assignment_sources[(deal_id, row["topic_id"])],
+                    key=lambda item: (
+                        -_parse_nonnegative_float(item["topic_weight"], "topic_weight"),
+                        item["passage_id"],
+                    ),
+                )
+                rendered_profiles.append(
+                    f"{row['topic_id']} {_format_percent(row['normalized_weight'])} "
+                    f"(primary n={row['primary_passage_count']}) {_source_citation(sources[0])}"
+                )
+            profile = "; ".join(rendered_profiles)
             coverage_state = "modeled"
         else:
             profile = "—"
@@ -616,11 +687,10 @@ def _representative_passage_section(
         for index, assignment in enumerate(_representatives(rows, representative_limit), start=1):
             passage = passage_by_id[assignment["passage_id"]]
             deal = deals[passage["deal_id"]]
-            heading = passage["heading"] or "heading unavailable"
             excerpt = _excerpt(passage["text"])
             lines.append(
                 f"{index}. {_escape_inline(_deal_display(deal))} — "
-                f"[{_escape_inline(heading)}]({passage['source_url']}) "
+                f"{_source_citation(passage)} "
                 f"(passage `{passage['passage_id']}`)\n\n> {excerpt}"
             )
     return "\n\n".join(lines)
@@ -638,6 +708,11 @@ def _deal_display(deal: dict[str, str]) -> str:
 
 def _format_percent(value: str) -> str:
     return f"{_parse_nonnegative_float(value, 'normalized_weight') * 100:.1f}%"
+
+
+def _source_citation(row: dict[str, str]) -> str:
+    heading = row.get("heading", "") or "exact SEC document"
+    return f"([{_escape_inline(heading)}]({row['source_url']}))"
 
 
 def _excerpt(value: str, limit: int = 360) -> str:
