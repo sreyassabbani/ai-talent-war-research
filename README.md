@@ -88,6 +88,19 @@ uv run tag-edgar make-pilot-queue data/derived/deal_catalog.csv \
   --start 2021-01-01 --end 2022-12-31 --limit 20
 ```
 
+After the pilot, inspect validation-sample readiness without freezing a sample or contacting SEC:
+
+```sh
+uv run tag-edgar preview-validation-sample data/derived/deal_catalog.csv \
+  --limit 40 --exclude-deals-csv data/derived/pilot_review_queue.csv
+```
+
+This writes local, ignored eligibility and stratum diagnostics plus a deterministic candidate
+preview. Every preview row remains `not_frozen`; sample freeze and retrieval are gated on supervisor
+acceptance of the proposed deal-level unit of analysis. See
+[`docs/validation_sample_preflight.md`](docs/validation_sample_preflight.md) for the prespecified
+checks and interpretation limits.
+
 For each chosen row, verify the acquirer CIK and, when the target is a public SEC registrant, the
 target CIK. Decide whether the deal belongs in the supervisor-approved technology scope and set
 the review columns deliberately:

@@ -26,6 +26,7 @@ from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
 from .storage import write_csv, write_dict_csv
 from .technology import load_technology_screen
+from .validation_sample import build_validation_preflight, write_validation_preflight
 from .windows import event_window
 
 app = typer.Typer(help="Enrich SDC/LSEG acquisition events with traceable EDGAR documents.")
@@ -184,6 +185,50 @@ def make_pilot_queue(
     )
     write_dict_csv(output_csv, rows, CATALOG_FIELDS)
     typer.echo(f"Wrote {len(rows)} pilot candidates to {output_csv}")
+
+
+@app.command("preview-validation-sample")
+def preview_validation_sample(
+    catalog_csv: Path = typer.Argument(
+        ..., exists=True, readable=True, help="Local licensed deal catalog; never uploaded."
+    ),
+    technology_screen: Path = typer.Option(
+        PROJECT_ROOT / "config" / "technology_sic.toml",
+        exists=True,
+        readable=True,
+        help="Versioned target-SIC inclusion rules.",
+    ),
+    limit: int = typer.Option(40, min=30, max=50, help="Candidate preview size."),
+    seed: str = typer.Option("validation-preview-v1", help="Deterministic selection seed."),
+    exclude_deals_csv: Path | None = typer.Option(
+        None,
+        exists=True,
+        readable=True,
+        help="Optional prior pilot/review CSV whose deal IDs must remain outside the preview.",
+    ),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "validation_sample_preflight"
+    ),
+) -> None:
+    """Write a not-frozen validation preview; never retrieve filings or accept the design."""
+    default_exclusions = PROJECT_ROOT / "data" / "derived" / "pilot_review_queue.csv"
+    selected_exclusions = exclude_deals_csv or (
+        default_exclusions if default_exclusions.exists() else None
+    )
+    preflight = build_validation_preflight(
+        catalog_csv,
+        load_technology_screen(technology_screen),
+        limit=limit,
+        seed=seed,
+        excluded_deals_csv=selected_exclusions,
+    )
+    write_validation_preflight(output_dir, preflight)
+    typer.echo("Validation sample status: not_frozen")
+    typer.echo(f"Catalog logical deal rows: {preflight.manifest['catalog_logical_deal_rows']}")
+    typer.echo(f"Eligible preview candidates: {preflight.manifest['eligible_candidate_count']}")
+    typer.echo(f"Preview rows: {preflight.manifest['preview_count']}")
+    typer.echo("Supervisor unit-of-analysis gate: pending")
+    typer.echo(f"Wrote read-only preflight artifacts to {output_dir}")
 
 
 @app.command("run-reviewed-pilot")
