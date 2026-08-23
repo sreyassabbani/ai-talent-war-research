@@ -65,6 +65,7 @@ def _model_config() -> TopicModelConfig:
         min_topic_families=2,
         min_topic_deals=2,
         nmf_iterations=50,
+        bootstrap_replicates=8,
     )
 
 
@@ -129,6 +130,37 @@ def test_topic_model_is_deterministic() -> None:
     second = analyze_employee_topics(reversed(corpus), config)
 
     assert first == second
+    assert len(first.bootstrap_stability) == 8 * len(first.topics)
+    assert all(row.replicate_count == 8 for row in first.bootstrap_summary)
+
+
+def test_bootstrap_reports_fixed_seed_cosine_recovery_without_changing_fit_universe() -> None:
+    corpus = _synthetic_corpus()
+    config = replace(_model_config(), bootstrap_replicates=5)
+
+    result = analyze_employee_topics(corpus, config)
+
+    assert len(result.bootstrap_stability) == 5 * len(result.topics)
+    assert [row.topic_id for row in result.bootstrap_summary] == [
+        topic.topic_id for topic in result.topics
+    ]
+    assert all(row.replicate_count == 5 for row in result.bootstrap_summary)
+    assert all(
+        row.recurrence_count
+        == sum(
+            replicate.recovered
+            for replicate in result.bootstrap_stability
+            if replicate.topic_id == row.topic_id
+        )
+        for row in result.bootstrap_summary
+    )
+    overall = next(
+        row
+        for row in result.diagnostics
+        if row.stage == "bootstrap_stability" and row.name == "overall_recovery_rate"
+    )
+    assert "not a topic-selection or relabeling rule" in overall.detail
+    assert "preserving every deal's fit-row count" in overall.detail
 
 
 def test_fit_sample_is_bounded_but_all_passages_receive_assignments() -> None:

@@ -163,6 +163,20 @@ STABILITY_FIELDS = [
     "cosine_similarity",
     "recovered",
 ]
+BOOTSTRAP_STABILITY_FIELDS = [
+    "replicate_id",
+    "topic_id",
+    "aligned_topic_id",
+    "cosine_similarity",
+    "recovered",
+]
+BOOTSTRAP_SUMMARY_FIELDS = [
+    "topic_id",
+    "replicate_count",
+    "recurrence_count",
+    "recovery_rate",
+    "median_cosine_similarity",
+]
 
 
 @dataclass(frozen=True)
@@ -1351,17 +1365,54 @@ def analyze_employee_topics_workflow(
             for row in result.stability
         ),
     )
+    _write_rows(
+        output_dir / "bootstrap_stability.csv",
+        BOOTSTRAP_STABILITY_FIELDS,
+        (
+            {
+                **asdict(row),
+                "cosine_similarity": _format_number(row.cosine_similarity),
+                "recovered": str(row.recovered).lower(),
+            }
+            for row in result.bootstrap_stability
+        ),
+    )
+    _write_rows(
+        output_dir / "bootstrap_summary.csv",
+        BOOTSTRAP_SUMMARY_FIELDS,
+        (
+            {
+                **asdict(row),
+                "recovery_rate": _format_number(row.recovery_rate),
+                "median_cosine_similarity": _format_number(row.median_cosine_similarity),
+            }
+            for row in result.bootstrap_summary
+        ),
+    )
     heatmap_path = output_dir / "deal_topic_heatmap.svg"
     heatmap_path.parent.mkdir(parents=True, exist_ok=True)
     heatmap_path.write_text(_heatmap_svg(deals, result, deal_topic_rows), encoding="utf-8")
     manifest: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": result.status,
         "reason": result.reason,
         "review_sha256": _file_sha256(review_csv),
         "passages_sha256": _file_sha256(passages_path),
         "passage_sources_sha256": _file_sha256(sources_path),
         "config": asdict(config),
+        "bootstrap_design": {
+            "purpose": "complementary_robustness_diagnostic_not_model_selection",
+            "sampling_unit": "deal_provision_family_representative",
+            "sampling_scope": "within_deal",
+            "replacement": True,
+            "per_deal_sample_size": "preserve_original_fit_row_count",
+            "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+            "vocabulary": "fixed_from_full_fit",
+            "projected_passages_included": False,
+            "seed_formula": "config.seed + 1700003 + replicate_id",
+            "alignment": "one_to_one_maximum_total_cosine",
+            "recovery_cosine_threshold": config.stability_threshold,
+        },
         "selected_deal_ids": [deal["deal_id"] for deal in deals],
         "topic_count": len(result.topics),
         "canonical_assignment_count": len(result.assignments),

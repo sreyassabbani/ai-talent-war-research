@@ -212,9 +212,16 @@ uv run tag-edgar summarize-employee-topics \
 ```
 
 The analysis writes canonical and source-propagated assignments, a complete deal-topic matrix,
-diagnostics, sensitivity/stability tables, a JSON manifest, and an SVG heatmap. Deals without a
-stable assignment remain in the matrix with an explicit zero state. The final Markdown report and
-`topic_review.csv` are interpretation aids; topic labels still require human review.
+diagnostics, sensitivity/stability tables, a JSON manifest, and an SVG heatmap. The stability
+artifacts include leave-one-deal-out results plus a prespecified 100-replicate fixed-seed bootstrap:
+the existing deal-balanced fit universe is resampled by provision-family representative within
+each deal, with replacement and each deal's fit-row count held constant. Components are aligned
+one-to-one by cosine similarity; `bootstrap_stability.csv` records every replicate and
+`bootstrap_summary.csv` reports per-topic recurrence, recovery share at cosine >= 0.70, and median
+cosine. The bootstrap is a complementary robustness diagnostic, not a model-selection or
+post-hoc relabeling rule. Deals without a stable assignment remain in the matrix with an explicit
+zero state. The final Markdown report and `topic_review.csv` are interpretation aids; topic labels
+still require human review.
 
 Prepare that review offline from the canonical analysis rows (not the source-propagated copies):
 

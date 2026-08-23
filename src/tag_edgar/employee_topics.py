@@ -165,6 +165,8 @@ class TopicModelConfig:
     nmf_iterations: int = 20
     projection_iterations: int = 6
     stability_iterations: int = 12
+    bootstrap_replicates: int = 100
+    bootstrap_iterations: int = 12
     reconstruction_tolerance: float = 0.25
     coherence_tolerance: float = 0.15
     min_topic_coherence: float = 0.0
@@ -233,6 +235,24 @@ class StabilityRow:
 
 
 @dataclass(frozen=True)
+class BootstrapStabilityRow:
+    replicate_id: int
+    topic_id: str
+    aligned_topic_id: str
+    cosine_similarity: float
+    recovered: bool
+
+
+@dataclass(frozen=True)
+class BootstrapSummaryRow:
+    topic_id: str
+    replicate_count: int
+    recurrence_count: int
+    recovery_rate: float
+    median_cosine_similarity: float
+
+
+@dataclass(frozen=True)
 class EmployeeTopicResult:
     status: str
     reason: str | None
@@ -242,6 +262,8 @@ class EmployeeTopicResult:
     diagnostics: tuple[DiagnosticRow, ...]
     sensitivity_assignments: tuple[SensitivityAssignmentRow, ...]
     stability: tuple[StabilityRow, ...]
+    bootstrap_stability: tuple[BootstrapStabilityRow, ...] = ()
+    bootstrap_summary: tuple[BootstrapSummaryRow, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -576,6 +598,8 @@ def analyze_employee_topics(
     )
 
     stability = _leave_one_deal_out(corpus, selected, config)
+    bootstrap_stability = _bootstrap_stability(corpus, selected, config)
+    bootstrap_summary = _bootstrap_summary(bootstrap_stability, selected.k)
     topics = _topic_rows(full_corpus, full_fit, stability)
     diagnostics.extend(_topic_quality_diagnostics(topics, config))
     recovered = [row.recovered for row in stability]
@@ -594,6 +618,36 @@ def analyze_employee_topics(
             f"recover in at least {config.min_topic_recovery_rate:.0%} of folds.",
         )
     )
+    bootstrap_rates = [row.recovery_rate for row in bootstrap_summary]
+    diagnostics.extend(
+        DiagnosticRow(
+            "bootstrap_stability",
+            f"{row.topic_id}_recovery_rate",
+            row.recovery_rate,
+            "pass" if row.recovery_rate >= config.min_topic_recovery_rate else "warning",
+            f"Fixed-seed within-deal family bootstrap; cosine >= "
+            f"{config.stability_threshold:.2f}; {row.recurrence_count}/{row.replicate_count} "
+            "replicates recovered the aligned component.",
+        )
+        for row in bootstrap_summary
+    )
+    diagnostics.append(
+        DiagnosticRow(
+            "bootstrap_stability",
+            "overall_recovery_rate",
+            sum(row.recurrence_count for row in bootstrap_summary)
+            / sum(row.replicate_count for row in bootstrap_summary)
+            if bootstrap_summary
+            else 0.0,
+            "pass"
+            if bootstrap_rates
+            and all(rate >= config.min_topic_recovery_rate for rate in bootstrap_rates)
+            else "warning",
+            "Complementary robustness diagnostic only, not a topic-selection or relabeling rule; "
+            "family representatives are resampled with replacement within each deal while "
+            "preserving every deal's fit-row count and the original fitted vocabulary.",
+        )
+    )
     return EmployeeTopicResult(
         status="modeled",
         reason=None,
@@ -603,6 +657,8 @@ def analyze_employee_topics(
         diagnostics=tuple(diagnostics),
         sensitivity_assignments=sensitivity_rows,
         stability=stability,
+        bootstrap_stability=bootstrap_stability,
+        bootstrap_summary=bootstrap_summary,
     )
 
 
@@ -627,6 +683,8 @@ def _validate_config(config: TopicModelConfig) -> None:
         config.nmf_iterations,
         config.projection_iterations,
         config.stability_iterations,
+        config.bootstrap_replicates,
+        config.bootstrap_iterations,
         config.max_fit_passages,
     ) < 1:
         raise ValueError("Iteration and fit-sample limits must be positive.")
@@ -1381,6 +1439,81 @@ def _leave_one_deal_out(
                     recovered=similarity >= config.stability_threshold,
                 )
             )
+    return tuple(output)
+
+
+def _bootstrap_stability(
+    corpus: _VectorizedCorpus, full_fit: _NmfFit, config: TopicModelConfig
+) -> tuple[BootstrapStabilityRow, ...]:
+    """Refit NMF on within-deal bootstrap samples of the fixed family-level fit universe.
+
+    ``corpus`` contains at most one passage per deal/provision family. Each replicate samples
+    exactly the original number of rows for every deal, with replacement, so no large deal can
+    gain share through the bootstrap and no projected or held-out passage can leak into fitting.
+    The vocabulary and IDF weights remain those of the prespecified full fit.
+    """
+    by_deal: dict[str, tuple[int, ...]] = {}
+    for deal_id in sorted({row.deal_id for row in corpus.rows}):
+        by_deal[deal_id] = tuple(
+            index for index, row in enumerate(corpus.rows) if row.deal_id == deal_id
+        )
+
+    output: list[BootstrapStabilityRow] = []
+    bootstrap_config = replace(config, nmf_iterations=config.bootstrap_iterations)
+    for replicate_id in range(1, config.bootstrap_replicates + 1):
+        replicate_seed = config.seed + 1_700_003 + replicate_id
+        generator = random.Random(replicate_seed)
+        sampled_indices = [
+            indices[generator.randrange(len(indices))]
+            for deal_id in sorted(by_deal)
+            for indices in (by_deal[deal_id],)
+            for _ in range(len(indices))
+        ]
+        sampled_matrix = tuple(corpus.matrix[index] for index in sampled_indices)
+        _, sampled_components, _ = _nmf(
+            sampled_matrix,
+            len(corpus.vocabulary),
+            full_fit.k,
+            replicate_seed + 10_000_019,
+            bootstrap_config,
+        )
+        similarities = [
+            [_cosine(full, sampled) for sampled in sampled_components]
+            for full in full_fit.components
+        ]
+        alignment = _best_topic_alignment(similarities)
+        for topic, aligned in enumerate(alignment):
+            similarity = similarities[topic][aligned]
+            output.append(
+                BootstrapStabilityRow(
+                    replicate_id=replicate_id,
+                    topic_id=f"topic_{topic + 1}",
+                    aligned_topic_id=f"bootstrap_topic_{aligned + 1}",
+                    cosine_similarity=similarity,
+                    recovered=similarity >= config.stability_threshold,
+                )
+            )
+    return tuple(output)
+
+
+def _bootstrap_summary(
+    rows: Sequence[BootstrapStabilityRow], k: int
+) -> tuple[BootstrapSummaryRow, ...]:
+    output: list[BootstrapSummaryRow] = []
+    for topic in range(k):
+        topic_id = f"topic_{topic + 1}"
+        selected = [row for row in rows if row.topic_id == topic_id]
+        similarities = sorted(row.cosine_similarity for row in selected)
+        recurrence_count = sum(row.recovered for row in selected)
+        output.append(
+            BootstrapSummaryRow(
+                topic_id=topic_id,
+                replicate_count=len(selected),
+                recurrence_count=recurrence_count,
+                recovery_rate=recurrence_count / len(selected) if selected else 0.0,
+                median_cosine_similarity=_median(similarities) if similarities else 0.0,
+            )
+        )
     return tuple(output)
 
 

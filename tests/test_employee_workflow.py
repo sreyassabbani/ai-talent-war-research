@@ -188,9 +188,25 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     assert (analysis_dir / "deal_topic_heatmap.svg").read_text(encoding="utf-8").startswith(
         '<svg xmlns="http://www.w3.org/2000/svg"'
     )
-    assert json.loads((analysis_dir / "analysis_manifest.json").read_text())["status"] == (
-        "modeled"
-    )
+    analysis_manifest = json.loads((analysis_dir / "analysis_manifest.json").read_text())
+    assert analysis_manifest["status"] == "modeled"
+    assert analysis_manifest["schema_version"] == 2
+    assert analysis_manifest["config"]["bootstrap_replicates"] == 100
+    assert analysis_manifest["bootstrap_design"] == {
+        "alignment": "one_to_one_maximum_total_cosine",
+        "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+        "per_deal_sample_size": "preserve_original_fit_row_count",
+        "projected_passages_included": False,
+        "purpose": "complementary_robustness_diagnostic_not_model_selection",
+        "recovery_cosine_threshold": 0.7,
+        "replacement": True,
+        "sampling_scope": "within_deal",
+        "sampling_unit": "deal_provision_family_representative",
+        "seed_formula": "config.seed + 1700003 + replicate_id",
+        "vocabulary": "fixed_from_full_fit",
+    }
+    assert _rows(analysis_dir / "bootstrap_stability.csv") == []
+    assert _rows(analysis_dir / "bootstrap_summary.csv") == []
 
     report_summary = summarize_employee_topics_workflow(
         review, corpus_dir, analysis_dir, report_dir
