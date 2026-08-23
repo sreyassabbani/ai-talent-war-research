@@ -11,6 +11,12 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, T
 from .audit import SUMMARY_FIELDS, pilot_audit_rows
 from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
+from .employee_topics import TopicModelConfig
+from .employee_workflow import (
+    analyze_employee_topics_workflow,
+    build_employee_corpus_workflow,
+    summarize_employee_topics_workflow,
+)
 from .entity_matches import count_deal_seeds, resolve_seed_file
 from .ingest import load_column_map, read_deal_seeds
 from .models import Deal
@@ -238,6 +244,89 @@ def summarize_pilot(
     rows = pilot_audit_rows(review_csv, runs_dir, manual_coding_csv)
     write_dict_csv(output_csv, rows, SUMMARY_FIELDS)
     typer.echo(f"Wrote {len(rows)} per-deal audit rows to {output_csv}")
+
+
+@app.command("build-employee-corpus")
+def build_employee_corpus_command(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    runs_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_corpus"),
+    cache_dir: Path | None = typer.Option(
+        None,
+        exists=True,
+        file_okay=False,
+        help="SEC cache directory; defaults to TAG_EDGAR_CACHE_DIR or cache/http.",
+    ),
+    context_blocks: int = typer.Option(1, min=0),
+    max_block_words: int = typer.Option(220, min=20),
+) -> None:
+    """Build a source-linked employee passage corpus from the reviewed pilot cache."""
+    selected_cache = cache_dir or load_settings(require_user_agent=False).cache_dir
+    summary = build_employee_corpus_workflow(
+        review_csv,
+        runs_dir,
+        output_dir,
+        selected_cache,
+        context_blocks=context_blocks,
+        max_block_words=max_block_words,
+    )
+    typer.echo(f"Corpus status: {summary.status}")
+    for label, count in summary.counts.items():
+        typer.echo(f"{label}: {count}")
+    typer.echo(f"Wrote {summary.output_dir}")
+
+
+@app.command("analyze-employee-topics")
+def analyze_employee_topics_command(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    corpus_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_topics"),
+    seed: int = typer.Option(1729),
+    min_passages: int = typer.Option(75, min=1),
+    min_deals: int = typer.Option(3, min=1),
+    k_min: int = typer.Option(3, min=2),
+    k_max: int = typer.Option(7, min=2),
+) -> None:
+    """Fit deterministic topics and propagate assignments through every passage source."""
+    config = TopicModelConfig(
+        seed=seed,
+        min_passages=min_passages,
+        min_deals=min_deals,
+        k_min=k_min,
+        k_max=k_max,
+    )
+    summary = analyze_employee_topics_workflow(
+        review_csv,
+        corpus_dir,
+        output_dir,
+        config=config,
+    )
+    typer.echo(f"Analysis status: {summary.status}")
+    for label, count in summary.counts.items():
+        typer.echo(f"{label}: {count}")
+    typer.echo(f"Wrote {summary.output_dir}")
+
+
+@app.command("summarize-employee-topics")
+def summarize_employee_topics_command(
+    review_csv: Path = typer.Argument(..., exists=True, readable=True),
+    corpus_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    analysis_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_report"),
+    representative_limit: int = typer.Option(3, min=1),
+) -> None:
+    """Validate model artifacts and write the descriptive report and review queue."""
+    summary = summarize_employee_topics_workflow(
+        review_csv,
+        corpus_dir,
+        analysis_dir,
+        output_dir,
+        representative_limit=representative_limit,
+    )
+    typer.echo(f"Report gate: {summary.status}")
+    for label, count in summary.counts.items():
+        typer.echo(f"{label}: {count}")
+    typer.echo(f"Wrote {summary.output_dir}")
 
 
 @app.command()

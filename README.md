@@ -148,3 +148,33 @@ two `manual_*_review_status` columns exist to prevent that inference.
 
 Evidence matching uses token boundaries, records every distinct occurrence with character offsets,
 and prefers the longest configured phrase when patterns overlap at the same position.
+
+## Employee-text topic pilot
+
+Build the employee-related passage corpus from the same reviewed deals and cache. This command is
+offline: a missing cached body is recorded in `document_texts.csv` instead of being downloaded.
+
+```sh
+uv run tag-edgar build-employee-corpus \
+  data/derived/pilot_review_queue.csv data/derived/pilot_runs
+```
+
+The corpus output preserves canonical passages in `passages.csv` and every deal/document source
+location in `passage_sources.csv`. It also assigns deterministic near-duplicate provision families
+so repeated legal language does not count as independent document-family support.
+
+Run the deterministic topic model and diagnostics, then build the descriptive report:
+
+```sh
+uv run tag-edgar analyze-employee-topics \
+  data/derived/pilot_review_queue.csv data/derived/employee_corpus
+
+uv run tag-edgar summarize-employee-topics \
+  data/derived/pilot_review_queue.csv \
+  data/derived/employee_corpus data/derived/employee_topics
+```
+
+The analysis writes canonical and source-propagated assignments, a complete deal-topic matrix,
+diagnostics, sensitivity/stability tables, a JSON manifest, and an SVG heatmap. Deals without a
+stable assignment remain in the matrix with an explicit zero state. The final Markdown report and
+`topic_review.csv` are interpretation aids; topic labels still require human review.
