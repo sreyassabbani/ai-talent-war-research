@@ -10,6 +10,7 @@ from tag_edgar.employee_report import (
     build_employee_report,
     lint_claims,
     lint_deal_claim_links,
+    lint_representative_passage,
     write_employee_report,
 )
 
@@ -171,7 +172,10 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert deal_lines
     assert all("](https://" in line for line in deal_lines)
     assert "descriptive-only" in first.markdown
-    assert first.topic_review_rows[0]["representative_passage_ids"] == "p-1|p-2"
+    assert first.topic_review_rows[0]["representative_passage_ids"] == "p-1"
+    assert first.topic_review_rows[0]["passage_count"] == "1"
+    assert first.topic_review_rows[0]["deal_count"] == "1"
+    assert first.topic_review_rows[0]["representative_quality_status"] == "pass"
     assert first.topic_review_rows[0]["review_status"] == "pending"
 
 
@@ -183,6 +187,28 @@ def test_failed_diagnostic_produces_an_explicit_fail_verdict(tmp_path: Path) -> 
     assert report.gate_passed is False
     assert "**FAIL**" in report.markdown
     assert "do not present it as a validated taxonomy" in report.markdown
+
+
+def test_non_substantive_representative_forces_gate_failure_and_withholds_taxonomy(
+    tmp_path: Path,
+) -> None:
+    inputs = list(_inputs(tmp_path))
+    passages = inputs[1]
+    rows = list(csv.DictReader(passages.open(newline="", encoding="utf-8")))
+    rows[0]["heading"] = "Chief Executive Officer"
+    rows[0]["text"] = "We lost you Franco."
+    _write(passages, list(rows[0]), rows)
+
+    report = build_employee_report(*inputs, expected_deal_count=2)
+
+    assert report.gate_passed is False
+    assert "report_quality / representative_substantiveness: FAIL" in report.markdown
+    assert "diagnostic assignments; taxonomy withheld" in report.markdown
+    assert "discovered topics" not in report.markdown
+    assert report.topic_review_rows[0]["representative_quality_status"] == "fail"
+    assert "call_transcript_noise" in report.topic_review_rows[0][
+        "representative_quality_notes"
+    ]
 
 
 def test_report_requires_the_complete_deal_roster(tmp_path: Path) -> None:
@@ -258,6 +284,35 @@ def test_claim_lint_allows_explicit_limitations_and_quoted_sources() -> None:
     )
 
     assert lint_claims(text) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "heading", "reason"),
+    [
+        ("We lost you Franco.", "CEO", "call_transcript_noise"),
+        (") Stock-Based Compensation ($",
+            "(in millions)",
+            "generic_accounting_noise",
+        ),
+        (
+            "Name: Paul Viera Title: Chief Executive Officer Address:",
+            "EARNEST PARTNERS",
+            "title_or_contact_block",
+        ),
+    ],
+)
+def test_representative_lint_detects_known_report_noise(
+    text: str, heading: str, reason: str
+) -> None:
+    assert reason in lint_representative_passage(text, heading)
+
+
+def test_representative_lint_accepts_substantive_employee_term() -> None:
+    text = (
+        "Upon closing, employees will receive the value of vested restricted stock units in cash."
+    )
+
+    assert lint_representative_passage(text, "Restricted Stock Units") == []
 
 
 def test_writer_emits_markdown_and_review_csv(tmp_path: Path) -> None:

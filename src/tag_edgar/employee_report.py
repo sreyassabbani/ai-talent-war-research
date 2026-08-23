@@ -18,6 +18,9 @@ TOPIC_REVIEW_FIELDS = [
     "representative_source_urls",
     "model_coherence",
     "stability_recovery_rate",
+    "substantive_representative_count",
+    "representative_quality_status",
+    "representative_quality_notes",
     "reviewer_topic_label",
     "coherence_score_1_to_5",
     "reviewer_id",
@@ -56,6 +59,39 @@ _DIAGNOSTIC_FIELDS = {"stage", "name", "value", "status", "detail"}
 _DIAGNOSTIC_STATUSES = {"pass", "fail", "warning", "not_applicable"}
 _TRUE_VALUES = {"1", "true", "yes"}
 _FALSE_VALUES = {"0", "false", "no"}
+_WORD = re.compile(r"[A-Za-z][A-Za-z'-]*")
+_SUBSTANTIVE_EMPLOYEE_LANGUAGE = re.compile(
+    r"\b(?:employee|employees|employment|worker|workers|retention|retain|retained|bonus|"
+    r"benefit|benefits|severance|equity|stock options?|restricted stock|rsus?|award|awards|"
+    r"vesting|vested|continued service|salary|salaries|wage|wages|incentive|incentives|"
+    r"termination|terminated|key personnel)\b",
+    re.IGNORECASE,
+)
+_SUBSTANTIVE_ACTION = re.compile(
+    r"\b(?:shall|will|must|may|receive|eligible|continue|remain|vest|vested|convert|converted|"
+    r"pay|paid|provide|provided|terminate|terminated|assume|assumed|retain|retained|forfeit|"
+    r"forfeited|accelerate|accelerated|describes?|requires?|excludes?)\b",
+    re.IGNORECASE,
+)
+_CALL_TRANSCRIPT_NOISE = re.compile(
+    r"\b(?:we lost you|can you hear|conference call|question-and-answer session|"
+    r"good (?:morning|afternoon)|thank you,? operator)\b",
+    re.IGNORECASE,
+)
+_ACCOUNTING_NOISE = re.compile(
+    r"\b(?:stock-based compensation|compensation expense|non-gaap|gaap|in millions|"
+    r"fiscal quarter|q[1-4])\b",
+    re.IGNORECASE,
+)
+_ARRANGEMENT_DETAIL = re.compile(
+    r"\b(?:employee|employment|retention|bonus|benefit|severance|vesting|vested|award|"
+    r"option|rsu|eligible|receive|converted|continued service|termination)\b",
+    re.IGNORECASE,
+)
+_TITLE_OR_CONTACT_NOISE = re.compile(
+    r"\b(?:name:|title:|address:|chief executive officer|chief financial officer)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -186,6 +222,33 @@ def assert_deal_claim_links(markdown: str, deal_ids: set[str]) -> None:
     raise ValueError(f"Deal-specific claim(s) lack an inline SEC source: {rendered}")
 
 
+def lint_representative_passage(text: str, heading: str = "") -> list[str]:
+    """Return deterministic reasons a candidate representative is not substantive.
+
+    This is deliberately conservative: it does not decide whether a passage belongs in the
+    corpus. It only prevents terse fragments, generic accounting rows, speaker glitches, and
+    signature/contact blocks from standing in for an interpretable topic.
+    """
+    normalized = " ".join(f"{heading} {text}".split())
+    body = " ".join(text.split())
+    reasons: list[str] = []
+    has_employee_language = bool(_SUBSTANTIVE_EMPLOYEE_LANGUAGE.search(normalized))
+    has_action = bool(_SUBSTANTIVE_ACTION.search(body))
+    if len(_WORD.findall(body)) < 8 and not (has_employee_language and has_action):
+        reasons.append("too_short")
+    if _CALL_TRANSCRIPT_NOISE.search(normalized):
+        reasons.append("call_transcript_noise")
+    if _ACCOUNTING_NOISE.search(normalized) and not _ARRANGEMENT_DETAIL.search(body):
+        reasons.append("generic_accounting_noise")
+    if _TITLE_OR_CONTACT_NOISE.search(normalized) and not _SUBSTANTIVE_ACTION.search(body):
+        reasons.append("title_or_contact_block")
+    if not has_employee_language:
+        reasons.append("no_substantive_employee_language")
+    if not has_action:
+        reasons.append("no_substantive_action")
+    return reasons
+
+
 def build_employee_report(
     documents_csv: Path,
     passages_csv: Path,
@@ -218,14 +281,25 @@ def build_employee_report(
         assignments,
         expected_deal_count,
     )
-    gate_passed = _validate_diagnostics(diagnostics)
+    _validate_diagnostics(diagnostics)
+    quality_diagnostic, representative_quality = _representative_quality_diagnostic(
+        assignments,
+        passage_by_id,
+        representative_limit,
+    )
+    report_diagnostics = [*diagnostics, quality_diagnostic]
+    gate_passed = all(row["status"].lower() == "pass" for row in report_diagnostics)
 
-    review_rows = _topic_review_rows(assignments, representative_limit)
+    review_rows = _topic_review_rows(
+        assignments,
+        representative_limit,
+        representative_quality,
+    )
     authored_sections = _authored_report_sections(
         passages,
         assignments,
         deal_topics,
-        diagnostics,
+        report_diagnostics,
         deals,
         gate_passed,
     )
@@ -495,7 +569,9 @@ def _validate_diagnostics(diagnostics: list[dict[str, str]]) -> bool:
 
 
 def _topic_review_rows(
-    assignments: list[dict[str, str]], representative_limit: int
+    assignments: list[dict[str, str]],
+    representative_limit: int,
+    representative_quality: dict[str, dict[str, list[str]]],
 ) -> list[dict[str, str]]:
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in assignments:
@@ -504,14 +580,20 @@ def _topic_review_rows(
     for topic_id in sorted(grouped):
         rows = grouped[topic_id]
         representatives = _representatives(rows, representative_limit)
+        primary_rows = [
+            row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")
+        ]
+        quality = representative_quality[topic_id]
+        substantive_count = sum(not reasons for reasons in quality.values())
+        required_count = min(2, len(representatives))
         first = rows[0]
         output.append(
             {
                 "topic_id": topic_id,
                 "method": first.get("method", "nmf") or "nmf",
                 "top_terms": first["top_terms"],
-                "passage_count": str(len({row["passage_id"] for row in rows})),
-                "deal_count": str(len({row["deal_id"] for row in rows})),
+                "passage_count": str(len({row["passage_id"] for row in primary_rows})),
+                "deal_count": str(len({row["deal_id"] for row in primary_rows})),
                 "representative_passage_ids": "|".join(
                     row["passage_id"] for row in representatives
                 ),
@@ -520,6 +602,14 @@ def _topic_review_rows(
                 ),
                 "model_coherence": first.get("coherence", ""),
                 "stability_recovery_rate": first.get("stability_recovery_rate", ""),
+                "substantive_representative_count": str(substantive_count),
+                "representative_quality_status": (
+                    "pass" if substantive_count >= required_count else "fail"
+                ),
+                "representative_quality_notes": "|".join(
+                    f"{passage_id}:{'+'.join(reasons) if reasons else 'substantive'}"
+                    for passage_id, reasons in quality.items()
+                ),
                 "reviewer_topic_label": "",
                 "coherence_score_1_to_5": "",
                 "reviewer_id": "",
@@ -533,10 +623,12 @@ def _topic_review_rows(
 def _representatives(
     rows: list[dict[str, str]], representative_limit: int
 ) -> list[dict[str, str]]:
+    primary_rows = [
+        row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")
+    ]
     ordered = sorted(
-        rows,
+        primary_rows,
         key=lambda row: (
-            not _parse_bool(row["primary_topic"], "primary_topic"),
             -_parse_nonnegative_float(row["topic_weight"], "topic_weight"),
             row["passage_id"],
         ),
@@ -551,6 +643,59 @@ def _representatives(
         if len(representatives) == representative_limit:
             break
     return representatives
+
+
+def _representative_quality_diagnostic(
+    assignments: list[dict[str, str]],
+    passage_by_id: dict[str, dict[str, str]],
+    representative_limit: int,
+) -> tuple[dict[str, str], dict[str, dict[str, list[str]]]]:
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in assignments:
+        grouped[row["topic_id"]].append(row)
+    quality: dict[str, dict[str, list[str]]] = {}
+    passing_topics = 0
+    failures: list[str] = []
+    for topic_id in sorted(grouped):
+        representatives = _representatives(grouped[topic_id], representative_limit)
+        topic_quality: dict[str, list[str]] = {}
+        for assignment in representatives:
+            passage = passage_by_id[assignment["passage_id"]]
+            topic_quality[assignment["passage_id"]] = lint_representative_passage(
+                passage["text"], passage["heading"]
+            )
+        quality[topic_id] = topic_quality
+        substantive_count = sum(not reasons for reasons in topic_quality.values())
+        required_count = min(2, len(representatives))
+        if required_count and substantive_count >= required_count:
+            passing_topics += 1
+        else:
+            rendered_reasons = ", ".join(
+                f"{passage_id}={'+'.join(reasons) if reasons else 'substantive'}"
+                for passage_id, reasons in topic_quality.items()
+            ) or "no primary representatives"
+            failures.append(
+                f"{topic_id} ({substantive_count}/{required_count} substantive; "
+                f"{rendered_reasons})"
+            )
+    total_topics = len(grouped)
+    passed = bool(total_topics) and passing_topics == total_topics
+    detail = (
+        "Every candidate topic requires two substantive primary-topic representatives, or all "
+        "available representatives when fewer than two exist."
+    )
+    if failures:
+        detail += f" Failing topics: {'; '.join(failures)}."
+    return (
+        {
+            "stage": "report_quality",
+            "name": "representative_substantiveness",
+            "value": f"{passing_topics}/{total_topics} topics",
+            "status": "pass" if passed else "fail",
+            "detail": detail,
+        },
+        quality,
+    )
 
 
 def _authored_report_sections(
@@ -647,7 +792,11 @@ def _authored_report_sections(
                     f"(primary n={row['primary_passage_count']}) {_source_citation(sources[0])}"
                 )
             profile = "; ".join(rendered_profiles)
-            coverage_state = "modeled"
+            coverage_state = (
+                "descriptive topic profile"
+                if gate_passed
+                else "diagnostic assignments; taxonomy withheld"
+            )
         else:
             profile = "—"
             coverage_state = zero_states[deal_id].replace("_", " ")
@@ -659,7 +808,8 @@ def _authored_report_sections(
     method_note = (
         "## Reproducibility note\n\n"
         f"The report covers {len(deals)} deals, {len(passages)} canonical passages, and "
-        f"{len({row['topic_id'] for row in assignments})} discovered topics. Topic labels remain "
+        f"{len({row['topic_id'] for row in assignments})} candidate topic components. Topic labels "
+        "remain "
         "blank in the review template until a reviewer examines the source-linked representatives."
     )
     return ["\n\n".join(gate_lines), boundary, "\n".join(table), method_note]
@@ -674,7 +824,7 @@ def _representative_passage_section(
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in assignments:
         grouped[row["topic_id"]].append(row)
-    lines = ["## Source-linked representative passages"]
+    lines = ["## Candidate-topic diagnostics and source-linked representative passages"]
     if not grouped:
         lines.append(
             "No modeled topic assignments were available; see the deal zero states and gate verdict."
@@ -683,7 +833,7 @@ def _representative_passage_section(
     for topic_id in sorted(grouped):
         rows = grouped[topic_id]
         terms = rows[0]["top_terms"] or "terms unavailable"
-        lines.append(f"### {topic_id}\n\nTop terms: {_escape_inline(terms)}")
+        lines.append(f"### Candidate {topic_id}\n\nTop terms: {_escape_inline(terms)}")
         for index, assignment in enumerate(_representatives(rows, representative_limit), start=1):
             passage = passage_by_id[assignment["passage_id"]]
             deal = deals[passage["deal_id"]]
