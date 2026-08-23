@@ -76,6 +76,10 @@ def _inputs(tmp_path: Path, *, gate_status: str = "pass") -> tuple[Path, ...]:
             "method",
             "coherence",
             "stability_recovery_rate",
+            "disclosure_salience",
+            "assignment_specificity",
+            "top_positive_residual_terms",
+            "top_positive_residual_scores",
         ],
         [
             {
@@ -90,6 +94,10 @@ def _inputs(tmp_path: Path, *, gate_status: str = "pass") -> tuple[Path, ...]:
                 "method": "nmf",
                 "coherence": "0.31",
                 "stability_recovery_rate": "0.8",
+                "disclosure_salience": "0.45",
+                "assignment_specificity": "0.7",
+                "top_positive_residual_terms": "service|continuity",
+                "top_positive_residual_scores": "0.12|0.08",
             },
             {
                 "passage_id": "p-1",
@@ -103,6 +111,10 @@ def _inputs(tmp_path: Path, *, gate_status: str = "pass") -> tuple[Path, ...]:
                 "method": "nmf",
                 "coherence": "0.31",
                 "stability_recovery_rate": "0.8",
+                "disclosure_salience": "0.45",
+                "assignment_specificity": "0.7",
+                "top_positive_residual_terms": "service|continuity",
+                "top_positive_residual_scores": "0.12|0.08",
             },
         ],
     )
@@ -176,6 +188,12 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert deal_lines
     assert all("](https://" in line for line in deal_lines)
     assert "descriptive-only" in first.markdown
+    assert "Disclosure salience is the mean deal-normalized topic share" in first.markdown
+    assert "comparative disclosure share, not importance, concern" in first.markdown
+    assert "model concentration, not substantive certainty" in first.markdown
+    assert "Comparative disclosure salience: 45.0%" in first.markdown
+    assert "assignment specificity: 70.0%" in first.markdown
+    assert "top positive residual terms: service|continuity" in first.markdown
     assert "2 source-linked passage rows" in first.markdown
     assert first.topic_review_rows[0]["representative_passage_ids"] == "p-1"
     assert first.topic_review_rows[0]["passage_count"] == "1"
@@ -184,15 +202,15 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert first.topic_review_rows[0]["representative_fit_status"] == "pending"
     assert first.topic_review_rows[0]["coherence_score_1_to_5"] == ""
     assert first.topic_review_rows[0]["review_status"] == "pending"
+    assert first.topic_review_rows[0]["disclosure_salience"] == "0.45"
+    assert first.topic_review_rows[0]["assignment_specificity"] == "0.7"
     assert "human_review / representative_theme_fit: NOT_APPLICABLE" in first.markdown
     assert "PENDING HUMAN REVIEW" in first.markdown
     assert "taxonomy withheld" in first.markdown
 
 
 def test_failed_diagnostic_produces_an_explicit_fail_verdict(tmp_path: Path) -> None:
-    report = build_employee_report(
-        *_inputs(tmp_path, gate_status="fail"), expected_deal_count=2
-    )
+    report = build_employee_report(*_inputs(tmp_path, gate_status="fail"), expected_deal_count=2)
 
     assert report.gate_passed is False
     assert "**FAIL**" in report.markdown
@@ -216,9 +234,7 @@ def test_non_substantive_representative_forces_gate_failure_and_withholds_taxono
     assert "diagnostic assignments; taxonomy withheld" in report.markdown
     assert "discovered topics" not in report.markdown
     assert report.topic_review_rows[0]["representative_quality_status"] == "fail"
-    assert "call_transcript_noise" in report.topic_review_rows[0][
-        "representative_quality_notes"
-    ]
+    assert "call_transcript_noise" in report.topic_review_rows[0]["representative_quality_notes"]
 
 
 def test_report_requires_the_complete_deal_roster(tmp_path: Path) -> None:
@@ -260,9 +276,7 @@ def test_report_rejects_a_non_sec_source_even_when_document_and_passage_match(
 
 def test_deal_claim_link_lint_rejects_unlinked_claims_and_allows_zero_states() -> None:
     bad = "Buyer–Target (deal-1) disclosed a package."
-    zero = (
-        "Buyer–Target (deal-1) — pipeline zero state; no document-content claim"
-    )
+    zero = "Buyer–Target (deal-1) — pipeline zero state; no document-content claim"
 
     assert lint_deal_claim_links(bad, {"deal-1"})
     with pytest.raises(ValueError, match="lack an inline SEC source"):
@@ -300,7 +314,8 @@ def test_claim_lint_allows_explicit_limitations_and_quoted_sources() -> None:
     ("text", "heading", "reason"),
     [
         ("We lost you Franco.", "CEO", "call_transcript_noise"),
-        (") Stock-Based Compensation ($",
+        (
+            ") Stock-Based Compensation ($",
             "(in millions)",
             "generic_accounting_noise",
         ),
@@ -342,8 +357,8 @@ def test_representative_lint_accepts_substantive_employee_term() -> None:
         ("The studio expects to retain its players.", "non_human_retain_use"),
         ("We will retain a strong presence in Israel.", "non_human_retain_use"),
         (
-        (
-            "We provide non-GAAP information about non-cash expenses including stock-based "
+            (
+                "We provide non-GAAP information about non-cash expenses including stock-based "
                 "compensation and varying valuation methodologies for award types."
             ),
             "generic_accounting_noise",
@@ -459,9 +474,12 @@ def test_representatives_skip_higher_weight_noise_for_substantive_primary_passag
     report = build_employee_report(*inputs, expected_deal_count=2)
 
     assert report.topic_review_rows[0]["representative_passage_ids"] == "p-2"
-    assert "p-1" not in report.markdown.split(
-        "## Candidate-topic diagnostics and source-linked representative passages", 1
-    )[1]
+    assert (
+        "p-1"
+        not in report.markdown.split(
+            "## Candidate-topic diagnostics and source-linked representative passages", 1
+        )[1]
+    )
 
 
 def test_representative_lint_accepts_employee_facing_equity_tax_treatment() -> None:

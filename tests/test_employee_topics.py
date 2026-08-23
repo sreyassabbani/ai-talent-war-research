@@ -125,6 +125,29 @@ def test_topic_model_returns_long_assignments_deal_matrix_and_sensitivity() -> N
     assert lsa.value == min(50, len(corpus) - 1)
     assert "not transformer semantic embeddings" in lsa.detail
 
+    assignment_by_passage: dict[str, list[AssignmentRow]] = {}
+    for assignment in result.assignments:
+        assignment_by_passage.setdefault(assignment.passage_id, []).append(assignment)
+    for topic in result.topics:
+        primary = [
+            rows
+            for rows in assignment_by_passage.values()
+            if next(row for row in rows if row.primary_topic).topic_id == topic.topic_id
+        ]
+        margins = []
+        for rows in primary:
+            ordered = sorted((row.topic_weight for row in rows), reverse=True)
+            margins.append(ordered[0] - ordered[1])
+        expected_specificity = sum(margins) / len(margins)
+        assert topic.assignment_specificity == pytest.approx(expected_specificity)
+        assert 0.0 <= topic.assignment_specificity <= 1.0
+        assert len(topic.top_positive_residual_terms) == len(topic.top_positive_residual_scores)
+        assert topic.top_positive_residual_terms
+        assert all(score > 0 for score in topic.top_positive_residual_scores)
+        assert list(topic.top_positive_residual_scores) == sorted(
+            topic.top_positive_residual_scores, reverse=True
+        )
+
     for passage_id in {row["passage_id"] for row in corpus}:
         weights = [row for row in result.assignments if row.passage_id == passage_id]
         assert sum(row.topic_weight for row in weights) == pytest.approx(1.0)
@@ -145,6 +168,25 @@ def test_topic_model_is_deterministic() -> None:
     assert first == second
     assert len(first.bootstrap_stability) == 8 * len(first.topics)
     assert all(row.replicate_count == 8 for row in first.bootstrap_summary)
+
+
+def test_positive_residual_terms_are_mean_positive_x_minus_wh() -> None:
+    corpus = employee_topics._VectorizedCorpus(
+        rows=(),
+        matrix=({0: 1.0, 1: 0.5}, {0: 0.2, 1: 0.8}),
+        vocabulary=("alpha", "beta"),
+        document_frequency=(2, 2),
+    )
+
+    residuals = employee_topics._positive_residual_terms(
+        corpus,
+        weights=((0.5,), (0.5,)),
+        components=((1.0, 0.2),),
+        selected=(0, 1),
+    )
+
+    assert tuple(term for term, _ in residuals) == ("beta", "alpha")
+    assert tuple(score for _, score in residuals) == pytest.approx((0.55, 0.25))
 
 
 def test_bootstrap_reports_fixed_seed_cosine_recovery_without_changing_fit_universe() -> None:
@@ -193,9 +235,7 @@ def test_fit_sample_is_bounded_but_all_passages_receive_assignments() -> None:
 
     assert result.status == "modeled"
     fit_count = next(row.value for row in result.diagnostics if row.name == "fit_passages")
-    projected = next(
-        row.value for row in result.diagnostics if row.name == "projected_passages"
-    )
+    projected = next(row.value for row in result.diagnostics if row.name == "projected_passages")
     assert fit_count == 24
     assert projected == 12
     assert len(result.assignments) == len(corpus) * 3
@@ -210,9 +250,7 @@ def test_fit_sampling_uses_one_passage_per_deal_provision_family() -> None:
 
     assert result.status == "modeled"
     fit_count = next(row.value for row in result.diagnostics if row.name == "fit_passages")
-    fit_families = next(
-        row.value for row in result.diagnostics if row.name == "fit_family_count"
-    )
+    fit_families = next(row.value for row in result.diagnostics if row.name == "fit_family_count")
     assert fit_count == len(corpus) - 1
     assert fit_families == fit_count
     assert len(result.assignments) == len(corpus) * 3
@@ -225,12 +263,24 @@ def test_duplicate_assignments_propagate_across_deals() -> None:
     ]
     canonical = (
         AssignmentRow(
-            "p1", "deal_1", "document_p1", "family_p1", "https://example.test/p1",
-            "topic_1", 0.8, True,
+            "p1",
+            "deal_1",
+            "document_p1",
+            "family_p1",
+            "https://example.test/p1",
+            "topic_1",
+            0.8,
+            True,
         ),
         AssignmentRow(
-            "p1", "deal_1", "document_p1", "family_p1", "https://example.test/p1",
-            "topic_2", 0.2, False,
+            "p1",
+            "deal_1",
+            "document_p1",
+            "family_p1",
+            "https://example.test/p1",
+            "topic_2",
+            0.2,
+            False,
         ),
     )
 
@@ -417,9 +467,7 @@ def test_legal_scaffolding_and_model_markers_cannot_be_top_terms() -> None:
         "welfare",
     }
     for topic in result.topics:
-        top_tokens = {
-            token for term in topic.top_terms for token in term.casefold().split()
-        }
+        top_tokens = {token for term in topic.top_terms for token in term.casefold().split()}
         assert top_tokens.isdisjoint(prohibited)
         assert top_tokens & employee_terms
 

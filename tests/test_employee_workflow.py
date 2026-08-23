@@ -64,9 +64,7 @@ def _review(path: Path) -> None:
     )
 
 
-def _cached_document(
-    runs: Path, cache: Path, deal_id: str, document_id: str, body: bytes
-) -> None:
+def _cached_document(runs: Path, cache: Path, deal_id: str, document_id: str, body: bytes) -> None:
     url = f"https://www.sec.gov/Archives/{document_id}.htm"
     _write(
         runs / deal_id / "documents.csv",
@@ -156,6 +154,9 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
                 coherence=0.4,
                 stability_median_cosine=0.9,
                 stability_recovery_rate=0.8,
+                assignment_specificity=0.75,
+                top_positive_residual_terms=("service", "continuity"),
+                top_positive_residual_scores=(0.12, 0.08),
             ),
         ),
         deal_topics=(),
@@ -179,18 +180,21 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
         ("deal-2", "topic_1"),
         ("deal-3", ""),
     }
-    assert next(row for row in deal_topics if row["deal_id"] == "deal-2")[
-        "normalized_weight"
-    ] == "1"
-    assert next(row for row in deal_topics if row["deal_id"] == "deal-3")[
-        "zero_state"
-    ] == "no_employee_passages"
-    assert (analysis_dir / "deal_topic_heatmap.svg").read_text(encoding="utf-8").startswith(
-        '<svg xmlns="http://www.w3.org/2000/svg"'
+    assert (
+        next(row for row in deal_topics if row["deal_id"] == "deal-2")["normalized_weight"] == "1"
+    )
+    assert (
+        next(row for row in deal_topics if row["deal_id"] == "deal-3")["zero_state"]
+        == "no_employee_passages"
+    )
+    assert (
+        (analysis_dir / "deal_topic_heatmap.svg")
+        .read_text(encoding="utf-8")
+        .startswith('<svg xmlns="http://www.w3.org/2000/svg"')
     )
     analysis_manifest = json.loads((analysis_dir / "analysis_manifest.json").read_text())
     assert analysis_manifest["status"] == "modeled"
-    assert analysis_manifest["schema_version"] == 2
+    assert analysis_manifest["schema_version"] == 3
     assert analysis_manifest["config"]["bootstrap_replicates"] == 100
     assert analysis_manifest["bootstrap_design"] == {
         "alignment": "one_to_one_maximum_total_cosine",
@@ -214,6 +218,28 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     assert analysis_manifest["embedding_robustness_design"]["methods"][0]["name"] == (
         "sklearn_hdbscan"
     )
+    assert analysis_manifest["reporting_metric_definitions"] == {
+        "assignment_specificity": (
+            "mean normalized top-topic minus runner-up weight margin among passages whose "
+            "primary assignment is the topic; model concentration, not substantive certainty"
+        ),
+        "disclosure_salience": (
+            "mean deal-normalized topic share across every selected deal; explicit-zero deals "
+            "contribute zero; comparative disclosure share, not importance, concern, or outcome"
+        ),
+        "top_positive_residual_terms": (
+            "highest mean positive TF-IDF reconstruction residual max(X-WH,0) within the "
+            "topic's primary passages"
+        ),
+    }
+    summary_row = _rows(analysis_dir / "topic_summary.csv")[0]
+    assert float(summary_row["disclosure_salience"]) == pytest.approx(2 / 3)
+    assert summary_row["assignment_specificity"] == "0.75"
+    assert summary_row["top_positive_residual_terms"] == "service|continuity"
+    assert summary_row["top_positive_residual_scores"] == "0.12|0.08"
+    assert {
+        row["disclosure_salience"] for row in _rows(analysis_dir / "topic_assignments.csv")
+    } == {summary_row["disclosure_salience"]}
 
     report_summary = summarize_employee_topics_workflow(
         review, corpus_dir, analysis_dir, report_dir

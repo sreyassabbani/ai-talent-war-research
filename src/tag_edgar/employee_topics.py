@@ -203,6 +203,9 @@ class TopicRow:
     coherence: float
     stability_median_cosine: float | None
     stability_recovery_rate: float | None
+    assignment_specificity: float = 0.0
+    top_positive_residual_terms: tuple[str, ...] = ()
+    top_positive_residual_scores: tuple[float, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -328,7 +331,9 @@ def propagate_duplicate_assignments(
     passage whose canonical row belongs to one deal from disappearing from another deal's
     source-linked output. Input passage IDs must be unique because they are report join keys.
     """
-    rows = [row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows]
+    rows = [
+        row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows
+    ]
     eligible = [
         row
         for row in rows
@@ -365,9 +370,7 @@ def propagate_duplicate_assignments(
                         source_url=row.source_url,
                     )
                 )
-    return tuple(
-        sorted(output, key=lambda row: (row.deal_id, row.passage_id, row.topic_id))
-    )
+    return tuple(sorted(output, key=lambda row: (row.deal_id, row.passage_id, row.topic_id)))
 
 
 def analyze_employee_topics(
@@ -531,7 +534,7 @@ def analyze_employee_topics(
         )
     )
 
-    projected_weights = _project_weights(
+    projected_weights, reconstruction_weights = _project_weights_with_raw(
         full_corpus.matrix,
         selected.components,
         config.projection_iterations,
@@ -584,9 +587,7 @@ def analyze_employee_topics(
             DiagnosticRow(
                 "sensitivity",
                 "nmf_fit_cluster_sizes",
-                ",".join(
-                    f"topic_{topic + 1}:{nmf_sizes[topic]}" for topic in sorted(nmf_sizes)
-                ),
+                ",".join(f"topic_{topic + 1}:{nmf_sizes[topic]}" for topic in sorted(nmf_sizes)),
                 "pass",
                 "Primary NMF assignments on the shared sensitivity fit universe.",
             ),
@@ -615,7 +616,12 @@ def analyze_employee_topics(
     stability = _leave_one_deal_out(corpus, selected, config)
     bootstrap_stability = _bootstrap_stability(corpus, selected, config)
     bootstrap_summary = _bootstrap_summary(bootstrap_stability, selected.k)
-    topics = _topic_rows(full_corpus, full_fit, stability)
+    topics = _topic_rows(
+        full_corpus,
+        full_fit,
+        stability,
+        reconstruction_weights=reconstruction_weights,
+    )
     diagnostics.extend(_topic_quality_diagnostics(topics, config))
     recovered = [row.recovered for row in stability]
     every_topic_stable = all(
@@ -663,9 +669,7 @@ def analyze_employee_topics(
             "preserving every deal's fit-row count and the original fitted vocabulary.",
         )
     )
-    embedding_assignments, embedding_diagnostics = _embedding_robustness(
-        corpus, selected, config
-    )
+    embedding_assignments, embedding_diagnostics = _embedding_robustness(corpus, selected, config)
     diagnostics.extend(embedding_diagnostics)
     return EmployeeTopicResult(
         status="modeled",
@@ -699,16 +703,19 @@ def _validate_config(config: TopicModelConfig) -> None:
         raise ValueError("stability_threshold must be between 0 and 1.")
     if not 0 <= config.min_topic_recovery_rate <= 1:
         raise ValueError("min_topic_recovery_rate must be between 0 and 1.")
-    if min(
-        config.nmf_iterations,
-        config.projection_iterations,
-        config.stability_iterations,
-        config.bootstrap_replicates,
-        config.bootstrap_iterations,
-        config.embedding_svd_components,
-        config.embedding_min_fit_rows,
-        config.max_fit_passages,
-    ) < 1:
+    if (
+        min(
+            config.nmf_iterations,
+            config.projection_iterations,
+            config.stability_iterations,
+            config.bootstrap_replicates,
+            config.bootstrap_iterations,
+            config.embedding_svd_components,
+            config.embedding_min_fit_rows,
+            config.max_fit_passages,
+        )
+        < 1
+    ):
         raise ValueError("Iteration and fit-sample limits must be positive.")
     if config.embedding_hdbscan_min_cluster_size < 2:
         raise ValueError("embedding_hdbscan_min_cluster_size must be at least 2.")
@@ -724,7 +731,9 @@ def _passage_from_mapping(row: Mapping[str, str]) -> PassageRow:
 def _prepare_passages(
     source_rows: Iterable[PassageRow | Mapping[str, str]],
 ) -> tuple[tuple[PassageRow, ...], int, int, int]:
-    rows = [row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows]
+    rows = [
+        row if isinstance(row, PassageRow) else _passage_from_mapping(row) for row in source_rows
+    ]
     included = [row for row in rows if row.inclusion_status.strip().lower() == "included"]
     by_duplicate: dict[str, list[PassageRow]] = defaultdict(list)
     empty_count = 0
@@ -757,9 +766,7 @@ def _family_key(row: PassageRow) -> str:
     return row.document_family_id.strip() or f"passage:{row.passage_id}"
 
 
-def _balanced_fit_indices(
-    rows: Sequence[PassageRow], limit: int, seed: int
-) -> tuple[int, ...]:
+def _balanced_fit_indices(rows: Sequence[PassageRow], limit: int, seed: int) -> tuple[int, ...]:
     by_deal_family: dict[tuple[str, str], list[int]] = defaultdict(list)
     for index, row in enumerate(rows):
         by_deal_family[(row.deal_id, _family_key(row))].append(index)
@@ -841,7 +848,10 @@ def _vectorize(rows: Sequence[PassageRow], config: TopicModelConfig) -> _Vectori
     ]
     candidates.sort(
         key=lambda term: (
-            -(corpus_frequency[term] * (math.log((1 + n_rows) / (1 + document_frequency[term])) + 1)),
+            -(
+                corpus_frequency[term]
+                * (math.log((1 + n_rows) / (1 + document_frequency[term])) + 1)
+            ),
             term,
         )
     )
@@ -854,9 +864,7 @@ def _vectorize(rows: Sequence[PassageRow], config: TopicModelConfig) -> _Vectori
             index = term_index.get(term)
             if index is None:
                 continue
-            inverse_document_frequency = math.log(
-                (1 + n_rows) / (1 + document_frequency[term])
-            ) + 1
+            inverse_document_frequency = math.log((1 + n_rows) / (1 + document_frequency[term])) + 1
             vector[index] = (1 + math.log(count)) * inverse_document_frequency
         norm = math.sqrt(sum(value * value for value in vector.values()))
         if norm:
@@ -870,9 +878,7 @@ def _vectorize(rows: Sequence[PassageRow], config: TopicModelConfig) -> _Vectori
     )
 
 
-def _transform(
-    rows: Sequence[PassageRow], fitted: _VectorizedCorpus
-) -> _VectorizedCorpus:
+def _transform(rows: Sequence[PassageRow], fitted: _VectorizedCorpus) -> _VectorizedCorpus:
     term_index = {term: index for index, term in enumerate(fitted.vocabulary)}
     training_count = len(fitted.rows)
     inverse_document_frequency = tuple(
@@ -887,9 +893,7 @@ def _transform(
             if index is not None:
                 vector[index] = (1 + math.log(count)) * inverse_document_frequency[index]
         norm = math.sqrt(sum(value * value for value in vector.values()))
-        matrix.append(
-            {index: value / norm for index, value in vector.items()} if norm else {}
-        )
+        matrix.append({index: value / norm for index, value in vector.items()} if norm else {})
     return _VectorizedCorpus(
         rows=tuple(rows),
         matrix=tuple(matrix),
@@ -950,12 +954,9 @@ def _nmf(
         for topic in range(k):
             for feature in range(feature_count):
                 denominator = sum(
-                    weight_gram[topic][other] * components[other][feature]
-                    for other in range(k)
+                    weight_gram[topic][other] * components[other][feature] for other in range(k)
                 )
-                components[topic][feature] *= weight_cross[topic][feature] / (
-                    denominator + epsilon
-                )
+                components[topic][feature] *= weight_cross[topic][feature] / (denominator + epsilon)
                 components[topic][feature] = max(components[topic][feature], epsilon)
 
         component_gram = _gram(components, k, rows_are_topics=True)
@@ -966,8 +967,7 @@ def _nmf(
                     numerator[topic] += value * components[topic][feature]
             for topic in range(k):
                 denominator = sum(
-                    weights[row_index][other] * component_gram[other][topic]
-                    for other in range(k)
+                    weights[row_index][other] * component_gram[other][topic] for other in range(k)
                 )
                 weights[row_index][topic] *= numerator[topic] / (denominator + epsilon)
                 weights[row_index][topic] = max(weights[row_index][topic], epsilon)
@@ -986,6 +986,16 @@ def _project_weights(
     iterations: int,
 ) -> tuple[tuple[float, ...], ...]:
     """Infer nonnegative passage weights while keeping fitted topic components fixed."""
+    normalized, _ = _project_weights_with_raw(matrix, components, iterations)
+    return normalized
+
+
+def _project_weights_with_raw(
+    matrix: Sequence[Mapping[int, float]],
+    components: Sequence[Sequence[float]],
+    iterations: int,
+) -> tuple[tuple[tuple[float, ...], ...], tuple[tuple[float, ...], ...]]:
+    """Return normalized assignment weights and scale-preserving reconstruction weights."""
     k = len(components)
     epsilon = 1e-12
     component_gram = _gram(components, k, rows_are_topics=True)
@@ -996,22 +1006,21 @@ def _project_weights(
             for topic in range(k):
                 numerator[topic] += value * components[topic][feature]
         numerators.append(numerator)
-    weights = [
-        [max(value, epsilon) for value in numerator] for numerator in numerators
-    ]
+    weights = [[max(value, epsilon) for value in numerator] for numerator in numerators]
     for _ in range(iterations):
         for row_index, numerator in enumerate(numerators):
             for topic in range(k):
                 denominator = sum(
-                    weights[row_index][other] * component_gram[other][topic]
-                    for other in range(k)
+                    weights[row_index][other] * component_gram[other][topic] for other in range(k)
                 )
                 weights[row_index][topic] *= numerator[topic] / (denominator + epsilon)
                 weights[row_index][topic] = max(weights[row_index][topic], epsilon)
-    return tuple(
+    raw = tuple(tuple(row) for row in weights)
+    normalized = tuple(
         _normalize(row) if any(numerator) else tuple(0.0 for _ in range(k))
         for row, numerator in zip(weights, numerators, strict=True)
     )
+    return normalized, raw
 
 
 def _gram(
@@ -1057,9 +1066,7 @@ def _reconstruction_error(
     return math.sqrt(squared_error / squared_input) if squared_input else math.inf
 
 
-def _model_coherence(
-    components: Sequence[Sequence[float]], corpus: _VectorizedCorpus
-) -> float:
+def _model_coherence(components: Sequence[Sequence[float]], corpus: _VectorizedCorpus) -> float:
     topic_scores: list[float] = []
     n_rows = len(corpus.matrix)
     incidence = [
@@ -1083,9 +1090,7 @@ def _model_coherence(
     return sum(topic_scores) / len(topic_scores)
 
 
-def _candidate_diagnostics(
-    fit: _NmfFit, config: TopicModelConfig
-) -> list[DiagnosticRow]:
+def _candidate_diagnostics(fit: _NmfFit, config: TopicModelConfig) -> list[DiagnosticRow]:
     prefix = f"k_{fit.k}"
     return [
         DiagnosticRow(
@@ -1254,7 +1259,11 @@ def _deal_group_rows(
 
 
 def _topic_rows(
-    corpus: _VectorizedCorpus, fit: _NmfFit, stability: Sequence[StabilityRow]
+    corpus: _VectorizedCorpus,
+    fit: _NmfFit,
+    stability: Sequence[StabilityRow],
+    *,
+    reconstruction_weights: Sequence[Sequence[float]] | None = None,
 ) -> tuple[TopicRow, ...]:
     primary = [_argmax(row) if sum(row) else None for row in fit.weights]
     output: list[TopicRow] = []
@@ -1266,6 +1275,13 @@ def _topic_rows(
             sum(row.recovered for row in topic_stability) / len(topic_stability)
             if topic_stability
             else None
+        )
+        margins = [_top_runner_up_margin(fit.weights[index]) for index in selected]
+        residual_terms = _positive_residual_terms(
+            corpus,
+            reconstruction_weights or fit.weights,
+            fit.components,
+            selected,
         )
         output.append(
             TopicRow(
@@ -1285,9 +1301,47 @@ def _topic_rows(
                 coherence=_topic_coherence(fit.components[topic], corpus),
                 stability_median_cosine=_median(similarities) if similarities else None,
                 stability_recovery_rate=recovery_rate,
+                assignment_specificity=(sum(margins) / len(margins) if margins else 0.0),
+                top_positive_residual_terms=tuple(term for term, _ in residual_terms),
+                top_positive_residual_scores=tuple(score for _, score in residual_terms),
             )
         )
     return tuple(output)
+
+
+def _top_runner_up_margin(weights: Sequence[float]) -> float:
+    """Return the normalized top-topic minus runner-up assignment margin."""
+    ordered = sorted(weights, reverse=True)
+    if not ordered:
+        return 0.0
+    return ordered[0] - (ordered[1] if len(ordered) > 1 else 0.0)
+
+
+def _positive_residual_terms(
+    corpus: _VectorizedCorpus,
+    weights: Sequence[Sequence[float]],
+    components: Sequence[Sequence[float]],
+    selected: Sequence[int],
+    *,
+    limit: int = 10,
+) -> tuple[tuple[str, float], ...]:
+    """Rank mean positive ``X - WH`` residuals for primary passages in one topic."""
+    if not selected or not components:
+        return ()
+    totals = [0.0] * len(corpus.vocabulary)
+    for row_index in selected:
+        for feature in range(len(corpus.vocabulary)):
+            prediction = sum(
+                weights[row_index][topic] * components[topic][feature]
+                for topic in range(len(components))
+            )
+            totals[feature] += max(corpus.matrix[row_index].get(feature, 0.0) - prediction, 0.0)
+    means = [value / len(selected) for value in totals]
+    ranked = sorted(
+        (index for index, value in enumerate(means) if value > 0.0),
+        key=lambda index: (-means[index], corpus.vocabulary[index]),
+    )[:limit]
+    return tuple((corpus.vocabulary[index], means[index]) for index in ranked)
 
 
 def _topic_quality_diagnostics(
@@ -1323,9 +1377,7 @@ def _topic_quality_diagnostics(
                 "topic_quality",
                 f"{topic.topic_id}_generic_top_term_ratio",
                 generic_ratio,
-                "pass"
-                if generic_ratio <= config.max_generic_top_term_ratio
-                else "warning",
+                "pass" if generic_ratio <= config.max_generic_top_term_ratio else "warning",
                 "Share of top terms composed only of generic legal tokens; requires at most "
                 f"{config.max_generic_top_term_ratio:.0%}.",
             )
@@ -1424,25 +1476,34 @@ def _embedding_robustness(
         norm="l2",
     )
     nonzero = np.linalg.norm(embedding, axis=1) > 0
+    nonzero_indices = [index for index, value in enumerate(nonzero.tolist()) if value]
+    nonzero_embedding = np.asarray([embedding[index] for index in nonzero_indices])
 
     hdbscan_labels = np.full(len(corpus.rows), -1, dtype=np.int64)
-    if int(nonzero.sum()) >= config.embedding_hdbscan_min_cluster_size:
-        hdbscan_labels[nonzero] = HDBSCAN(
+    if len(nonzero_indices) >= config.embedding_hdbscan_min_cluster_size:
+        fitted_hdbscan = HDBSCAN(
             min_cluster_size=config.embedding_hdbscan_min_cluster_size,
             min_samples=None,
             metric="euclidean",
             cluster_selection_method="eom",
             allow_single_cluster=False,
-            copy=False,
-        ).fit_predict(embedding[nonzero])
+        ).set_params(copy=False)
+        for index, label in zip(
+            nonzero_indices,
+            fitted_hdbscan.fit_predict(nonzero_embedding).tolist(),
+            strict=True,
+        ):
+            hdbscan_labels[index] = label
 
     agglomerative_labels = np.full(len(corpus.rows), -1, dtype=np.int64)
-    if int(nonzero.sum()) >= fit.k:
-        agglomerative_labels[nonzero] = AgglomerativeClustering(
+    if len(nonzero_indices) >= fit.k:
+        fitted_agglomerative = AgglomerativeClustering(
             n_clusters=fit.k,
             metric="cosine",
             linkage="average",
-        ).fit_predict(embedding[nonzero])
+        ).fit_predict(nonzero_embedding)
+        for index, label in zip(nonzero_indices, fitted_agglomerative.tolist(), strict=True):
+            agglomerative_labels[index] = label
 
     assignments: list[EmbeddingRobustnessAssignmentRow] = []
     for method, labels in (
@@ -1552,7 +1613,9 @@ def _agglomerative_fit_predict(
     *,
     fitted_labels: Sequence[int] | None = None,
 ) -> list[int]:
-    labels = list(fitted_labels) if fitted_labels is not None else _agglomerative_assignments(fitted, k)
+    labels = (
+        list(fitted_labels) if fitted_labels is not None else _agglomerative_assignments(fitted, k)
+    )
     centroid_sums: list[defaultdict[int, float]] = [defaultdict(float) for _ in range(k)]
     cluster_sizes = Counter(label for label in labels if label >= 0)
     for sparse_row, label in zip(fitted.matrix, labels, strict=True):
@@ -1562,16 +1625,13 @@ def _agglomerative_fit_predict(
             centroid_sums[label][feature] += value
     centroids: list[dict[int, float]] = []
     for label, values in enumerate(centroid_sums):
-        centroid = {
-            feature: value / cluster_sizes[label] for feature, value in values.items()
-        }
+        centroid = {feature: value / cluster_sizes[label] for feature, value in values.items()}
         norm = math.sqrt(sum(value * value for value in centroid.values()))
         centroids.append(
             {feature: value / norm for feature, value in centroid.items()} if norm else {}
         )
     fitted_by_passage = {
-        row.passage_id: label
-        for row, label in zip(fitted.rows, labels, strict=True)
+        row.passage_id: label for row, label in zip(fitted.rows, labels, strict=True)
     }
     output: list[int] = []
     for row, sparse_row in zip(full.rows, full.matrix, strict=True):
@@ -1760,8 +1820,7 @@ def _qualitative_result(
         assignments=(),
         topics=(),
         deal_topics=(),
-        diagnostics=tuple(diagnostics)
-        + (DiagnosticRow("fallback", reason, 1, "fail", detail),),
+        diagnostics=tuple(diagnostics) + (DiagnosticRow("fallback", reason, 1, "fail", detail),),
         sensitivity_assignments=(),
         stability=(),
     )

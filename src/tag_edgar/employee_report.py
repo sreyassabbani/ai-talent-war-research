@@ -18,6 +18,10 @@ TOPIC_REVIEW_FIELDS = [
     "representative_source_urls",
     "model_coherence",
     "stability_recovery_rate",
+    "disclosure_salience",
+    "assignment_specificity",
+    "top_positive_residual_terms",
+    "top_positive_residual_scores",
     "substantive_representative_count",
     "representative_quality_status",
     "representative_quality_notes",
@@ -48,6 +52,10 @@ _TOPIC_FIELDS = {
     "topic_weight",
     "primary_topic",
     "top_terms",
+    "disclosure_salience",
+    "assignment_specificity",
+    "top_positive_residual_terms",
+    "top_positive_residual_scores",
 }
 _DEAL_TOPIC_FIELDS = {
     "deal_id",
@@ -292,9 +300,7 @@ def assert_descriptive_claims(text: str) -> None:
     issues = lint_claims(text)
     if not issues:
         return
-    rendered = "; ".join(
-        f"{issue.category}: {issue.phrase!r}" for issue in issues
-    )
+    rendered = "; ".join(f"{issue.category}: {issue.phrase!r}" for issue in issues)
     raise ValueError(f"Prohibited research claim(s): {rendered}")
 
 
@@ -360,10 +366,7 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
     arrangement_evidence = bool(
         _EMPLOYEE_ARRANGEMENT_EVIDENCE.search(body)
         or _EMPLOYEE_BENEFIT_EVIDENCE.search(body)
-        or (
-            _EQUITY_AWARD_SUBJECT.search(body)
-            and _EQUITY_AWARD_TREATMENT.search(body)
-        )
+        or (_EQUITY_AWARD_SUBJECT.search(body) and _EQUITY_AWARD_TREATMENT.search(body))
     )
     if _GENERIC_RISK_BOILERPLATE.search(normalized) and not arrangement_evidence:
         reasons.append("generic_risk_boilerplate")
@@ -371,9 +374,7 @@ def lint_representative_passage(text: str, heading: str = "") -> list[str]:
         body
     ):
         reasons.append("generic_legal_boilerplate")
-    if _FINANCIAL_METRIC_NOISE.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(
-        body
-    ):
+    if _FINANCIAL_METRIC_NOISE.search(normalized) and not _TRANSACTION_EMPLOYEE_ACTION.search(body):
         reasons.append("generic_financial_metric")
     if _DEFINITION_OR_PROXY_NOISE.search(normalized):
         reasons.append("definition_or_proxy_noise")
@@ -500,15 +501,10 @@ def _read_rows(path: Path, required_fields: set[str], label: str) -> list[dict[s
         missing = required_fields - set(reader.fieldnames or ())
         if missing:
             raise ValueError(f"{label.title()} CSV is missing required columns: {sorted(missing)}")
-        return [
-            {key: (value or "").strip() for key, value in row.items()}
-            for row in reader
-        ]
+        return [{key: (value or "").strip() for key, value in row.items()} for row in reader]
 
 
-def _unique_rows(
-    rows: list[dict[str, str]], key: str, label: str
-) -> dict[str, dict[str, str]]:
+def _unique_rows(rows: list[dict[str, str]], key: str, label: str) -> dict[str, dict[str, str]]:
     missing = [index for index, row in enumerate(rows, start=2) if not row[key]]
     if missing:
         raise ValueError(f"{label.title()} CSV has blank {key} at rows {missing}.")
@@ -593,7 +589,7 @@ def _validate_assignments(
     passage_by_id: dict[str, dict[str, str]],
 ) -> None:
     seen: set[tuple[str, str]] = set()
-    metadata: dict[str, str] = {}
+    metadata: dict[tuple[str, str], str] = {}
     primary_by_passage: Counter[str] = Counter()
     for row in assignments:
         topic_id = row["topic_id"]
@@ -621,9 +617,33 @@ def _validate_assignments(
         is_primary = _parse_bool(row["primary_topic"], "primary_topic")
         if is_primary:
             primary_by_passage[passage_id] += 1
-        prior_terms = metadata.setdefault(topic_id, row["top_terms"])
-        if prior_terms != row["top_terms"]:
-            raise ValueError(f"Topic {topic_id} has inconsistent top_terms values.")
+        for field in (
+            "top_terms",
+            "disclosure_salience",
+            "assignment_specificity",
+            "top_positive_residual_terms",
+            "top_positive_residual_scores",
+        ):
+            prior = metadata.setdefault((topic_id, field), row[field])
+            if prior != row[field]:
+                raise ValueError(f"Topic {topic_id} has inconsistent {field} values.")
+        for field in ("disclosure_salience", "assignment_specificity"):
+            value = _parse_nonnegative_float(row[field], field)
+            if value > 1:
+                raise ValueError(f"{field} must be between 0 and 1.")
+        residual_terms = [value for value in row["top_positive_residual_terms"].split("|") if value]
+        residual_scores = [
+            _parse_nonnegative_float(value, "top_positive_residual_scores")
+            for value in row["top_positive_residual_scores"].split("|")
+            if value
+        ]
+        if len(residual_terms) != len(residual_scores):
+            raise ValueError(
+                "top_positive_residual_terms and top_positive_residual_scores must have "
+                "matching lengths."
+            )
+        if residual_scores != sorted(residual_scores, reverse=True):
+            raise ValueError("top_positive_residual_scores must be in descending order.")
     duplicate_primary = sorted(
         passage_id for passage_id, count in primary_by_passage.items() if count > 1
     )
@@ -654,9 +674,7 @@ def _validate_deal_topics(
             raise ValueError(f"Duplicate deal/topic row: {key}")
         seen.add(key)
         weight_sum = _parse_nonnegative_float(row["weight_sum"], "weight_sum")
-        normalized_weight = _parse_nonnegative_float(
-            row["normalized_weight"], "normalized_weight"
-        )
+        normalized_weight = _parse_nonnegative_float(row["normalized_weight"], "normalized_weight")
         primary_count = _parse_nonnegative_int(
             row["primary_passage_count"], "primary_passage_count"
         )
@@ -671,9 +689,7 @@ def _validate_deal_topics(
                 raise ValueError(f"Deal/topic row {key} has no source-linked passage assignment.")
         else:
             if not row["zero_state"]:
-                raise ValueError(
-                    f"Deal {deal_id} requires zero_state when topic_id is blank."
-                )
+                raise ValueError(f"Deal {deal_id} requires zero_state when topic_id is blank.")
             if weight_sum or normalized_weight or primary_count:
                 raise ValueError(f"Zero-state deal {deal_id} must have zero topic values.")
             zero_states[deal_id].append(row["zero_state"])
@@ -741,9 +757,7 @@ def _topic_review_rows(
     for topic_id in sorted(grouped):
         rows = grouped[topic_id]
         representatives = _representatives(rows, representative_limit, passage_by_id)
-        primary_rows = [
-            row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")
-        ]
+        primary_rows = [row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")]
         quality = representative_quality[topic_id]
         substantive_count = len(representatives)
         required_count = min(2, len({row["passage_id"] for row in primary_rows}))
@@ -763,6 +777,10 @@ def _topic_review_rows(
                 ),
                 "model_coherence": first.get("coherence", ""),
                 "stability_recovery_rate": first.get("stability_recovery_rate", ""),
+                "disclosure_salience": first["disclosure_salience"],
+                "assignment_specificity": first["assignment_specificity"],
+                "top_positive_residual_terms": first["top_positive_residual_terms"],
+                "top_positive_residual_scores": first["top_positive_residual_scores"],
                 "substantive_representative_count": str(substantive_count),
                 "representative_quality_status": (
                     "pass" if substantive_count >= required_count else "fail"
@@ -788,9 +806,7 @@ def _representatives(
     representative_limit: int,
     passage_by_id: dict[str, dict[str, str]],
 ) -> list[dict[str, str]]:
-    primary_rows = [
-        row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")
-    ]
+    primary_rows = [row for row in rows if _parse_bool(row["primary_topic"], "primary_topic")]
     substantive_rows = []
     for row in primary_rows:
         passage = passage_by_id[row["passage_id"]]
@@ -830,13 +846,9 @@ def _representative_quality_diagnostic(
     failures: list[str] = []
     for topic_id in sorted(grouped):
         primary_candidates = [
-            row
-            for row in grouped[topic_id]
-            if _parse_bool(row["primary_topic"], "primary_topic")
+            row for row in grouped[topic_id] if _parse_bool(row["primary_topic"], "primary_topic")
         ]
-        representatives = _representatives(
-            grouped[topic_id], representative_limit, passage_by_id
-        )
+        representatives = _representatives(grouped[topic_id], representative_limit, passage_by_id)
         ranked_primary = sorted(
             primary_candidates,
             key=lambda row: (
@@ -863,18 +875,20 @@ def _representative_quality_diagnostic(
                     row["passage_id"],
                 ),
             )
-            rendered_reasons = ", ".join(
-                f"{row['passage_id']}="
-                f"{'+'.join(lint_representative_passage(passage_by_id[row['passage_id']]['text'], passage_by_id[row['passage_id']]['heading']))}"
-                for row in rejected[:3]
-                if lint_representative_passage(
-                    passage_by_id[row["passage_id"]]["text"],
-                    passage_by_id[row["passage_id"]]["heading"],
+            rendered_reasons = (
+                ", ".join(
+                    f"{row['passage_id']}="
+                    f"{'+'.join(lint_representative_passage(passage_by_id[row['passage_id']]['text'], passage_by_id[row['passage_id']]['heading']))}"
+                    for row in rejected[:3]
+                    if lint_representative_passage(
+                        passage_by_id[row["passage_id"]]["text"],
+                        passage_by_id[row["passage_id"]]["heading"],
+                    )
                 )
-            ) or "no substantive primary representatives"
+                or "no substantive primary representatives"
+            )
             failures.append(
-                f"{topic_id} ({substantive_count}/{required_count} substantive; "
-                f"{rendered_reasons})"
+                f"{topic_id} ({substantive_count}/{required_count} substantive; {rendered_reasons})"
             )
     total_topics = len(grouped)
     passed = bool(total_topics) and passing_topics == total_topics
@@ -968,6 +982,18 @@ def _authored_report_sections(
         "stated purpose."
     )
 
+    metric_note = (
+        "## Model reporting metrics\n\n"
+        "Disclosure salience is the mean deal-normalized topic share across all selected deals; "
+        "an explicit-zero deal contributes zero. It is comparative disclosure share, not "
+        "importance, concern, or an employee outcome. Assignment specificity is the mean "
+        "normalized top-topic minus runner-up margin among passages primarily assigned to the "
+        "topic. It measures model concentration, not substantive certainty. Positive residual "
+        "terms have the highest mean `max(X - WH, 0)` TF-IDF reconstruction residual within a "
+        "topic's primary passages; they identify language the fitted components reconstruct less "
+        "fully, not an additional validated theme."
+    )
+
     passage_counts = Counter(row["deal_id"] for row in passages)
     passage_sources: dict[str, list[dict[str, str]]] = defaultdict(list)
     for passage in passages:
@@ -1037,7 +1063,7 @@ def _authored_report_sections(
         "remain "
         "blank in the review template until a reviewer examines the source-linked representatives."
     )
-    return ["\n\n".join(gate_lines), boundary, "\n".join(table), method_note]
+    return ["\n\n".join(gate_lines), boundary, metric_note, "\n".join(table), method_note]
 
 
 def _representative_passage_section(
@@ -1058,7 +1084,16 @@ def _representative_passage_section(
     for topic_id in sorted(grouped):
         rows = grouped[topic_id]
         terms = rows[0]["top_terms"] or "terms unavailable"
-        lines.append(f"### Candidate {topic_id}\n\nTop terms: {_escape_inline(terms)}")
+        first = rows[0]
+        residual_terms = first["top_positive_residual_terms"] or "none"
+        lines.append(
+            f"### Candidate {topic_id}\n\n"
+            f"Top terms: {_escape_inline(terms)}\n\n"
+            f"Comparative disclosure salience: "
+            f"{_format_percent(first['disclosure_salience'])}; assignment specificity: "
+            f"{_format_percent(first['assignment_specificity'])}; top positive residual terms: "
+            f"{_escape_inline(residual_terms)}."
+        )
         representatives = _representatives(rows, representative_limit, passage_by_id)
         if not representatives:
             lines.append(

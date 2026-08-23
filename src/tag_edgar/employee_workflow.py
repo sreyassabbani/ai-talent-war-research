@@ -130,6 +130,10 @@ TOPIC_ASSIGNMENT_FIELDS = [
     "method",
     "coherence",
     "stability_recovery_rate",
+    "disclosure_salience",
+    "assignment_specificity",
+    "top_positive_residual_terms",
+    "top_positive_residual_scores",
 ]
 
 TOPIC_SUMMARY_FIELDS = [
@@ -141,6 +145,10 @@ TOPIC_SUMMARY_FIELDS = [
     "coherence",
     "stability_median_cosine",
     "stability_recovery_rate",
+    "disclosure_salience",
+    "assignment_specificity",
+    "top_positive_residual_terms",
+    "top_positive_residual_scores",
 ]
 
 DEAL_TOPIC_FIELDS = [
@@ -220,7 +228,9 @@ def _file_sha256(path: Path) -> str:
 
 
 def _selected_deals(review_csv: Path) -> list[dict[str, str]]:
-    rows = [row for row in _read_rows(review_csv) if row.get("pilot_status", "").lower() == "selected"]
+    rows = [
+        row for row in _read_rows(review_csv) if row.get("pilot_status", "").lower() == "selected"
+    ]
     if not rows:
         raise ValueError("Review CSV has no rows with pilot_status=selected.")
     missing = [index for index, row in enumerate(rows, start=2) if not row.get("deal_id")]
@@ -291,15 +301,16 @@ def _party_aliases(party_name: str) -> tuple[str, ...]:
 def _normalize_party_names(model_text: str, acquirer_name: str, target_name: str) -> str:
     normalized = model_text
     for alias in (*_party_aliases(acquirer_name), *_party_aliases(target_name)):
-        normalized = re.sub(
-            rf"(?<!\w){re.escape(alias)}(?!\w)", " entitytoken ", normalized
-        )
+        normalized = re.sub(rf"(?<!\w){re.escape(alias)}(?!\w)", " entitytoken ", normalized)
     return " ".join(normalized.split())
 
 
 def _has_target_proximity(text: str, target_name: str) -> bool:
     normalized = " ".join(re.findall(r"[a-z0-9]+", text.casefold()))
-    return any(re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", normalized) for alias in _target_aliases(target_name))
+    return any(
+        re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", normalized)
+        for alias in _target_aliases(target_name)
+    )
 
 
 def _document_eligibility(
@@ -321,8 +332,10 @@ def _document_eligibility(
         return True, "included_transaction_specific_form", target_proximity, transaction_language
     if transaction_evidence_hits:
         return True, "included_transaction_evidence", target_proximity, transaction_language
-    if filing_form.upper() == "8-K" and document_type.startswith("EX-") and not document_type.startswith(
-        ("EX-2.", "EX-99.")
+    if (
+        filing_form.upper() == "8-K"
+        and document_type.startswith("EX-")
+        and not document_type.startswith(("EX-2.", "EX-99."))
     ):
         if target_proximity and transaction_language and employee_action:
             return (
@@ -596,9 +609,7 @@ def _minhash(shingles: frozenset[str], permutations: int = 12) -> tuple[int, ...
         return tuple(0 for _ in range(permutations))
     return tuple(
         min(
-            int.from_bytes(
-                hashlib.sha256(f"{permutation}:{shingle}".encode()).digest()[:8], "big"
-            )
+            int.from_bytes(hashlib.sha256(f"{permutation}:{shingle}".encode()).digest()[:8], "big")
             for shingle in shingles
         )
         for permutation in range(permutations)
@@ -710,7 +721,11 @@ def _manual_source_validation(
         manual_code = row.get("manual_employee_term_code", "")
         expected_positive = bool(manual_code) and not manual_code.casefold().startswith("no_")
         positive_count += int(expected_positive)
-        document_id = documents_by_url.get((deal_id, _canonical_sec_url(source_url)), "") if source_url else ""
+        document_id = (
+            documents_by_url.get((deal_id, _canonical_sec_url(source_url)), "")
+            if source_url
+            else ""
+        )
         included = bool(document_id) and eligibility_by_document.get((deal_id, document_id), False)
         qualifying_count = qualifying_passages[(deal_id, document_id)] if document_id else 0
         if not document_id:
@@ -765,8 +780,7 @@ def build_employee_corpus_workflow(
         filings_path = runs_dir / deal_id / "filings.csv"
         filing_rows = _read_rows(filings_path) if filings_path.exists() else []
         form_by_accession = {
-            row.get("accession_number", ""): row.get("form", "").upper()
-            for row in filing_rows
+            row.get("accession_number", ""): row.get("form", "").upper() for row in filing_rows
         }
         evidence_path = runs_dir / deal_id / "evidence.csv"
         evidence_rows = _read_rows(evidence_path) if evidence_path.exists() else []
@@ -780,8 +794,7 @@ def build_employee_corpus_workflow(
             row.get("accession_number", "")
             for row in all_document_rows
             if row.get("document_type", "").upper().startswith("EX-2.")
-            or form_by_accession.get(row.get("accession_number", ""), "")
-            in _TRANSACTION_FORMS
+            or form_by_accession.get(row.get("accession_number", ""), "") in _TRANSACTION_FORMS
         )
         for row in all_document_rows:
             if not _relevant_document(row):
@@ -805,7 +818,9 @@ def build_employee_corpus_workflow(
             }
             prior = document_rows.get(document_id)
             if prior is not None and prior["url"] != url:
-                raise ValueError(f"Document {document_id} has inconsistent source URLs across deals.")
+                raise ValueError(
+                    f"Document {document_id} has inconsistent source URLs across deals."
+                )
             document_rows.setdefault(document_id, combined_row)
 
             body_path, metadata_path = _cache_paths(cache_dir, url)
@@ -948,9 +963,7 @@ def build_employee_corpus_workflow(
             deal.get("acquirer_name", ""),
             deal.get("target_name", ""),
         )
-        passage_included, passage_reason = _passage_eligibility(
-            passage.screen_terms, model_text
-        )
+        passage_included, passage_reason = _passage_eligibility(passage.screen_terms, model_text)
         passage_rows.append(
             {
                 "passage_id": passage.passage_id,
@@ -1012,7 +1025,11 @@ def build_employee_corpus_workflow(
     document_eligibility_path = output_dir / "document_eligibility.csv"
     passages_path = output_dir / "passages.csv"
     sources_path = output_dir / "passage_sources.csv"
-    _write_rows(documents_path, DOCUMENT_FIELDS, sorted(document_rows.values(), key=lambda row: str(row["document_id"])))
+    _write_rows(
+        documents_path,
+        DOCUMENT_FIELDS,
+        sorted(document_rows.values(), key=lambda row: str(row["document_id"])),
+    )
     _write_rows(
         document_texts_path,
         DOCUMENT_TEXT_FIELDS,
@@ -1116,8 +1133,11 @@ def _format_number(value: float | str | None) -> str:
     return str(value)
 
 
-def _assignment_rows(result: EmployeeTopicResult) -> list[dict[str, object]]:
+def _assignment_rows(
+    result: EmployeeTopicResult, disclosure_salience: Mapping[str, float] | None = None
+) -> list[dict[str, object]]:
     topics = {row.topic_id: row for row in result.topics}
+    salience = disclosure_salience or {}
     output: list[dict[str, object]] = []
     for assignment in result.assignments:
         topic = topics[assignment.topic_id]
@@ -1131,6 +1151,12 @@ def _assignment_rows(result: EmployeeTopicResult) -> list[dict[str, object]]:
                 "method": "nmf",
                 "coherence": _format_number(topic.coherence),
                 "stability_recovery_rate": _format_number(topic.stability_recovery_rate),
+                "disclosure_salience": _format_number(salience.get(topic.topic_id, 0.0)),
+                "assignment_specificity": _format_number(topic.assignment_specificity),
+                "top_positive_residual_terms": "|".join(topic.top_positive_residual_terms),
+                "top_positive_residual_scores": "|".join(
+                    _format_number(value) for value in topic.top_positive_residual_scores
+                ),
             }
         )
     return output
@@ -1177,9 +1203,11 @@ def _source_passages(
 
 
 def _propagated_assignment_rows(
-    result: EmployeeTopicResult, source_passages: Sequence[dict[str, object]]
+    result: EmployeeTopicResult,
+    source_passages: Sequence[dict[str, object]],
+    disclosure_salience: Mapping[str, float] | None = None,
 ) -> list[dict[str, object]]:
-    canonical_rows = _assignment_rows(result)
+    canonical_rows = _assignment_rows(result, disclosure_salience)
     by_passage: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
     for row in canonical_rows:
         by_passage[str(row["canonical_passage_id"])].append(row)
@@ -1201,6 +1229,24 @@ def _propagated_assignment_rows(
     return output
 
 
+def _disclosure_salience(
+    deals: Sequence[dict[str, str]], rows: Sequence[dict[str, object]]
+) -> dict[str, float]:
+    """Mean deal-normalized topic share, with every explicit-zero deal contributing zero."""
+    if not deals:
+        return {}
+    topic_ids = sorted({str(row["topic_id"]) for row in rows if row["topic_id"]})
+    shares = {
+        (str(row["deal_id"]), str(row["topic_id"])): float(str(row["normalized_weight"]))
+        for row in rows
+        if row["topic_id"]
+    }
+    return {
+        topic_id: sum(shares.get((deal["deal_id"], topic_id), 0.0) for deal in deals) / len(deals)
+        for topic_id in topic_ids
+    }
+
+
 def _propagated_deal_topics(
     deals: Sequence[dict[str, str]],
     result: EmployeeTopicResult,
@@ -1214,9 +1260,7 @@ def _propagated_deal_topics(
         for row in source_rows
         if row.get("deal_id") and row.get("passage_id")
     }
-    sums: defaultdict[str, defaultdict[str, float]] = defaultdict(
-        lambda: defaultdict(float)
-    )
+    sums: defaultdict[str, defaultdict[str, float]] = defaultdict(lambda: defaultdict(float))
     primary: defaultdict[str, Counter[str]] = defaultdict(Counter)
     for deal_id, passage_id in sorted(deal_passages):
         for assignment in assignments_by_passage.get(passage_id, ()):
@@ -1265,7 +1309,9 @@ def _propagated_deal_topics(
     return output
 
 
-def _heatmap_svg(deals: Sequence[dict[str, str]], result: EmployeeTopicResult, rows: Sequence[dict[str, object]]) -> str:
+def _heatmap_svg(
+    deals: Sequence[dict[str, str]], result: EmployeeTopicResult, rows: Sequence[dict[str, object]]
+) -> str:
     topics = sorted(row.topic_id for row in result.topics)
     cell_width = 92
     cell_height = 28
@@ -1273,16 +1319,14 @@ def _heatmap_svg(deals: Sequence[dict[str, str]], result: EmployeeTopicResult, r
     width = label_width + max(1, len(topics)) * cell_width + 20
     height = 72 + len(deals) * cell_height + 40
     weights = {
-        (str(row["deal_id"]), str(row["topic_id"])): float(
-            str(row["normalized_weight"])
-        )
+        (str(row["deal_id"]), str(row["topic_id"])): float(str(row["normalized_weight"]))
         for row in rows
         if row["topic_id"]
     }
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
         '<rect width="100%" height="100%" fill="white"/>',
-        '<style>text{font-family:system-ui,sans-serif;font-size:12px}.title{font-size:16px;font-weight:600}.topic{font-weight:600}</style>',
+        "<style>text{font-family:system-ui,sans-serif;font-size:12px}.title{font-size:16px;font-weight:600}.topic{font-weight:600}</style>",
         '<text class="title" x="10" y="24">Employee disclosure topic shares by deal</text>',
     ]
     if not topics:
@@ -1292,7 +1336,10 @@ def _heatmap_svg(deals: Sequence[dict[str, str]], result: EmployeeTopicResult, r
         parts.append(f'<text class="topic" x="{x + 4}" y="52">{escape(topic_id)}</text>')
     for row_index, deal in enumerate(deals):
         y = 60 + row_index * cell_height
-        label = f"{deal.get('acquirer_name', '')}–{deal.get('target_name', '')}".strip("–") or deal["deal_id"]
+        label = (
+            f"{deal.get('acquirer_name', '')}–{deal.get('target_name', '')}".strip("–")
+            or deal["deal_id"]
+        )
         parts.append(f'<text x="10" y="{y + 19}">{escape(label[:34])}</text>')
         for column, topic_id in enumerate(topics):
             value = weights.get((deal["deal_id"], topic_id), 0.0)
@@ -1324,9 +1371,10 @@ def analyze_employee_topics_workflow(
     ]
     result = analyze_employee_topics_csv(passages_path, config)
     source_passage_rows = _source_passages(canonical_passages, included_source_rows)
-    canonical_assignment_rows = _assignment_rows(result)
-    assignment_rows = _propagated_assignment_rows(result, source_passage_rows)
     deal_topic_rows = _propagated_deal_topics(deals, result, included_source_rows)
+    disclosure_salience = _disclosure_salience(deals, deal_topic_rows)
+    canonical_assignment_rows = _assignment_rows(result, disclosure_salience)
+    assignment_rows = _propagated_assignment_rows(result, source_passage_rows, disclosure_salience)
 
     _write_rows(output_dir / "source_passages.csv", PASSAGE_FIELDS, source_passage_rows)
     _write_rows(output_dir / "topic_assignments.csv", TOPIC_ASSIGNMENT_FIELDS, assignment_rows)
@@ -1345,6 +1393,12 @@ def analyze_employee_topics_workflow(
                 "coherence": _format_number(row.coherence),
                 "stability_median_cosine": _format_number(row.stability_median_cosine),
                 "stability_recovery_rate": _format_number(row.stability_recovery_rate),
+                "disclosure_salience": _format_number(disclosure_salience.get(row.topic_id, 0.0)),
+                "assignment_specificity": _format_number(row.assignment_specificity),
+                "top_positive_residual_terms": "|".join(row.top_positive_residual_terms),
+                "top_positive_residual_scores": "|".join(
+                    _format_number(value) for value in row.top_positive_residual_scores
+                ),
             }
             for row in result.topics
         ),
@@ -1408,7 +1462,7 @@ def analyze_employee_topics_workflow(
     heatmap_path.parent.mkdir(parents=True, exist_ok=True)
     heatmap_path.write_text(_heatmap_svg(deals, result, deal_topic_rows), encoding="utf-8")
     manifest: dict[str, object] = {
-        "schema_version": 2,
+        "schema_version": 3,
         "status": result.status,
         "reason": result.reason,
         "review_sha256": _file_sha256(review_csv),
@@ -1456,6 +1510,21 @@ def analyze_employee_topics_workflow(
                 },
             ],
             "comparison": "adjusted_rand_on_shared_nonnoise_rows_when_defined",
+        },
+        "reporting_metric_definitions": {
+            "disclosure_salience": (
+                "mean deal-normalized topic share across every selected deal; explicit-zero "
+                "deals contribute zero; comparative disclosure share, not importance, concern, "
+                "or outcome"
+            ),
+            "assignment_specificity": (
+                "mean normalized top-topic minus runner-up weight margin among passages whose "
+                "primary assignment is the topic; model concentration, not substantive certainty"
+            ),
+            "top_positive_residual_terms": (
+                "highest mean positive TF-IDF reconstruction residual max(X-WH,0) within the "
+                "topic's primary passages"
+            ),
         },
         "selected_deal_ids": [deal["deal_id"] for deal in deals],
         "topic_count": len(result.topics),
