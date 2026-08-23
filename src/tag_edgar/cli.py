@@ -393,6 +393,8 @@ def analyze_employee_topics_command(
     k_min: int = typer.Option(3, min=2),
     k_max: int = typer.Option(7, min=2),
     bootstrap_replicates: int = typer.Option(100, min=1),
+    embedding_svd_components: int = typer.Option(50, min=1),
+    embedding_hdbscan_min_cluster_size: int = typer.Option(5, min=2),
 ) -> None:
     """Fit deterministic topics and propagate assignments through every passage source."""
     config = TopicModelConfig(
@@ -402,6 +404,8 @@ def analyze_employee_topics_command(
         k_min=k_min,
         k_max=k_max,
         bootstrap_replicates=bootstrap_replicates,
+        embedding_svd_components=embedding_svd_components,
+        embedding_hdbscan_min_cluster_size=embedding_hdbscan_min_cluster_size,
     )
     summary = analyze_employee_topics_workflow(
         review_csv,

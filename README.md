@@ -223,6 +223,14 @@ post-hoc relabeling rule. Deals without a stable assignment remain in the matrix
 zero state. The final Markdown report and `topic_review.csv` are interpretation aids; topic labels
 still require human review.
 
+For fit universes of this size, `embedding_robustness_assignments.csv` also records a local
+passage-embedding check on exactly the same family-level fit rows. It uses fixed-seed normalized
+TruncatedSVD (50-component maximum) over the fitted word/bigram TF-IDF matrix—LSA embeddings, not
+transformer semantics—followed by prespecified sklearn HDBSCAN and cosine/average agglomerative
+clustering. Coverage, noise, cluster counts, parameters, and ARI comparisons where defined appear
+in `model_diagnostics.csv` and `analysis_manifest.json`; this check cannot alter the selected NMF
+solution.
+
 Prepare that review offline from the canonical analysis rows (not the source-propagated copies):
 
 ```sh

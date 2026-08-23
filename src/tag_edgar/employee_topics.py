@@ -12,8 +12,10 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import HDBSCAN, AgglomerativeClustering
+from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import adjusted_rand_score
+from sklearn.preprocessing import normalize
 
 _REQUIRED_COLUMNS = frozenset(
     {
@@ -167,6 +169,9 @@ class TopicModelConfig:
     stability_iterations: int = 12
     bootstrap_replicates: int = 100
     bootstrap_iterations: int = 12
+    embedding_svd_components: int = 50
+    embedding_hdbscan_min_cluster_size: int = 5
+    embedding_min_fit_rows: int = 100
     reconstruction_tolerance: float = 0.25
     coherence_tolerance: float = 0.15
     min_topic_coherence: float = 0.0
@@ -253,6 +258,15 @@ class BootstrapSummaryRow:
 
 
 @dataclass(frozen=True)
+class EmbeddingRobustnessAssignmentRow:
+    passage_id: str
+    deal_id: str
+    method: str
+    cluster_id: str
+    noise: bool
+
+
+@dataclass(frozen=True)
 class EmployeeTopicResult:
     status: str
     reason: str | None
@@ -264,6 +278,7 @@ class EmployeeTopicResult:
     stability: tuple[StabilityRow, ...]
     bootstrap_stability: tuple[BootstrapStabilityRow, ...] = ()
     bootstrap_summary: tuple[BootstrapSummaryRow, ...] = ()
+    embedding_robustness_assignments: tuple[EmbeddingRobustnessAssignmentRow, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -648,6 +663,10 @@ def analyze_employee_topics(
             "preserving every deal's fit-row count and the original fitted vocabulary.",
         )
     )
+    embedding_assignments, embedding_diagnostics = _embedding_robustness(
+        corpus, selected, config
+    )
+    diagnostics.extend(embedding_diagnostics)
     return EmployeeTopicResult(
         status="modeled",
         reason=None,
@@ -659,6 +678,7 @@ def analyze_employee_topics(
         stability=stability,
         bootstrap_stability=bootstrap_stability,
         bootstrap_summary=bootstrap_summary,
+        embedding_robustness_assignments=embedding_assignments,
     )
 
 
@@ -685,9 +705,13 @@ def _validate_config(config: TopicModelConfig) -> None:
         config.stability_iterations,
         config.bootstrap_replicates,
         config.bootstrap_iterations,
+        config.embedding_svd_components,
+        config.embedding_min_fit_rows,
         config.max_fit_passages,
     ) < 1:
         raise ValueError("Iteration and fit-sample limits must be positive.")
+    if config.embedding_hdbscan_min_cluster_size < 2:
+        raise ValueError("embedding_hdbscan_min_cluster_size must be at least 2.")
 
 
 def _passage_from_mapping(row: Mapping[str, str]) -> PassageRow:
@@ -1351,6 +1375,174 @@ def _agglomerative_assignments(corpus: _VectorizedCorpus, k: int) -> list[int]:
     for index, label in zip(nonzero, fitted.tolist(), strict=True):
         labels[index] = int(label)
     return labels
+
+
+def _embedding_robustness(
+    corpus: _VectorizedCorpus, fit: _NmfFit, config: TopicModelConfig
+) -> tuple[tuple[EmbeddingRobustnessAssignmentRow, ...], tuple[DiagnosticRow, ...]]:
+    """Compare the NMF fit to deterministic local LSA clustering on the same fit rows.
+
+    These are TF-IDF latent-semantic-analysis embeddings, not transformer embeddings. The slice
+    is descriptive and cannot change the selected topic count, components, or labels.
+    """
+    if len(corpus.rows) < config.embedding_min_fit_rows:
+        return (), (
+            DiagnosticRow(
+                "embedding_robustness",
+                "lsa_status",
+                "not_applicable",
+                "pass",
+                f"Prespecified only for fit universes with at least "
+                f"{config.embedding_min_fit_rows} family-level rows; found {len(corpus.rows)}.",
+            ),
+        )
+
+    component_count = min(
+        config.embedding_svd_components,
+        len(corpus.rows) - 1,
+        len(corpus.vocabulary) - 1,
+    )
+    if component_count < 1:
+        return (), (
+            DiagnosticRow(
+                "embedding_robustness",
+                "lsa_status",
+                "not_computable",
+                "warning",
+                "Need at least two fit rows and two vocabulary terms for truncated SVD.",
+            ),
+        )
+
+    dense = _dense_rows(corpus, range(len(corpus.rows)))
+    embedding = normalize(
+        TruncatedSVD(
+            n_components=component_count,
+            algorithm="randomized",
+            n_iter=7,
+            random_state=config.seed,
+        ).fit_transform(dense),
+        norm="l2",
+    )
+    nonzero = np.linalg.norm(embedding, axis=1) > 0
+
+    hdbscan_labels = np.full(len(corpus.rows), -1, dtype=np.int64)
+    if int(nonzero.sum()) >= config.embedding_hdbscan_min_cluster_size:
+        hdbscan_labels[nonzero] = HDBSCAN(
+            min_cluster_size=config.embedding_hdbscan_min_cluster_size,
+            min_samples=None,
+            metric="euclidean",
+            cluster_selection_method="eom",
+            allow_single_cluster=False,
+            copy=False,
+        ).fit_predict(embedding[nonzero])
+
+    agglomerative_labels = np.full(len(corpus.rows), -1, dtype=np.int64)
+    if int(nonzero.sum()) >= fit.k:
+        agglomerative_labels[nonzero] = AgglomerativeClustering(
+            n_clusters=fit.k,
+            metric="cosine",
+            linkage="average",
+        ).fit_predict(embedding[nonzero])
+
+    assignments: list[EmbeddingRobustnessAssignmentRow] = []
+    for method, labels in (
+        ("lsa_hdbscan", hdbscan_labels),
+        ("lsa_agglomerative", agglomerative_labels),
+    ):
+        for row, label in zip(corpus.rows, labels.tolist(), strict=True):
+            is_noise = label < 0
+            assignments.append(
+                EmbeddingRobustnessAssignmentRow(
+                    passage_id=row.passage_id,
+                    deal_id=row.deal_id,
+                    method=method,
+                    cluster_id="noise" if is_noise else f"cluster_{label + 1}",
+                    noise=is_noise,
+                )
+            )
+
+    primary = [_argmax(weights) for weights in fit.weights]
+    hdbscan_comparable = [index for index, label in enumerate(hdbscan_labels) if label >= 0]
+    hdbscan_clusters = {int(hdbscan_labels[index]) for index in hdbscan_comparable}
+    hdbscan_ari: float | str = (
+        float(
+            adjusted_rand_score(
+                [primary[index] for index in hdbscan_comparable],
+                [int(hdbscan_labels[index]) for index in hdbscan_comparable],
+            )
+        )
+        if len(hdbscan_comparable) >= 2 and len(hdbscan_clusters) >= 2
+        else "not_comparable"
+    )
+    agglomerative_comparable = [
+        index for index, label in enumerate(agglomerative_labels) if label >= 0
+    ]
+    agglomerative_ari: float | str = (
+        float(
+            adjusted_rand_score(
+                [primary[index] for index in agglomerative_comparable],
+                [int(agglomerative_labels[index]) for index in agglomerative_comparable],
+            )
+        )
+        if len(agglomerative_comparable) >= 2
+        else "not_comparable"
+    )
+    diagnostics = (
+        DiagnosticRow(
+            "embedding_robustness",
+            "lsa_components",
+            component_count,
+            "pass",
+            "Fixed-seed randomized TruncatedSVD of word/bigram TF-IDF; these are local LSA "
+            "embeddings, not transformer semantic embeddings.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "lsa_fit_coverage_rate",
+            float(nonzero.mean()),
+            "pass" if bool(nonzero.all()) else "warning",
+            "Nonzero LSA rows from the exact NMF fit universe; projected passages are excluded.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "hdbscan_min_cluster_size",
+            config.embedding_hdbscan_min_cluster_size,
+            "pass",
+            "Prespecified sklearn HDBSCAN parameter; min_samples=None, Euclidean metric, "
+            "EOM selection, and single-cluster solutions disabled.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "hdbscan_noise_count",
+            int((hdbscan_labels < 0).sum()),
+            "pass",
+            "Fit-universe passages HDBSCAN marked as noise, including any zero LSA rows.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "hdbscan_cluster_count",
+            len(hdbscan_clusters),
+            "pass" if len(hdbscan_clusters) >= 2 else "warning",
+            "Non-noise HDBSCAN clusters; cluster count is discovered, not set to selected NMF k.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "hdbscan_nmf_adjusted_rand",
+            hdbscan_ari,
+            "pass" if isinstance(hdbscan_ari, float) else "warning",
+            f"ARI on {len(hdbscan_comparable)} non-noise shared fit rows only; no recovery "
+            "threshold and no role in model selection.",
+        ),
+        DiagnosticRow(
+            "embedding_robustness",
+            "agglomerative_nmf_adjusted_rand",
+            agglomerative_ari,
+            "pass" if isinstance(agglomerative_ari, float) else "warning",
+            "Cosine/average agglomerative clustering of normalized LSA rows with selected NMF k; "
+            "ARI uses the same nonzero fit rows and has no role in model selection.",
+        ),
+    )
+    return tuple(assignments), diagnostics
 
 
 def _agglomerative_fit_predict(

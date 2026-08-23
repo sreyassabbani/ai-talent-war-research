@@ -177,6 +177,13 @@ BOOTSTRAP_SUMMARY_FIELDS = [
     "recovery_rate",
     "median_cosine_similarity",
 ]
+EMBEDDING_ROBUSTNESS_FIELDS = [
+    "passage_id",
+    "deal_id",
+    "method",
+    "cluster_id",
+    "noise",
+]
 
 
 @dataclass(frozen=True)
@@ -1389,6 +1396,14 @@ def analyze_employee_topics_workflow(
             for row in result.bootstrap_summary
         ),
     )
+    _write_rows(
+        output_dir / "embedding_robustness_assignments.csv",
+        EMBEDDING_ROBUSTNESS_FIELDS,
+        (
+            {**asdict(row), "noise": str(row.noise).lower()}
+            for row in result.embedding_robustness_assignments
+        ),
+    )
     heatmap_path = output_dir / "deal_topic_heatmap.svg"
     heatmap_path.parent.mkdir(parents=True, exist_ok=True)
     heatmap_path.write_text(_heatmap_svg(deals, result, deal_topic_rows), encoding="utf-8")
@@ -1412,6 +1427,35 @@ def analyze_employee_topics_workflow(
             "seed_formula": "config.seed + 1700003 + replicate_id",
             "alignment": "one_to_one_maximum_total_cosine",
             "recovery_cosine_threshold": config.stability_threshold,
+        },
+        "embedding_robustness_design": {
+            "purpose": "complementary_robustness_diagnostic_not_model_selection",
+            "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+            "input_features": "word_bigram_tfidf",
+            "embedding": "normalized_truncated_svd_lsa_not_transformer_semantics",
+            "svd_algorithm": "randomized",
+            "svd_iterations": 7,
+            "svd_seed": config.seed,
+            "requested_svd_components": config.embedding_svd_components,
+            "minimum_fit_rows": config.embedding_min_fit_rows,
+            "methods": [
+                {
+                    "name": "sklearn_hdbscan",
+                    "min_cluster_size": config.embedding_hdbscan_min_cluster_size,
+                    "min_samples": None,
+                    "metric": "euclidean",
+                    "cluster_selection_method": "eom",
+                    "allow_single_cluster": False,
+                    "copy": False,
+                },
+                {
+                    "name": "sklearn_agglomerative",
+                    "n_clusters": "selected_nmf_k",
+                    "metric": "cosine",
+                    "linkage": "average",
+                },
+            ],
+            "comparison": "adjusted_rand_on_shared_nonnoise_rows_when_defined",
         },
         "selected_deal_ids": [deal["deal_id"] for deal in deals],
         "topic_count": len(result.topics),

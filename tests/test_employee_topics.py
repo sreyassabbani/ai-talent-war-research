@@ -66,6 +66,7 @@ def _model_config() -> TopicModelConfig:
         min_topic_deals=2,
         nmf_iterations=50,
         bootstrap_replicates=8,
+        embedding_min_fit_rows=1,
     )
 
 
@@ -99,6 +100,11 @@ def test_topic_model_returns_long_assignments_deal_matrix_and_sensitivity() -> N
     assert len(result.sensitivity_assignments) == len(corpus)
     assert len({row.cluster_id for row in result.sensitivity_assignments}) == selected_k
     assert len(result.stability) == 3 * selected_k
+    assert len(result.embedding_robustness_assignments) == 2 * len(corpus)
+    assert {row.method for row in result.embedding_robustness_assignments} == {
+        "lsa_hdbscan",
+        "lsa_agglomerative",
+    }
     sensitivity_count = next(
         row.value for row in result.diagnostics if row.name == "agglomerative_fit_passages"
     )
@@ -111,6 +117,13 @@ def test_topic_model_returns_long_assignments_deal_matrix_and_sensitivity() -> N
     assert "cosine metric" in sensitivity_ari.detail
     assert "average linkage" in sensitivity_ari.detail
     assert "permutation-invariant" in sensitivity_ari.detail
+    lsa = next(
+        row
+        for row in result.diagnostics
+        if row.stage == "embedding_robustness" and row.name == "lsa_components"
+    )
+    assert lsa.value == min(50, len(corpus) - 1)
+    assert "not transformer semantic embeddings" in lsa.detail
 
     for passage_id in {row["passage_id"] for row in corpus}:
         weights = [row for row in result.assignments if row.passage_id == passage_id]

@@ -207,6 +207,13 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     }
     assert _rows(analysis_dir / "bootstrap_stability.csv") == []
     assert _rows(analysis_dir / "bootstrap_summary.csv") == []
+    assert _rows(analysis_dir / "embedding_robustness_assignments.csv") == []
+    assert analysis_manifest["embedding_robustness_design"]["input_features"] == (
+        "word_bigram_tfidf"
+    )
+    assert analysis_manifest["embedding_robustness_design"]["methods"][0]["name"] == (
+        "sklearn_hdbscan"
+    )
 
     report_summary = summarize_employee_topics_workflow(
         review, corpus_dir, analysis_dir, report_dir
