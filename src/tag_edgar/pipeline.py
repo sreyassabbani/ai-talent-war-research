@@ -16,7 +16,12 @@ from .submissions import fetch_filings, normalized_cik, relevant_filings
 from .windows import event_window
 
 
-def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict[str, int]:
+def run_vertical_slice(
+    deal: Deal,
+    settings: Settings,
+    output_dir: Path,
+    forms: frozenset[str] | None = None,
+) -> dict[str, int]:
     """Retrieve transaction documents for every manually confirmed public deal party."""
     window = event_window(deal.announcement_date, deal.effective_date)
     party_ciks = [("acquirer", deal.acquirer_cik)]
@@ -33,7 +38,7 @@ def run_vertical_slice(deal: Deal, settings: Settings, output_dir: Path) -> dict
             if normalized_party_cik not in filings_by_cik:
                 all_filings = fetch_filings(client, normalized_party_cik)
                 filings_by_cik[normalized_party_cik] = relevant_filings(
-                    all_filings, settings.forms, window.start, window.end
+                    all_filings, forms or settings.forms, window.start, window.end
                 )
             party_filings = filings_by_cik[normalized_party_cik]
             party_counts[f"{party_role}_filings"] = len(party_filings)
