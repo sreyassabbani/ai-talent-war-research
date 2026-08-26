@@ -1466,14 +1466,17 @@ def _embedding_robustness(
         )
 
     dense = _dense_rows(corpus, range(len(corpus.rows)))
-    embedding = normalize(
-        TruncatedSVD(
-            n_components=component_count,
-            algorithm="randomized",
-            n_iter=7,
-            random_state=config.seed,
-        ).fit_transform(dense),
-        norm="l2",
+    embedding = np.asarray(
+        normalize(
+            TruncatedSVD(
+                n_components=component_count,
+                algorithm="randomized",
+                n_iter=7,
+                random_state=config.seed,
+            ).fit_transform(dense),
+            norm="l2",
+        ),
+        dtype=float,
     )
     nonzero = np.linalg.norm(embedding, axis=1) > 0
     nonzero_indices = [index for index, value in enumerate(nonzero.tolist()) if value]

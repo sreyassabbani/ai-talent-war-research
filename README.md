@@ -282,3 +282,23 @@ unless its denominator is mathematically zero; only then is the disclosed AC1 fa
 from each reviewer for every topic, at least 80% exact agreement, and an agreement coefficient of
 at least 0.70 at both the topic and overall levels. The score manifest records the three input-file
 hashes and all gate thresholds so the result can be reproduced without network access.
+
+## Resumable 100-deal AI expansion
+
+The expansion runner connects candidate screening, cached SEC retrieval, a target-linked document
+gate, employee-corpus construction, fixed-seed NMF topics, sensitivity and stability checks,
+document-family lexical baselines, tone and word-use tables, deterministic word clouds, and
+source-linked Markdown reports:
+
+~~~powershell
+$env:SEC_USER_AGENT = "Researcher project-name real-contact@example.com"
+.venv\Scripts\python.exe -m tag_edgar.overnight `
+  --candidates data\derived\ai_100_candidate_preflight.csv `
+  --raw-dir data\raw\ma_events `
+  --out-dir data\derived\ai_100_overnight
+~~~
+
+The run checkpoints to state.json and returns exit code 2 when it produces a valid partial package
+but cannot reach the requested deal count. Candidate names and generic acquirer AI language never
+establish inclusion by themselves. A qualifying machine row remains pending human review, and a
+disclosed employee arrangement never establishes actual retention.

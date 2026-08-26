@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 tag-edgar = "tag_edgar.cli:app"
+tag-edgar-overnight = "tag_edgar.overnight:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]
