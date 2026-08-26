@@ -39,8 +39,13 @@ These filings disclose contractual language and communications. They do not esta
 - Local LSA robustness: all 240 fit passages embedded; LSA agglomerative ARI is 0.325, while
   HDBSCAN discovers five clusters and labels 142 passages noise. These are diagnostics, not a
   replacement taxonomy.
-- Corpus relevance/missed-content audit: pending actual human coding; the deterministic blinded
-  packet contains 75 included and 75 excluded candidates.
+- Corpus relevance/missed-content audit: **fail** after complete human attestation
+  (assessor `sreyas-sabbani`, 150/150 rows, 2026-08-26). Included-passage relevance was
+  0.720 (gate >= 0.90); excluded-candidate missed content was 0.0533 (gate < 0.05, one
+  passage over the threshold). Failures concentrate in caption/boilerplate fragments and
+  deal-mechanics passages retained by the screen, plus equity-award treatment provisions
+  and deal-specific retention risks removed by over-broad exclusion rules. See
+  `data/derived/corpus_relevance_scores/`.
 - Human representative fit: pending; the review queue intentionally contains blank reviewer fields.
 - Overall taxonomy release: fail/provisional.
 
