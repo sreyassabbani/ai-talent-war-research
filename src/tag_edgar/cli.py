@@ -17,6 +17,7 @@ from .corpus_relevance_audit import (
     write_corpus_relevance_audit,
     write_corpus_relevance_scores,
 )
+from .employee_tone import analyze_employee_tone, write_employee_tone
 from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
 from .employee_topics import TopicModelConfig
 from .employee_workflow import (
@@ -439,6 +440,20 @@ def score_corpus_relevance_audit_command(
     write_corpus_relevance_scores(output_dir, score)
     typer.echo(f"Corpus relevance/recall gate: {score.status}")
     typer.echo(f"Wrote audit scores to {output_dir}")
+
+
+@app.command("analyze-employee-tone")
+def analyze_employee_tone_command(
+    passages_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_tone"),
+) -> None:
+    """Analyze tone, hedging, and word usage in included employee passages."""
+    analysis = analyze_employee_tone(passages_csv)
+    write_employee_tone(output_dir, analysis)
+    typer.echo(
+        f"Analyzed tone for {analysis.passage_count} passages across {analysis.deal_count} deals"
+    )
+    typer.echo(f"Wrote tone analysis to {output_dir}")
 
 
 @app.command("analyze-employee-topics")
