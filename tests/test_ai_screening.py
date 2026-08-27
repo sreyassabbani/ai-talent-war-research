@@ -52,6 +52,24 @@ def test_target_anchors_remove_generic_ai_and_corporate_suffixes() -> None:
     assert target_anchors("Lobe Artificial Intelligence Inc") == ("lobe",)
 
 
+def test_target_anchors_keep_short_digit_brand() -> None:
+    assert target_anchors("6D.ai") == ("6d",)
+
+
+def test_target_anchors_remove_descriptive_suffixes() -> None:
+    assert target_anchors("Mapper.ai Inc-Mapping,Localiza") == ("mapper",)
+
+
+def test_target_link_does_not_cross_paragraphs() -> None:
+    unrelated_adjacent_bullets = (
+        "Announced machine learning capabilities from Microsoft Azure.\n\n"
+        "Welcomed the addition of the Butter.ai employee team to Box."
+    )
+    assert not screen_ai_text_for_target(
+        unrelated_adjacent_bullets, "Butter AI Corp"
+    ).qualifies
+
+
 def test_non_ai_document_never_qualifies() -> None:
     result = screen_ai_text(NON_AI)
     assert not result.qualifies

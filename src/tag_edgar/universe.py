@@ -81,6 +81,7 @@ class DocumentText:
     url: str
     document_type: str
     text: str
+    source_quality: str = "primary_sec_filing"
 
 
 @dataclass(frozen=True)
@@ -258,7 +259,7 @@ def assess_deal_documents(
         source_url=document.url,
         source_accession=document.accession_number,
         source_document_id=document.document_id,
-        source_quality="primary_sec_filing",
+        source_quality=document.source_quality,
         missingness_reason="",
         total_weight=weight,
         distinct_terms=screen_result.distinct_terms,

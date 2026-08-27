@@ -41,12 +41,16 @@ AI_EVIDENCE_PATTERNS: tuple[tuple[str, int], ...] = (
 )
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\s+|\n+")
+_PARAGRAPH_BREAK = re.compile(r"\n[\t \u00a0]*\n+")
 _TARGET_TOKEN = re.compile(r"[a-z0-9]+", re.IGNORECASE)
 _GENERIC_TARGET_TOKENS = frozenset(
     {
         "ai",
         "artificial",
         "intelligence",
+        "data",
+        "science",
+        "sciences",
         "company",
         "corp",
         "corporation",
@@ -58,6 +62,16 @@ _GENERIC_TARGET_TOKENS = frozenset(
         "plc",
         "technology",
         "technologies",
+        "robotic",
+        "robotics",
+        "mapping",
+        "localization",
+        "localiza",
+        "lab",
+        "labs",
+        "software",
+        "solutions",
+        "systems",
     }
 )
 
@@ -187,7 +201,8 @@ def target_anchors(target_name: str) -> tuple[str, ...]:
     tokens = [
         token.casefold()
         for token in _TARGET_TOKEN.findall(target_name)
-        if len(token) >= 3 and token.casefold() not in _GENERIC_TARGET_TOKENS
+        if (len(token) >= 3 or (len(token) >= 2 and any(char.isdigit() for char in token)))
+        and token.casefold() not in _GENERIC_TARGET_TOKENS
     ]
     return tuple(dict.fromkeys(tokens))
 
@@ -224,11 +239,27 @@ def screen_ai_text_for_target(
         for anchor in anchors
         for match in re.finditer(rf"(?<!\w){re.escape(anchor)}(?!\w)", text, re.IGNORECASE)
     ]
+    paragraph_breaks = list(_PARAGRAPH_BREAK.finditer(text))
+
+    def paragraph_bounds(position: int) -> tuple[int, int]:
+        start = 0
+        end = len(text)
+        for boundary in paragraph_breaks:
+            if boundary.end() <= position:
+                start = boundary.end()
+                continue
+            if boundary.start() >= position:
+                end = boundary.start()
+                break
+        return start, end
+
     linked: list[AiEvidenceHit] = []
     for hit in find_ai_hits(text):
+        paragraph_start, paragraph_end = paragraph_bounds(hit.match_start)
         nearby = [
             match
             for match in anchor_matches
+            if paragraph_start <= match.start() < paragraph_end
             if match.start() <= hit.match_end + radius and match.end() >= hit.match_start - radius
         ]
         if not nearby:

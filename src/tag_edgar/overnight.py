@@ -16,6 +16,8 @@ import json
 import platform
 import re
 import sys
+import time
+import uuid
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
@@ -30,6 +32,12 @@ from .employee_corpus import CorpusDocument, build_employee_corpus
 from .sec_client import SecClient
 from .settings import Settings, load_settings
 from .submissions import fetch_filings
+from .supplemental_sources import (
+    ALLOWED_SOURCE_QUALITIES,
+    SupplementalSource,
+    load_supplemental_sources,
+    retrieve_supplemental_documents,
+)
 from .tone import LEXICONS, deal_tone_summary, passage_tone_rows
 from .topics100 import (
     TopicsConfig,
@@ -40,6 +48,7 @@ from .topics100 import (
     topic_label,
 )
 from .universe import (
+    MANIFEST_FIELDS,
     QUALIFYING_STATUS,
     CandidateRow,
     DealAssessment,
@@ -156,19 +165,31 @@ def _to_float(value: object) -> float:
 
 def _atomic_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(text, encoding="utf-8")
-    temporary.replace(path)
+    _replace_with_retry(temporary, path)
+
+
+def _replace_with_retry(temporary: Path, destination: Path) -> None:
+    """Replace a file despite short-lived OneDrive/antivirus locks on Windows."""
+    for attempt in range(8):
+        try:
+            temporary.replace(destination)
+            return
+        except PermissionError:
+            if attempt == 7:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def _write_csv(path: Path, rows: Sequence[Mapping[str, object]], fields: Sequence[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
     with temporary.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=list(fields), extrasaction="ignore")
         writer.writeheader()
         writer.writerows(dict(row) for row in rows)
-    temporary.replace(path)
+    _replace_with_retry(temporary, path)
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -189,13 +210,18 @@ def _field_union(rows: Sequence[Mapping[str, object]], required: Sequence[str] =
     return fields
 
 
-def _document_text(record: DocumentRecord, text: str) -> DocumentText:
+def _document_text(
+    record: DocumentRecord,
+    text: str,
+    source_quality: str = "primary_sec_filing",
+) -> DocumentText:
     return DocumentText(
         document_id=record.document_id,
         accession_number=record.accession_number,
         url=record.url,
         document_type=record.document_type,
         text=text,
+        source_quality=source_quality,
     )
 
 
@@ -238,7 +264,10 @@ class OvernightRun:
         out_dir: Path,
         max_deals: int | None = None,
         target_deals: int = 100,
+        include_reserves: bool = False,
+        rescreen_cached: bool = False,
         refresh: bool = False,
+        supplemental_sources_csv: Path | None = None,
         topics_config: TopicsConfig | None = None,
     ) -> None:
         self.settings = settings
@@ -248,7 +277,13 @@ class OvernightRun:
         self.out_dir = out_dir
         self.max_deals = max_deals
         self.target_deals = target_deals
+        self.include_reserves = include_reserves
+        self.rescreen_cached = rescreen_cached
         self.refresh = refresh
+        self.supplemental_sources_csv = supplemental_sources_csv
+        self.supplemental_sources: dict[str, list[SupplementalSource]] = (
+            load_supplemental_sources(supplemental_sources_csv)
+        )
         self.topics_config = topics_config or TopicsConfig()
         self.state_path = out_dir / "state.json"
         self.log_path = out_dir / "overnight_log.jsonl"
@@ -307,10 +342,13 @@ class OvernightRun:
 
     def stage_freeze_universe(self) -> tuple[list[CandidateRow], list[dict[str, object]]]:
         """Retrieve SEC documents and write one explicit manifest row per candidate."""
+        allowed_statuses = {"selected_candidate"}
+        if self.include_reserves:
+            allowed_statuses.add("reserve_candidate")
         candidates = [
             row
             for row in load_candidates(self.candidates_csv)
-            if row.selection_status == "selected_candidate"
+            if row.selection_status in allowed_statuses
         ]
         if self.max_deals is not None:
             candidates = candidates[: self.max_deals]
@@ -321,6 +359,9 @@ class OvernightRun:
         inventory_path = self.out_dir / "document_inventory.csv"
         if self._stage_done("freeze_universe", (manifest_path, inventory_path)):
             return candidates, [dict(row) for row in _read_csv(manifest_path)]
+
+        if self.rescreen_cached:
+            return candidates, self._rescreen_cached_documents(candidates, inventory_path)
 
         registry = registry_from_payload(self.client.get_json(TICKER_REGISTRY_URL))
         rows: list[dict[str, object]] = []
@@ -336,37 +377,73 @@ class OvernightRun:
 
             records: list[DocumentRecord] = []
             texts: list[tuple[str, str]] = []
+            quality_by_document: dict[str, str] = {}
             try:
                 sdc_form, effective = load_sdc_form(
                     self.raw_dir, candidate.source_file, candidate.source_row_number
                 )
                 cik = acquirer_cik(registry, candidate.acquirer_name)
-                if cik is None:
-                    assessment = _failed_assessment(
-                        candidate.deal_id,
-                        "acquirer_not_resolved_on_edgar",
-                        status="not_qualifying_no_primary_source_found",
-                        transaction_form=normalize_transaction_form(sdc_form),
+                sec_error = ""
+                if cik is not None:
+                    try:
+                        filings = fetch_filings(self.client, cik)
+                        start, end = assessment_window(candidate.announcement_date, effective)
+                        windowed = filings_in_window(filings, start, end, RETRIEVAL_FORMS)
+                        sec_texts, sec_records = retrieve_deal_documents(
+                            self.client, deal_id=candidate.deal_id, filings=windowed
+                        )
+                        texts.extend(sec_texts)
+                        records.extend(sec_records)
+                    except Exception as error:  # noqa: BLE001 - supplemental sources may recover
+                        sec_error = str(error)
+
+                supplemental = self.supplemental_sources.get(candidate.deal_id, [])
+                if supplemental:
+                    extra_texts, extra_records, extra_quality = retrieve_supplemental_documents(
+                        self.client,
+                        deal_id=candidate.deal_id,
+                        sources=supplemental,
                     )
-                else:
-                    filings = fetch_filings(self.client, cik)
-                    start, end = assessment_window(candidate.announcement_date, effective)
-                    windowed = filings_in_window(filings, start, end, RETRIEVAL_FORMS)
-                    texts, records = retrieve_deal_documents(
-                        self.client, deal_id=candidate.deal_id, filings=windowed
+                    texts.extend(extra_texts)
+                    records.extend(extra_records)
+                    quality_by_document.update(extra_quality)
+
+                record_by_id = {record.document_id: record for record in records}
+                document_texts = [
+                    _document_text(
+                        record_by_id[document_id],
+                        text,
+                        quality_by_document.get(document_id, "primary_sec_filing"),
                     )
-                    record_by_id = {record.document_id: record for record in records}
-                    document_texts = [
-                        _document_text(record_by_id[document_id], text)
-                        for document_id, text in texts
-                        if document_id in record_by_id
-                    ]
-                    self._write_document_texts(candidate.deal_id, records, texts)
+                    for document_id, text in texts
+                    if document_id in record_by_id
+                ]
+                self._write_document_texts(
+                    candidate.deal_id,
+                    records,
+                    texts,
+                    target_name=candidate.target_name,
+                )
+                if document_texts:
                     assessment = assess_deal_documents(
                         candidate.deal_id,
                         document_texts,
                         target_name=candidate.target_name,
                         sdc_form=sdc_form,
+                    )
+                elif sec_error:
+                    raise RuntimeError(sec_error)
+                else:
+                    reason = (
+                        "acquirer_not_resolved_on_edgar"
+                        if cik is None
+                        else "no_documents_retrieved_for_deal"
+                    )
+                    assessment = _failed_assessment(
+                        candidate.deal_id,
+                        reason,
+                        status="not_qualifying_no_primary_source_found",
+                        transaction_form=normalize_transaction_form(sdc_form),
                     )
                 row = manifest_row(candidate, assessment, effective)
                 text_by_id = {document_id: text for document_id, text in texts}
@@ -421,6 +498,7 @@ class OvernightRun:
                 "candidate_sha256": _sha256(self.candidates_csv),
                 "candidate_count": len(candidates),
                 "target_deals": self.target_deals,
+                "include_reserves": self.include_reserves,
                 "generated_at": _now(),
                 "note": "Machine-screened evidence pending human review.",
             },
@@ -435,6 +513,13 @@ class OvernightRun:
             "deal_id",
             "acquirer_name",
             "target_name",
+            "announcement_date",
+            "closing_date",
+            "transaction_form",
+            "deal_status",
+            "ai_category",
+            "ai_relevance_evidence",
+            "talent_motive",
             "source_url",
             "source_accession",
             "source_document_id",
@@ -455,16 +540,132 @@ class OvernightRun:
         )
         return candidates, rows
 
+    def _rescreen_cached_documents(
+        self,
+        candidates: Sequence[CandidateRow],
+        inventory_path: Path,
+    ) -> list[dict[str, object]]:
+        """Reapply screening rules to already retrieved target-linked documents."""
+        inventory_rows = _read_csv(inventory_path)
+        inventory_by_deal: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for inventory_row in inventory_rows:
+            inventory_by_deal[inventory_row["deal_id"]].append(inventory_row)
+
+        previous_rows = {
+            row["deal_id"]: row for row in _read_csv(self.out_dir / "frozen_ai_manifest.csv")
+        }
+        rows: list[dict[str, object]] = []
+        for candidate in candidates:
+            previous = previous_rows.get(candidate.deal_id, {})
+            if previous and previous.get("verification_status") != QUALIFYING_STATUS:
+                rows.append(dict(previous))
+                continue
+            sdc_form, effective = load_sdc_form(
+                self.raw_dir, candidate.source_file, candidate.source_row_number
+            )
+            selected_document_id = previous.get("source_document_id", "")
+            documents: list[DocumentText] = []
+            for inventory_row in inventory_by_deal.get(candidate.deal_id, []):
+                if inventory_row.get("status") != "retrieved":
+                    continue
+                document_id = inventory_row["document_id"]
+                if selected_document_id and document_id != selected_document_id:
+                    continue
+                text_path = self.out_dir / "corpus_docs" / candidate.deal_id / f"{document_id}.txt"
+                if not text_path.exists():
+                    continue
+                document_type = inventory_row.get("document_type", "")
+                source_quality = (
+                    document_type
+                    if document_type in ALLOWED_SOURCE_QUALITIES
+                    else "primary_sec_filing"
+                )
+                documents.append(
+                    DocumentText(
+                        document_id=document_id,
+                        accession_number=inventory_row.get("accession_number", ""),
+                        url=inventory_row.get("url", ""),
+                        document_type=document_type,
+                        text=text_path.read_text(encoding="utf-8"),
+                        source_quality=source_quality,
+                    )
+                )
+            if documents:
+                assessment = assess_deal_documents(
+                    candidate.deal_id,
+                    documents,
+                    target_name=candidate.target_name,
+                    sdc_form=sdc_form,
+                )
+            else:
+                assessment = _failed_assessment(
+                    candidate.deal_id,
+                    previous.get("missingness_reason") or "no_cached_target_linked_documents",
+                    status="not_qualifying_no_primary_source_found",
+                    transaction_form=normalize_transaction_form(sdc_form),
+                )
+            rows.append(manifest_row(candidate, assessment, effective))
+
+        rows.sort(key=lambda row: str(row["deal_id"]))
+        write_manifest(
+            self.out_dir,
+            rows,
+            {
+                "stage": "freeze_universe",
+                "mode": "rescreen_cached",
+                "candidates_csv": str(self.candidates_csv),
+                "candidate_sha256": _sha256(self.candidates_csv),
+                "candidate_count": len(candidates),
+                "target_deals": self.target_deals,
+                "include_reserves": self.include_reserves,
+                "generated_at": _now(),
+                "note": "Machine-screened evidence pending human review.",
+            },
+        )
+        source_fields = (
+            "deal_id",
+            "acquirer_name",
+            "target_name",
+            "announcement_date",
+            "closing_date",
+            "transaction_form",
+            "deal_status",
+            "ai_category",
+            "ai_relevance_evidence",
+            "talent_motive",
+            "source_url",
+            "source_accession",
+            "source_document_id",
+            "source_quality",
+            "supporting_excerpt",
+            "verification_status",
+            "confidence",
+            "missingness_reason",
+        )
+        _write_csv(self.out_dir / "deal_source_register.csv", rows, source_fields)
+        qualifying = sum(row["verification_status"] == QUALIFYING_STATUS for row in rows)
+        self._mark_stage(
+            "freeze_universe",
+            candidates=len(candidates),
+            manifest_rows=len(rows),
+            qualifying_machine_rows=qualifying,
+            document_rows=len(inventory_rows),
+            mode="rescreen_cached",
+        )
+        return rows
+
     def _write_document_texts(
         self,
         deal_id: str,
         records: list[DocumentRecord],
         texts: list[tuple[str, str]],
+        *,
+        target_name: str,
     ) -> None:
         text_by_id = {document_id: text for document_id, text in texts}
         for record in records:
             text = text_by_id.get(record.document_id)
-            if not text:
+            if not text or not target_name_mentioned(text, target_name):
                 continue
             deal_dir = self.out_dir / "corpus_docs" / deal_id
             deal_dir.mkdir(parents=True, exist_ok=True)
@@ -479,12 +680,34 @@ class OvernightRun:
         if self._stage_done("build_corpus", (passage_path, occurrence_path)):
             return _read_csv(passage_path)
 
-        qualifying = {
-            str(row["deal_id"])
+        qualifying_rows = {
+            str(row["deal_id"]): row
             for row in manifest_rows
             if row.get("verification_status") == QUALIFYING_STATUS
         }
+        qualifying = set(qualifying_rows)
         inventory = _read_csv(self.out_dir / "document_inventory.csv")
+        official_documents: dict[str, set[str]] = defaultdict(set)
+        available_documents: dict[str, set[str]] = defaultdict(set)
+        for row in inventory:
+            if (
+                row["deal_id"] in qualifying
+                and row.get("status") == "retrieved"
+                and row.get("transaction_relevance_status") == "target_linked"
+            ):
+                available_documents[row["deal_id"]].add(row["document_id"])
+                if row.get("document_type", "").startswith("official_company_"):
+                    official_documents[row["deal_id"]].add(row["document_id"])
+        preferred_documents: dict[str, set[str]] = {}
+        for deal_id, manifest_data in qualifying_rows.items():
+            preferred = official_documents.get(deal_id) or {
+                str(manifest_data.get("source_document_id", ""))
+            }
+            preferred_documents[deal_id] = (
+                preferred
+                if preferred & available_documents.get(deal_id, set())
+                else available_documents.get(deal_id, set())
+            )
         family_by_document: dict[tuple[str, str], str] = {}
         documents: list[CorpusDocument] = []
         for row in inventory:
@@ -492,8 +715,10 @@ class OvernightRun:
             document_id = row["document_id"]
             family_by_document[(deal_id, document_id)] = row.get("family", "other") or "other"
             text_path = self.out_dir / "corpus_docs" / deal_id / f"{document_id}.txt"
+            preferred_ids = preferred_documents.get(deal_id, set())
             if (
                 deal_id not in qualifying
+                or document_id not in preferred_ids
                 or row.get("status") != "retrieved"
                 or row.get("transaction_relevance_status") != "target_linked"
                 or not text_path.exists()
@@ -751,6 +976,10 @@ class OvernightRun:
         review_rows: list[dict[str, object]] = []
         group_rows: list[dict[str, object]] = []
         agglomerative_ari: float | str = "not_run"
+        passage_counts_by_deal = Counter(str(row["deal_id"]) for row in passages)
+        max_deal_passage_share = (
+            max(passage_counts_by_deal.values()) / len(passages) if passages else 0.0
+        )
         texts = [(row["passage_id"], row["model_text"]) for row in passages]
         if len(texts) >= 6:
             try:
@@ -838,6 +1067,10 @@ class OvernightRun:
                         }
                     ]
                 topic_status = "completed_provisional_pending_human_review"
+                if max_deal_passage_share > 0.35:
+                    topic_status = "exploratory_rejected_deal_concentration"
+                    for topic_row in topic_rows:
+                        topic_row["release_status"] = "exploratory_deal_concentration"
             except (ValueError, RuntimeError) as error:
                 topic_status = f"skipped_model_error:{type(error).__name__}"
                 self.log("analyze_topics", "skipped", error=str(error))
@@ -938,6 +1171,8 @@ class OvernightRun:
             "baseline_config": asdict(BaselineConfig()),
             "passage_count": len(passages),
             "deal_count_with_passages": len({row["deal_id"] for row in passages}),
+            "max_deal_passage_share": round(max_deal_passage_share, 4),
+            "max_deal_passage_share_threshold": 0.35,
             "topic_status": topic_status,
             "agglomerative_ari": agglomerative_ari,
             "topic_count": len(topic_rows),
@@ -1014,6 +1249,31 @@ class OvernightRun:
             self.out_dir / "data_quality_report.md",
             "\n".join(quality_lines) + "\n",
         )
+
+        review_fields = [
+            *list(MANIFEST_FIELDS),
+            "human_inclusion_label",
+            "human_ai_relevance_label",
+            "human_transaction_form_label",
+            "human_talent_motive_label",
+            "human_source_checked",
+            "human_notes",
+            "human_attestation",
+        ]
+        review_rows = [
+            {
+                **row,
+                "human_inclusion_label": "",
+                "human_ai_relevance_label": "",
+                "human_transaction_form_label": "",
+                "human_talent_motive_label": "",
+                "human_source_checked": "",
+                "human_notes": "",
+                "human_attestation": "",
+            }
+            for row in qualifying
+        ]
+        _write_csv(self.out_dir / "deal_human_review_queue.csv", review_rows, review_fields)
 
         topic_summary = _read_csv(self.out_dir / "topic_summary.csv")
         evidence_rows = sorted(
@@ -1133,7 +1393,9 @@ class OvernightRun:
                     ".venv\\Scripts\\python.exe -m tag_edgar.overnight "
                     "--candidates data\\derived\\ai_100_candidate_preflight.csv "
                     "--raw-dir data\\raw\\ma_events "
-                    "--out-dir data\\derived\\ai_100_overnight"
+                    "--out-dir data\\derived\\ai_100_overnight "
+                    "--supplemental-sources config\\ai_100_supplemental_sources.csv "
+                    "--include-reserves"
                 ),
                 "```",
             ]
@@ -1213,9 +1475,27 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-deals", type=int, default=None)
     parser.add_argument("--target-deals", type=int, default=100)
     parser.add_argument(
+        "--include-reserves",
+        action="store_true",
+        help="Screen reserve_candidate rows after the selected 100.",
+    )
+    parser.add_argument(
+        "--rescreen-cached",
+        action="store_true",
+        help="Reapply screening rules to cached target-linked documents without network calls.",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Recompute stages while retaining the respectful HTTP cache.",
+    )
+    parser.add_argument(
+        "--supplemental-sources",
+        type=Path,
+        default=None,
+        help=(
+            "Curated CSV of approved official company, regulator, distributor, or SEC sources."
+        ),
     )
     return parser
 
@@ -1249,7 +1529,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             out_dir=args.out_dir,
             max_deals=args.max_deals,
             target_deals=args.target_deals,
+            include_reserves=args.include_reserves,
+            rescreen_cached=args.rescreen_cached,
             refresh=args.refresh,
+            supplemental_sources_csv=args.supplemental_sources,
         )
         try:
             return runner.run()

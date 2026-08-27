@@ -10,27 +10,43 @@ candidate generator.
 - Name-screened candidates: 119
 - Selected candidates: 100
 - Reserve candidates: 19
+- Candidates screened in the completed combined run: 119
+- Retrieved documents: 1,383
+- Failed individual document retrievals: 14
+- Candidate-level run failures: 0
+- Machine-qualified rows pending human review: 15
+- Selected-candidate qualifiers: 14
+- Reserve-candidate qualifiers: 1
+- Unique employee passages: 74 across 14 deals
+- Qualifying deals with zero employee passages: 1
+- Topic status: `exploratory_rejected_deal_concentration`
 - Human-verified qualifying AI transactions: 0
-- Candidate rows with a source URL before retrieval: 0
+- Remaining shortfall against the requested 100 verified deals: 85
 
-The 100 selected rows remain a discovery queue, not a verified AI-deal database.
+The honest frozen result is therefore a 15-row provisional source-backed set, not a verified
+100-deal database. The 119-row manifest preserves every rejected or unresolved candidate and its
+missingness reason. No generic merger was added to reach a round number.
 
 ## Implemented pipeline
 
 The command "python -m tag_edgar.overnight" now provides a resumable, no-LLM workflow that:
 
-1. reads selected candidates and resolves public acquirers to SEC CIKs;
-2. retrieves and caches transaction-window filings and exhibits;
-3. requires AI evidence to be locally linked to a distinctive target-name anchor;
-4. writes an explicit manifest row and document status for every attempted candidate;
-5. builds a heading-aware, exact-deduplicated employee-passage corpus;
-6. records source occurrences and zero-passage deals;
-7. runs fixed-seed word/bigram TF-IDF plus NMF;
-8. produces sensitivity, stability, document-family baseline, tone, word-use, and
+1. reads the 100 selected candidates and, when requested, all 19 reserves;
+2. resolves public acquirers to SEC CIKs and retrieves cached transaction-window filings;
+3. retrieves only pre-approved official company, regulator, distributor, and SEC URLs from the
+   curated supplemental source register;
+4. requires explicit AI evidence and a distinctive target-name anchor in the same source paragraph;
+5. writes an explicit manifest row and document status for every attempted candidate;
+6. prefers focused official transaction announcements for the employee corpus and otherwise uses
+   the selected evidence document;
+7. builds a heading-aware, exact-deduplicated employee-passage corpus;
+8. records source occurrences and zero-passage deals;
+9. runs fixed-seed word/bigram TF-IDF plus NMF;
+10. produces sensitivity, stability, document-family baseline, tone, word-use, and
    deterministic word-cloud outputs;
-9. writes source registers, manifests, structured logs, missingness reports, a final
-   research report, and a morning verification summary; and
-10. resumes completed stages from state.json.
+11. writes source registers, manifests, a blank human-review queue, structured logs, missingness
+    reports, a final research report, and a morning verification summary; and
+12. resumes completed stages or reapplies stricter screening rules from the local document cache.
 
 Machine-qualified rows are always labelled
 "qualifying_machine_verified_pending_human_review". They must not be described as
@@ -43,13 +59,23 @@ incorrectly qualified the candidate from a generic Microsoft sentence about arti
 intelligence that did not mention Lobe. It then created 577 employee passages, and the
 topic terms exposed HTML/table artifacts such as td, valign, and font.
 
-The screen and parser were repaired before scaling:
+The screen and parser were repaired and then audited again after scaling:
 
 - AI evidence must now occur near a distinctive target-name anchor.
 - Complete-submission text with late HTML tags is parsed as HTML.
 - Only target-linked retrieved documents enter the employee corpus.
+- AI and target evidence must occur in the same source paragraph.
+- Generic target descriptors such as `robotics`, `mapping`, and `data science` cannot act as the
+  target identity by themselves.
+- The corpus prefers focused official deal announcements instead of every filing that happens to
+  mention the target.
 - Common English and HTML-layout tokens are excluded from the topic vocabulary.
 - Regression tests cover the generic-corporate-AI false positive and late-HTML case.
+
+The second audit removed four provisional inclusions. Examples included a Box filing that mentioned
+Microsoft machine-learning capabilities in one bullet and the Butter.ai team in another, and a
+Velodyne filing whose general autonomous-driving discussion was not evidence about Mapper.ai. These
+remain explicit nonqualifying rows rather than being silently discarded.
 
 The repaired smoke run again retrieved all 23 documents with no retrieval failures, but
 correctly left Microsoft–Lobe unresolved because none of those SEC documents mentioned
@@ -61,10 +87,10 @@ one-deal shortfall. The before/after ignored artifacts are under:
 
 ## Remaining evidence gate
 
-The current live source adapter is SEC-only. Many private acquisitions, acqui-hires, and
-license-and-hire transactions require official company announcements, regulator decisions,
-or carefully labelled reputable reporting. Those source URLs must be assembled and reviewed
-before exactly 100 deals can be called source-backed.
+The live source adapter now accepts a curated register containing 32 approved source URLs for 30
+candidates. It does not crawl arbitrary reporting or promote unreviewed URLs. Of the 104 unresolved
+rows, 73 have no EDGAR-resolved acquirer, 21 mention the target without paragraph-local AI evidence,
+7 have no target mention in retrieved documents, and 3 have no retrieved deal documents.
 
 For each included deal, a reviewer still needs to confirm:
 
@@ -74,6 +100,11 @@ For each included deal, a reviewer still needs to confirm:
 - source URL, accession, and document identity;
 - entity/CIK resolution where EDGAR applies; and
 - whether employee-document retrieval is complete enough for the stated analysis.
+
+The current topic model is not release-ready. One deal supplies 43.24% of all passages, above the
+35% concentration threshold, so the three topics are retained only as exploratory diagnostics and
+are labelled `exploratory_rejected_deal_concentration`. The topic-review queue remains blank for a
+real reviewer.
 
 If fewer than 100 pass, report the largest valid set and the exact shortfall. Never replace
 failed candidates with generic mergers merely to reach 100.
@@ -95,7 +126,17 @@ $env:SEC_USER_AGENT = "Aarav TAG Internship your-real-email@example.com"
 .venv\Scripts\python.exe -m tag_edgar.overnight `
   --candidates data\derived\ai_100_candidate_preflight.csv `
   --raw-dir data\raw\ma_events `
-  --out-dir data\derived\ai_100_overnight
+  --out-dir data\derived\ai_100_overnight `
+  --supplemental-sources config\ai_100_supplemental_sources.csv `
+  --include-reserves
+~~~
+
+Reapply changed deterministic rules to the cached target-linked documents:
+
+~~~powershell
+.venv\Scripts\python.exe -m tag_edgar.overnight `
+  --refresh --rescreen-cached --include-reserves `
+  --supplemental-sources config\ai_100_supplemental_sources.csv
 ~~~
 
 Exit code 0 means the requested target was reached without run failures, 2 means a

@@ -295,10 +295,14 @@ $env:SEC_USER_AGENT = "Researcher project-name real-contact@example.com"
 .venv\Scripts\python.exe -m tag_edgar.overnight `
   --candidates data\derived\ai_100_candidate_preflight.csv `
   --raw-dir data\raw\ma_events `
-  --out-dir data\derived\ai_100_overnight
+  --out-dir data\derived\ai_100_overnight `
+  --supplemental-sources config\ai_100_supplemental_sources.csv `
+  --include-reserves
 ~~~
 
 The run checkpoints to state.json and returns exit code 2 when it produces a valid partial package
 but cannot reach the requested deal count. Candidate names and generic acquirer AI language never
 establish inclusion by themselves. A qualifying machine row remains pending human review, and a
-disclosed employee arrangement never establishes actual retention.
+disclosed employee arrangement never establishes actual retention. After changing only deterministic
+screening rules, add `--refresh --rescreen-cached` to reapply them to the existing target-linked
+document cache without another network retrieval pass.

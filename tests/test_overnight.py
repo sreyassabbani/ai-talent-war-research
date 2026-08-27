@@ -170,6 +170,7 @@ def test_end_to_end_runner_writes_required_outputs_and_zero_state(tmp_path: Path
         "wordclouds.html",
         "analysis_manifest.json",
         "data_quality_report.md",
+        "deal_human_review_queue.csv",
         "final_research_report.md",
         "morning_verification_summary.json",
         "state.json",
@@ -187,6 +188,13 @@ def test_end_to_end_runner_writes_required_outputs_and_zero_state(tmp_path: Path
     assert summary["status"] == "complete"
     assert summary["qualifying_machine_rows_pending_human_review"] == 3
     assert summary["zero_passage_deals"] == 1
+    review_rows = list(
+        csv.DictReader(
+            (runner.out_dir / "deal_human_review_queue.csv").open(encoding="utf-8")
+        )
+    )
+    assert len(review_rows) == 3
+    assert all(not row["human_attestation"] for row in review_rows)
     report = (runner.out_dir / "final_research_report.md").read_text(encoding="utf-8")
     assert "pending human review" in report
     assert "does not establish that an employee stayed" in report
