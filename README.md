@@ -305,4 +305,5 @@ but cannot reach the requested deal count. Candidate names and generic acquirer 
 establish inclusion by themselves. A qualifying machine row remains pending human review, and a
 disclosed employee arrangement never establishes actual retention. After changing only deterministic
 screening rules, add `--refresh --rescreen-cached` to reapply them to the existing target-linked
-document cache without another network retrieval pass.
+document cache. That mode also ingests newly approved supplemental-source rows without repeating
+the SEC sweep.

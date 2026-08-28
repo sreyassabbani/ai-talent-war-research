@@ -29,6 +29,7 @@ def _source_csv(path: Path, *, url: str = "https://buyer.example/news/target") -
                 "source_title",
                 "review_status",
                 "notes",
+                "approved_excerpt",
             ],
         )
         writer.writeheader()
@@ -42,6 +43,7 @@ def _source_csv(path: Path, *, url: str = "https://buyer.example/news/target") -
                 "source_title": "Private Buyer acquires WidgetMind",
                 "review_status": "approved_for_machine_screening",
                 "notes": "",
+                "approved_excerpt": "",
             }
         )
     return path
@@ -78,6 +80,11 @@ class SourceClient:
         )
 
 
+class BlockedSourceClient(SourceClient):
+    def get(self, url: str) -> CachedResponse:
+        raise RuntimeError(f"blocked by publisher: {url}")
+
+
 def test_load_sources_rejects_non_https_approved_rows(tmp_path: Path) -> None:
     path = _source_csv(tmp_path / "sources.csv", url="http://buyer.example/news/target")
     with pytest.raises(ValueError, match="HTTPS"):
@@ -92,6 +99,28 @@ def test_retrieve_source_records_provenance(tmp_path: Path) -> None:
     assert len(texts) == 1
     assert records[0].status == "retrieved"
     assert records[0].family == "official_announcement"
+    assert quality[records[0].document_id] == "official_company_announcement"
+
+
+def test_approved_excerpt_is_auditable_fallback_for_blocked_source(tmp_path: Path) -> None:
+    path = _source_csv(tmp_path / "sources.csv")
+    rows = list(csv.DictReader(path.read_text(encoding="utf-8").splitlines()))
+    rows[0]["approved_excerpt"] = (
+        "Private Buyer acquired WidgetMind, an artificial intelligence platform."
+    )
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    sources = load_supplemental_sources(path)["deal_x"]
+    texts, records, quality = retrieve_supplemental_documents(
+        BlockedSourceClient(), deal_id="deal_x", sources=sources
+    )
+
+    assert texts[0][1] == rows[0]["approved_excerpt"]
+    assert records[0].status == "retrieved"
+    assert "curated_excerpt_fallback" in records[0].error
     assert quality[records[0].document_id] == "official_company_announcement"
 
 
@@ -127,3 +156,58 @@ def test_private_buyer_can_qualify_from_approved_official_source(tmp_path: Path)
     assert rows[0]["source_quality"] == "official_company_announcement"
     assert rows[0]["talent_motive"] == "documented_team_join_language"
     assert "WidgetMind" in str(rows[0]["supporting_excerpt"])
+
+
+def test_cached_rescreen_ingests_new_supplemental_source(tmp_path: Path) -> None:
+    candidates = tmp_path / "candidates.csv"
+    candidates.write_text(
+        "deal_id,announcement_date,target_name,acquirer_name,source_file,"
+        "source_row_number,candidate_score,matched_target_terms,selection_status\n"
+        "deal_x,2021-01-01,WidgetMind,Private Buyer,ma_test.csv,2,5,ai,"
+        "selected_candidate\n",
+        encoding="utf-8",
+    )
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    (raw_dir / "ma_test.csv").write_text(
+        "Source: test,,,,\n"
+        "Deal Number,Date Announced,Date Effective,Target Name,Form\n"
+        '"deal_x","01/01/21","02/01/21","WidgetMind","Merger"\n',
+        encoding="utf-8-sig",
+    )
+
+    class RegistryOnlyClient:
+        def get_json(self, _url: str) -> dict[str, object]:
+            return {
+                "fields": ["cik", "name", "ticker", "exchange"],
+                "data": [["1", "Unrelated Public Corp", "UPC", "NYSE"]],
+            }
+
+    out_dir = tmp_path / "out"
+    initial = OvernightRun(
+        settings=_settings(tmp_path),
+        client=cast(SecClient, cast(Any, RegistryOnlyClient())),
+        candidates_csv=candidates,
+        raw_dir=raw_dir,
+        out_dir=out_dir,
+        target_deals=1,
+    )
+    _, initial_rows = initial.stage_freeze_universe()
+    assert initial_rows[0]["verification_status"] != QUALIFYING_STATUS
+
+    rescreen = OvernightRun(
+        settings=_settings(tmp_path),
+        client=cast(SecClient, cast(Any, SourceClient())),
+        candidates_csv=candidates,
+        raw_dir=raw_dir,
+        out_dir=out_dir,
+        target_deals=1,
+        refresh=True,
+        rescreen_cached=True,
+        supplemental_sources_csv=_source_csv(tmp_path / "sources.csv"),
+    )
+    _, rows = rescreen.stage_freeze_universe()
+
+    assert rows[0]["verification_status"] == QUALIFYING_STATUS
+    inventory = list(csv.DictReader((out_dir / "document_inventory.csv").open()))
+    assert any(row["url"] == "https://buyer.example/news/target" for row in inventory)

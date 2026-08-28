@@ -545,7 +545,7 @@ class OvernightRun:
         candidates: Sequence[CandidateRow],
         inventory_path: Path,
     ) -> list[dict[str, object]]:
-        """Reapply screening rules to already retrieved target-linked documents."""
+        """Reapply screening rules and ingest newly approved supplemental sources."""
         inventory_rows = _read_csv(inventory_path)
         inventory_by_deal: dict[str, list[dict[str, str]]] = defaultdict(list)
         for inventory_row in inventory_rows:
@@ -557,20 +557,54 @@ class OvernightRun:
         rows: list[dict[str, object]] = []
         for candidate in candidates:
             previous = previous_rows.get(candidate.deal_id, {})
-            if previous and previous.get("verification_status") != QUALIFYING_STATUS:
-                rows.append(dict(previous))
-                continue
             sdc_form, effective = load_sdc_form(
                 self.raw_dir, candidate.source_file, candidate.source_row_number
             )
-            selected_document_id = previous.get("source_document_id", "")
+            existing_urls = {
+                row.get("url", "") for row in inventory_by_deal.get(candidate.deal_id, [])
+            }
+            missing_sources = [
+                source
+                for source in self.supplemental_sources.get(candidate.deal_id, [])
+                if source.source_url not in existing_urls
+            ]
+            if missing_sources:
+                extra_texts, extra_records, _ = retrieve_supplemental_documents(
+                    self.client,
+                    deal_id=candidate.deal_id,
+                    sources=missing_sources,
+                    prefer_approved_excerpt=True,
+                )
+                self._write_document_texts(
+                    candidate.deal_id,
+                    extra_records,
+                    extra_texts,
+                    target_name=candidate.target_name,
+                )
+                text_by_id = {document_id: text for document_id, text in extra_texts}
+                for record in extra_records:
+                    inventory_row = {key: str(value) for key, value in asdict(record).items()}
+                    document_body = text_by_id.get(record.document_id, "")
+                    inventory_row["transaction_relevance_status"] = (
+                        "target_linked"
+                        if document_body
+                        and target_name_mentioned(document_body, candidate.target_name)
+                        else (
+                            "excluded_no_target_link"
+                            if record.status == "retrieved"
+                            else "retrieval_failed"
+                        )
+                    )
+                    inventory_rows.append(inventory_row)
+                    inventory_by_deal[candidate.deal_id].append(inventory_row)
             documents: list[DocumentText] = []
             for inventory_row in inventory_by_deal.get(candidate.deal_id, []):
-                if inventory_row.get("status") != "retrieved":
+                if (
+                    inventory_row.get("status") != "retrieved"
+                    or inventory_row.get("transaction_relevance_status") != "target_linked"
+                ):
                     continue
                 document_id = inventory_row["document_id"]
-                if selected_document_id and document_id != selected_document_id:
-                    continue
                 text_path = self.out_dir / "corpus_docs" / candidate.deal_id / f"{document_id}.txt"
                 if not text_path.exists():
                     continue
@@ -607,6 +641,13 @@ class OvernightRun:
             rows.append(manifest_row(candidate, assessment, effective))
 
         rows.sort(key=lambda row: str(row["deal_id"]))
+        inventory_rows.sort(key=lambda row: (row.get("deal_id", ""), row.get("document_id", "")))
+        _write_csv(inventory_path, inventory_rows, INVENTORY_FIELDS)
+        _write_csv(
+            self.out_dir / "retrieved_document_index.csv",
+            [row for row in inventory_rows if row.get("status") == "retrieved"],
+            INVENTORY_FIELDS,
+        )
         write_manifest(
             self.out_dir,
             rows,

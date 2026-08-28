@@ -48,6 +48,22 @@ def test_target_link_prevents_generic_corporate_ai_false_positive() -> None:
     assert "Lobe" in linked_result.best_excerpt
 
 
+def test_ai_ml_abbreviation_qualifies_when_linked_to_target() -> None:
+    text = "We acquired June.ai, a productivity tool that combines AI/ML and extraction."
+    result = screen_ai_text_for_target(text, "June.ai")
+    assert result.qualifies
+    assert "ai/ml" in {hit.matched_text for hit in result.hits}
+
+
+def test_explicit_computer_vision_or_ai_powering_is_sufficient() -> None:
+    assert screen_ai_text_for_target(
+        "6D.ai solves difficult computer vision software problems.", "6D.ai"
+    ).qualifies
+    assert screen_ai_text_for_target(
+        "Caper is an AI-powered smart-cart platform.", "Caper AI"
+    ).qualifies
+
+
 def test_target_anchors_remove_generic_ai_and_corporate_suffixes() -> None:
     assert target_anchors("Lobe Artificial Intelligence Inc") == ("lobe",)
 

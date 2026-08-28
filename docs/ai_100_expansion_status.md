@@ -11,19 +11,17 @@ candidate generator.
 - Selected candidates: 100
 - Reserve candidates: 19
 - Candidates screened in the completed combined run: 119
-- Retrieved documents: 1,383
-- Failed individual document retrievals: 14
+- Retrieved documents: 1,390
+- Failed individual document retrievals: 9
 - Candidate-level run failures: 0
-- Machine-qualified rows pending human review: 15
-- Selected-candidate qualifiers: 14
-- Reserve-candidate qualifiers: 1
-- Unique employee passages: 74 across 14 deals
-- Qualifying deals with zero employee passages: 1
+- Machine-qualified rows pending human review: 23
+- Unique employee passages: 74 across 15 deals
+- Qualifying deals with zero employee passages: 8
 - Topic status: `exploratory_rejected_deal_concentration`
 - Human-verified qualifying AI transactions: 0
-- Remaining shortfall against the requested 100 verified deals: 85
+- Remaining shortfall against the requested 100 verified deals: 77
 
-The honest frozen result is therefore a 15-row provisional source-backed set, not a verified
+The honest frozen result is therefore a 23-row provisional source-backed set, not a verified
 100-deal database. The 119-row manifest preserves every rejected or unresolved candidate and its
 missingness reason. No generic merger was added to reach a round number.
 
@@ -46,7 +44,9 @@ The command "python -m tag_edgar.overnight" now provides a resumable, no-LLM wor
    deterministic word-cloud outputs;
 11. writes source registers, manifests, a blank human-review queue, structured logs, missingness
     reports, a final research report, and a morning verification summary; and
-12. resumes completed stages or reapplies stricter screening rules from the local document cache.
+12. resumes completed stages or reapplies stricter screening rules from the local document cache;
+    cached rescreens also ingest newly approved supplemental sources without repeating the SEC
+    sweep.
 
 Machine-qualified rows are always labelled
 "qualifying_machine_verified_pending_human_review". They must not be described as
@@ -72,10 +72,15 @@ The screen and parser were repaired and then audited again after scaling:
 - Common English and HTML-layout tokens are excluded from the topic vocabulary.
 - Regression tests cover the generic-corporate-AI false positive and late-HTML case.
 
-The second audit removed four provisional inclusions. Examples included a Box filing that mentioned
-Microsoft machine-learning capabilities in one bullet and the Butter.ai team in another, and a
+The second audit removed four provisional inclusions. Examples included an unrelated Box filing
+that mentioned Microsoft machine-learning capabilities in one bullet and the Butter.ai team in
+another, and a
 Velodyne filing whose general autonomous-driving discussion was not evidence about Mapper.ai. These
 remain explicit nonqualifying rows rather than being silently discarded.
+
+A later official Box announcement separately established that the Butter.ai team joined Box and
+that Butter.ai used machine learning, so that transaction re-entered the provisional set on direct,
+target-linked evidence rather than the unrelated filing.
 
 The repaired smoke run again retrieved all 23 documents with no retrieval failures, but
 correctly left Microsoft–Lobe unresolved because none of those SEC documents mentioned
@@ -87,10 +92,10 @@ one-deal shortfall. The before/after ignored artifacts are under:
 
 ## Remaining evidence gate
 
-The live source adapter now accepts a curated register containing 32 approved source URLs for 30
-candidates. It does not crawl arbitrary reporting or promote unreviewed URLs. Of the 104 unresolved
-rows, 73 have no EDGAR-resolved acquirer, 21 mention the target without paragraph-local AI evidence,
-7 have no target mention in retrieved documents, and 3 have no retrieved deal documents.
+The live source adapter now accepts a curated register containing 34 approved source URLs for 32
+candidates. It does not crawl arbitrary reporting or promote unreviewed URLs. Of the 96 unresolved
+rows, 69 have no EDGAR-resolved acquirer, 18 mention the target without paragraph-local AI evidence,
+7 have no target mention in retrieved documents, and 2 have no retrieved deal documents.
 
 For each included deal, a reviewer still needs to confirm:
 

@@ -39,6 +39,7 @@ class SupplementalSource:
     source_title: str
     review_status: str
     notes: str
+    approved_excerpt: str
 
 
 def load_supplemental_sources(path: Path | None) -> dict[str, list[SupplementalSource]]:
@@ -61,6 +62,7 @@ def load_supplemental_sources(path: Path | None) -> dict[str, list[SupplementalS
                 source_title=(row.get("source_title") or "").strip(),
                 review_status=(row.get("review_status") or "").strip(),
                 notes=(row.get("notes") or "").strip(),
+                approved_excerpt=(row.get("approved_excerpt") or "").strip(),
             )
             if source.review_status != APPROVED_REVIEW_STATUS:
                 continue
@@ -75,6 +77,11 @@ def load_supplemental_sources(path: Path | None) -> dict[str, list[SupplementalS
                 raise ValueError(
                     f"Approved supplemental source row {line_number} has unsupported "
                     f"source_quality={source.source_quality!r}."
+                )
+            if len(source.approved_excerpt) > 2_000:
+                raise ValueError(
+                    f"Approved supplemental source row {line_number} has an excerpt over "
+                    "2,000 characters."
                 )
             grouped.setdefault(source.deal_id, []).append(source)
     for sources in grouped.values():
@@ -91,6 +98,7 @@ def retrieve_supplemental_documents(
     *,
     deal_id: str,
     sources: list[SupplementalSource],
+    prefer_approved_excerpt: bool = False,
 ) -> tuple[list[tuple[str, str]], list[DocumentRecord], dict[str, str]]:
     """Retrieve curated pages with a terminal record for every attempted source."""
     texts: list[tuple[str, str]] = []
@@ -103,31 +111,41 @@ def retrieve_supplemental_documents(
             if source.source_quality == "official_regulator_decision"
             else "official_announcement"
         )
-        try:
-            response = client.get(source.source_url)  # type: ignore[attr-defined]
-            content = getattr(response, "content", response)
-            content_bytes = content if isinstance(content, bytes) else str(content).encode()
-            content_type = str(getattr(response, "content_type", ""))
-            plain = html_to_text(content_bytes, content_type)
-            if not plain.strip():
-                raise ValueError("source body contained no extractable text")
-        except Exception as error:  # noqa: BLE001 - every source receives a terminal status
-            records.append(
-                DocumentRecord(
-                    deal_id=deal_id,
-                    document_id=document_id,
-                    accession_number="",
-                    form="OFFICIAL-SOURCE",
-                    document_type=source.source_quality,
-                    family=family,
-                    url=source.source_url,
-                    status="failed:retrieval",
-                    content_sha256="",
-                    char_count=0,
-                    error=str(error),
-                )
-            )
-            continue
+        fallback_error = ""
+        if prefer_approved_excerpt and source.approved_excerpt:
+            plain = source.approved_excerpt
+            content_bytes = plain.encode("utf-8")
+            fallback_error = "curated_excerpt_preferred_for_incremental_rescreen"
+        else:
+            try:
+                response = client.get(source.source_url)  # type: ignore[attr-defined]
+                content = getattr(response, "content", response)
+                content_bytes = content if isinstance(content, bytes) else str(content).encode()
+                content_type = str(getattr(response, "content_type", ""))
+                plain = html_to_text(content_bytes, content_type)
+                if not plain.strip():
+                    raise ValueError("source body contained no extractable text")
+            except Exception as error:  # noqa: BLE001 - terminal status per source
+                if not source.approved_excerpt:
+                    records.append(
+                        DocumentRecord(
+                            deal_id=deal_id,
+                            document_id=document_id,
+                            accession_number="",
+                            form="OFFICIAL-SOURCE",
+                            document_type=source.source_quality,
+                            family=family,
+                            url=source.source_url,
+                            status="failed:retrieval",
+                            content_sha256="",
+                            char_count=0,
+                            error=str(error),
+                        )
+                    )
+                    continue
+                plain = source.approved_excerpt
+                content_bytes = plain.encode("utf-8")
+                fallback_error = f"curated_excerpt_fallback_after_retrieval_error: {error}"
         records.append(
             DocumentRecord(
                 deal_id=deal_id,
@@ -140,7 +158,7 @@ def retrieve_supplemental_documents(
                 status="retrieved",
                 content_sha256=hashlib.sha256(content_bytes).hexdigest(),
                 char_count=len(plain),
-                error="",
+                error=fallback_error,
             )
         )
         texts.append((document_id, plain))

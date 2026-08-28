@@ -9,6 +9,7 @@ talent-motive signals with fixed rules. Every output remains reviewable against 
 from __future__ import annotations
 
 import re
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 
 # Weighted, case-insensitive patterns for explicit AI relevance in deal documents.
@@ -16,6 +17,8 @@ from dataclasses import dataclass
 # AI-adjacent fields; weak terms alone can never qualify a document.
 AI_EVIDENCE_PATTERNS: tuple[tuple[str, int], ...] = (
     (r"artificial intelligence", 5),
+    (r"\bai\s*/\s*ml\b", 5),
+    (r"\bai[- ]powered\b", 5),
     (
         r"\bai\b(?=[\s,-]*(?:platform|model|models|startup|company|software|technology|lab|labs|research|system|systems|capabilities|assistant|agent|agents|product|products))",
         5,
@@ -28,7 +31,7 @@ AI_EVIDENCE_PATTERNS: tuple[tuple[str, int], ...] = (
     (r"\bllm(s)?\b", 5),
     (r"foundation model", 5),
     (r"natural language processing", 5),
-    (r"computer vision", 3),
+    (r"computer vision", 5),
     (r"reinforcement learning", 4),
     (r"speech recognition", 3),
     (r"data science", 2),
@@ -240,48 +243,55 @@ def screen_ai_text_for_target(
         for match in re.finditer(rf"(?<!\w){re.escape(anchor)}(?!\w)", text, re.IGNORECASE)
     ]
     paragraph_breaks = list(_PARAGRAPH_BREAK.finditer(text))
+    paragraph_starts = [boundary.start() for boundary in paragraph_breaks]
+    paragraph_ends = [boundary.end() for boundary in paragraph_breaks]
 
     def paragraph_bounds(position: int) -> tuple[int, int]:
-        start = 0
-        end = len(text)
-        for boundary in paragraph_breaks:
-            if boundary.end() <= position:
-                start = boundary.end()
-                continue
-            if boundary.start() >= position:
-                end = boundary.start()
-                break
+        previous_index = bisect_right(paragraph_ends, position) - 1
+        next_index = bisect_left(paragraph_starts, position)
+        start = paragraph_ends[previous_index] if previous_index >= 0 else 0
+        end = paragraph_starts[next_index] if next_index < len(paragraph_starts) else len(text)
         return start, end
 
+    # Large SEC filings can contain hundreds of thousands of characters. Find the
+    # target-linked paragraphs first, then run the AI patterns only inside those
+    # paragraphs. This is equivalent to the same-paragraph rule above but avoids a
+    # full-document scan for every pattern.
+    anchors_by_paragraph: dict[tuple[int, int], list[re.Match[str]]] = {}
+    for match in anchor_matches:
+        anchors_by_paragraph.setdefault(paragraph_bounds(match.start()), []).append(match)
     linked: list[AiEvidenceHit] = []
-    for hit in find_ai_hits(text):
-        paragraph_start, paragraph_end = paragraph_bounds(hit.match_start)
-        nearby = [
-            match
-            for match in anchor_matches
-            if paragraph_start <= match.start() < paragraph_end
-            if match.start() <= hit.match_end + radius and match.end() >= hit.match_start - radius
-        ]
-        if not nearby:
-            continue
-        closest = min(
-            nearby,
-            key=lambda match: min(
-                abs(match.start() - hit.match_end), abs(hit.match_start - match.end())
-            ),
-        )
-        excerpt_start = max(0, min(closest.start(), hit.match_start) - 160)
-        excerpt_end = min(len(text), max(closest.end(), hit.match_end) + 240)
-        linked.append(
-            AiEvidenceHit(
-                label=hit.label,
-                matched_text=hit.matched_text,
-                weight=hit.weight,
-                excerpt=_excerpt_for(text[excerpt_start:excerpt_end], max_chars=800),
-                match_start=hit.match_start,
-                match_end=hit.match_end,
+    for paragraph_start, paragraph_end in sorted(anchors_by_paragraph):
+        paragraph_text = text[paragraph_start:paragraph_end]
+        paragraph_anchors = anchors_by_paragraph[(paragraph_start, paragraph_end)]
+        for local_hit in find_ai_hits(paragraph_text):
+            hit_start = paragraph_start + local_hit.match_start
+            hit_end = paragraph_start + local_hit.match_end
+            nearby = [
+                match
+                for match in paragraph_anchors
+                if match.start() <= hit_end + radius and match.end() >= hit_start - radius
+            ]
+            if not nearby:
+                continue
+            closest = min(
+                nearby,
+                key=lambda match: min(
+                    abs(match.start() - hit_end), abs(hit_start - match.end())
+                ),
             )
-        )
+            excerpt_start = max(0, min(closest.start(), hit_start) - 160)
+            excerpt_end = min(len(text), max(closest.end(), hit_end) + 240)
+            linked.append(
+                AiEvidenceHit(
+                    label=local_hit.label,
+                    matched_text=local_hit.matched_text,
+                    weight=local_hit.weight,
+                    excerpt=_excerpt_for(text[excerpt_start:excerpt_end], max_chars=800),
+                    match_start=hit_start,
+                    match_end=hit_end,
+                )
+            )
     substantive = [hit for hit in linked if hit.weight >= 3]
     by_label: dict[str, int] = {}
     for hit in substantive:
