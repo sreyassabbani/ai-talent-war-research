@@ -64,6 +64,15 @@ def test_explicit_computer_vision_or_ai_powering_is_sufficient() -> None:
     ).qualifies
 
 
+def test_explicit_ai_capability_or_applied_ai_is_sufficient() -> None:
+    assert screen_ai_text_for_target(
+        "Replier.ai adds AI capability for marketing copy.", "Replier.ai"
+    ).qualifies
+    assert screen_ai_text_for_target(
+        "Vertikal AI uses applied AI for predictive maintenance.", "Vertikal AI"
+    ).qualifies
+
+
 def test_target_anchors_remove_generic_ai_and_corporate_suffixes() -> None:
     assert target_anchors("Lobe Artificial Intelligence Inc") == ("lobe",)
 

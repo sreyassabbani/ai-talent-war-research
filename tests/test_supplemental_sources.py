@@ -211,3 +211,86 @@ def test_cached_rescreen_ingests_new_supplemental_source(tmp_path: Path) -> None
     assert rows[0]["verification_status"] == QUALIFYING_STATUS
     inventory = list(csv.DictReader((out_dir / "document_inventory.csv").open()))
     assert any(row["url"] == "https://buyer.example/news/target" for row in inventory)
+
+
+def test_cached_rescreen_refreshes_changed_approved_excerpt(tmp_path: Path) -> None:
+    candidates = tmp_path / "candidates.csv"
+    candidates.write_text(
+        "deal_id,announcement_date,target_name,acquirer_name,source_file,"
+        "source_row_number,candidate_score,matched_target_terms,selection_status\n"
+        "deal_x,2021-01-01,WidgetMind,Private Buyer,ma_test.csv,2,5,ai,"
+        "selected_candidate\n",
+        encoding="utf-8",
+    )
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    (raw_dir / "ma_test.csv").write_text(
+        "Source: test,,,,\n"
+        "Deal Number,Date Announced,Date Effective,Target Name,Form\n"
+        '"deal_x","01/01/21","02/01/21","WidgetMind","Merger"\n',
+        encoding="utf-8-sig",
+    )
+    sources_path = _source_csv(tmp_path / "sources.csv")
+    source_rows = list(csv.DictReader(sources_path.open(encoding="utf-8")))
+    source_rows[0]["approved_excerpt"] = (
+        "Private Buyer acquired WidgetMind, an artificial intelligence platform."
+    )
+    with sources_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=list(source_rows[0]))
+        writer.writeheader()
+        writer.writerows(source_rows)
+    out_dir = tmp_path / "out"
+    initial = OvernightRun(
+        settings=_settings(tmp_path),
+        client=cast(SecClient, cast(Any, SourceClient())),
+        candidates_csv=candidates,
+        raw_dir=raw_dir,
+        out_dir=out_dir,
+        target_deals=1,
+    )
+    _, initial_rows = initial.stage_freeze_universe()
+    assert initial_rows[0]["verification_status"] != QUALIFYING_STATUS
+
+    first_rescreen = OvernightRun(
+        settings=_settings(tmp_path),
+        client=cast(SecClient, cast(Any, SourceClient())),
+        candidates_csv=candidates,
+        raw_dir=raw_dir,
+        out_dir=out_dir,
+        target_deals=1,
+        refresh=True,
+        rescreen_cached=True,
+        supplemental_sources_csv=sources_path,
+    )
+    _, first_rows = first_rescreen.stage_freeze_universe()
+    assert first_rows[0]["verification_status"] == QUALIFYING_STATUS
+
+    source_rows = list(csv.DictReader(sources_path.open(encoding="utf-8")))
+    source_rows[0]["approved_excerpt"] = (
+        "Private Buyer acquired WidgetMind, an applied AI platform."
+    )
+    with sources_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=list(source_rows[0]))
+        writer.writeheader()
+        writer.writerows(source_rows)
+
+    refreshed = OvernightRun(
+        settings=_settings(tmp_path),
+        client=cast(SecClient, cast(Any, SourceClient())),
+        candidates_csv=candidates,
+        raw_dir=raw_dir,
+        out_dir=out_dir,
+        target_deals=1,
+        refresh=True,
+        rescreen_cached=True,
+        supplemental_sources_csv=sources_path,
+    )
+    _, refreshed_rows = refreshed.stage_freeze_universe()
+
+    assert refreshed_rows[0]["verification_status"] == QUALIFYING_STATUS
+    assert "applied AI" in str(refreshed_rows[0]["supporting_excerpt"])
+    inventory = list(csv.DictReader((out_dir / "document_inventory.csv").open()))
+    source_rows = [
+        row for row in inventory if row["url"] == "https://buyer.example/news/target"
+    ]
+    assert len(source_rows) == 1

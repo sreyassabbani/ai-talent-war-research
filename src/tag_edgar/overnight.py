@@ -563,18 +563,46 @@ class OvernightRun:
             existing_urls = {
                 row.get("url", "") for row in inventory_by_deal.get(candidate.deal_id, [])
             }
-            missing_sources = [
-                source
-                for source in self.supplemental_sources.get(candidate.deal_id, [])
-                if source.source_url not in existing_urls
-            ]
-            if missing_sources:
+            existing_by_url = {
+                row.get("url", ""): row
+                for row in inventory_by_deal.get(candidate.deal_id, [])
+                if row.get("url")
+            }
+            refresh_sources: list[SupplementalSource] = []
+            for source in self.supplemental_sources.get(candidate.deal_id, []):
+                existing = existing_by_url.get(source.source_url)
+                if source.source_url not in existing_urls:
+                    refresh_sources.append(source)
+                    continue
+                if not source.approved_excerpt or existing is None:
+                    continue
+                approved_hash = hashlib.sha256(source.approved_excerpt.encode("utf-8")).hexdigest()
+                if (
+                    existing.get("error", "").startswith("curated_excerpt")
+                    and existing.get("content_sha256", "") != approved_hash
+                ):
+                    refresh_sources.append(source)
+            if refresh_sources:
                 extra_texts, extra_records, _ = retrieve_supplemental_documents(
                     self.client,
                     deal_id=candidate.deal_id,
-                    sources=missing_sources,
+                    sources=refresh_sources,
                     prefer_approved_excerpt=True,
                 )
+                refreshed_urls = {source.source_url for source in refresh_sources}
+                inventory_rows = [
+                    row
+                    for row in inventory_rows
+                    if not (
+                        row.get("deal_id") == candidate.deal_id
+                        and row.get("url") in refreshed_urls
+                    )
+                ]
+                inventory_by_deal[candidate.deal_id] = [
+                    row
+                    for row in inventory_by_deal.get(candidate.deal_id, [])
+                    if row.get("url") not in refreshed_urls
+                ]
                 self._write_document_texts(
                     candidate.deal_id,
                     extra_records,

@@ -20,6 +20,7 @@ APPROVED_REVIEW_STATUS = "approved_for_machine_screening"
 ALLOWED_SOURCE_QUALITIES = frozenset(
     {
         "official_company_announcement",
+        "official_company_financial_statement",
         "official_company_press_release_distributor",
         "official_regulator_decision",
         "primary_sec_filing",

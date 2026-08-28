@@ -11,17 +11,17 @@ candidate generator.
 - Selected candidates: 100
 - Reserve candidates: 19
 - Candidates screened in the completed combined run: 119
-- Retrieved documents: 1,390
+- Retrieved documents: 1,402
 - Failed individual document retrievals: 9
 - Candidate-level run failures: 0
-- Machine-qualified rows pending human review: 23
-- Unique employee passages: 74 across 15 deals
-- Qualifying deals with zero employee passages: 8
+- Machine-qualified rows pending human review: 35
+- Unique employee passages: 72 across 13 deals
+- Qualifying deals with zero employee passages: 22
 - Topic status: `exploratory_rejected_deal_concentration`
 - Human-verified qualifying AI transactions: 0
-- Remaining shortfall against the requested 100 verified deals: 77
+- Remaining shortfall against the requested 100 verified deals: 65
 
-The honest frozen result is therefore a 23-row provisional source-backed set, not a verified
+The honest frozen result is therefore a 35-row provisional source-backed set, not a verified
 100-deal database. The 119-row manifest preserves every rejected or unresolved candidate and its
 missingness reason. No generic merger was added to reach a round number.
 
@@ -92,10 +92,17 @@ one-deal shortfall. The before/after ignored artifacts are under:
 
 ## Remaining evidence gate
 
-The live source adapter now accepts a curated register containing 34 approved source URLs for 32
-candidates. It does not crawl arbitrary reporting or promote unreviewed URLs. Of the 96 unresolved
-rows, 69 have no EDGAR-resolved acquirer, 18 mention the target without paragraph-local AI evidence,
+The live source adapter now accepts a curated register containing 46 approved source URLs for 44
+candidates. It does not crawl arbitrary reporting or promote unreviewed URLs. Of the 84 unresolved
+rows, 57 have no EDGAR-resolved acquirer, 18 mention the target without paragraph-local AI evidence,
 7 have no target mention in retrieved documents, and 2 have no retrieved deal documents.
+
+The latest official-source pass added provisional evidence for 12 transactions, including
+FLEETCOR–Roger.ai, Waystar–Digitize.AI, W2O–IPM.ai, Fractal–Samya.ai, SkySpecs–Vertikal AI,
+Sighthound–Boulder AI, Opentrons–Zenith AI, Slinger–GAMEFACE.AI, GHO/X-Chem–Glamorous AI,
+Life Clips–Cognitive Apps, CVC/Mediaocean–Drishyam AI, and Tailwind–Replier.ai. Parent-investor
+versus operating-buyer relationships remain explicit human-review items where the SDC acquirer and
+official announcement use different entity levels.
 
 For each included deal, a reviewer still needs to confirm:
 
@@ -106,7 +113,7 @@ For each included deal, a reviewer still needs to confirm:
 - entity/CIK resolution where EDGAR applies; and
 - whether employee-document retrieval is complete enough for the stated analysis.
 
-The current topic model is not release-ready. One deal supplies 43.24% of all passages, above the
+The current topic model is not release-ready. One deal supplies 44.44% of all passages, above the
 35% concentration threshold, so the three topics are retained only as exploratory diagnostics and
 are labelled `exploratory_rejected_deal_concentration`. The topic-review queue remains blank for a
 real reviewer.
