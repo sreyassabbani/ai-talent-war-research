@@ -357,8 +357,17 @@ def _document_eligibility(
     return False, "excluded_unrelated_event_window_document", target_proximity, transaction_language
 
 
-def _passage_eligibility(screen_terms: Sequence[str], model_text: str) -> tuple[bool, str]:
+def _passage_eligibility(
+    screen_terms: Sequence[str], model_text: str, raw_text: str | None = None
+) -> tuple[bool, str]:
     term_set = set(screen_terms)
+    # Keep the screening universe broad, but do not model labels, table-of-contents entries, or
+    # other navigation fragments as if they were employee provisions. The audit found that these
+    # fragments were a major source of false positives.
+    if _NAVIGATION_CONTEXT.search(model_text) and not _EMPLOYEE_TREATMENT_CONTEXT.search(model_text):
+        return False, "excluded_navigation_or_index_fragment"
+    if raw_text is not None and _is_bare_employee_caption(raw_text):
+        return False, "excluded_bare_employee_caption"
     if _SAFE_HARBOR_CONTEXT.search(model_text):
         return False, "excluded_safe_harbor_or_forward_looking_context"
     if _ACCOUNTING_CONTEXT.search(model_text):
@@ -496,10 +505,23 @@ _PRIVACY_IP_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _AWARD_TREATMENT_CONTEXT = re.compile(
-    r"\b(?:award holders?|participants?|employees?|service|closing|converted?|cancelled?|"
-    r"assumed?|cashed out|vested|unvested)\b",
+    r"\b(?:award holders?|participants?|employees?|service|closing|effective time|converted?|"
+    r"cancelled?|assumed?|cashed out|vested|unvested|forfeit(?:ed)?|terminat(?:e|ed|ion))\b",
     re.IGNORECASE,
 )
+_NAVIGATION_CONTEXT = re.compile(r"\b(?:table of contents|exhibits?)\b", re.IGNORECASE)
+_CAPTION_ACTION = re.compile(
+    r"\b(?:is|are|was|were|be|been|being|shall|will|may|must|means?|include[ds]?|"
+    r"provide[ds]?|receive[ds]?|convert(?:ed|s)?|assum(?:e|ed|es)|cancel(?:led|s)?|"
+    r"vest(?:ed|ing|s)?|forfeit(?:ed|s)?|terminat(?:e|ed|ion))\b",
+    re.IGNORECASE,
+)
+
+
+def _is_bare_employee_caption(raw_text: str) -> bool:
+    """Identify short employee-labelled headings that contain no operative provision."""
+    words = _MODEL_TOKEN.findall(raw_text)
+    return bool(words) and len(words) <= 12 and not _CAPTION_ACTION.search(raw_text)
 _AWARD_SCREEN_TERMS = frozenset(
     {
         "equity award",
@@ -963,7 +985,9 @@ def build_employee_corpus_workflow(
             deal.get("acquirer_name", ""),
             deal.get("target_name", ""),
         )
-        passage_included, passage_reason = _passage_eligibility(passage.screen_terms, model_text)
+        passage_included, passage_reason = _passage_eligibility(
+            passage.screen_terms, model_text, passage.text
+        )
         passage_rows.append(
             {
                 "passage_id": passage.passage_id,

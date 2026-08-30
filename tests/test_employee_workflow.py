@@ -518,6 +518,23 @@ def test_passage_gate_preserves_leadership_continuity_and_equity_treatment() -> 
         ("restricted stock unit", "vesting"),
         "each unvested restricted stock unit will be assumed at the effective time",
     ) == (True, "included_employee_context")
+    assert _passage_eligibility(
+        ("restricted stock",),
+        "forfeit all time-based restricted stock awards upon termination",
+    ) == (True, "included_employee_context")
+
+
+def test_passage_gate_excludes_bare_captions_and_navigation_fragments() -> None:
+    assert _passage_eligibility(
+        ("retention",), "employment matters section retention pool", "Section 7.6 Retention Pool."
+    ) == (False, "excluded_bare_employee_caption")
+    assert _passage_eligibility(
+        ("employee benefit",), "employee benefit plans", "Employee Benefit Plans"
+    ) == (False, "excluded_bare_employee_caption")
+    assert _passage_eligibility(
+        ("executive officer",),
+        "table of contents executive officers will vote for merger proposal",
+    ) == (False, "excluded_navigation_or_index_fragment")
 
 
 def test_passage_gate_excludes_generic_proxy_litigation_and_representative_language() -> None:
