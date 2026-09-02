@@ -530,7 +530,11 @@ python scripts/build_disclosure_sample_report.py"""
         "## 10. Reproduction\n\n"
         "Every table above is generated from committed code and frozen artifacts:\n\n"
         f"```\n{commands}\n```\n\n"
-        f"Selection rule `{rule}`; corpus hash `{corpus_hash}...`.\n"
+        f"Selection rule `{rule}`; corpus hash `{corpus_hash}...`.\n\n"
+        "The tables themselves are published under `data/published/disclosure_sample_133/`, so "
+        "any number here can be checked against the file it came from without rerunning the "
+        "pipeline. The passage corpus, the retrieved documents, and the SDC archive are not "
+        "published; that directory's README gives the reason for each.\n"
     )
 
 
