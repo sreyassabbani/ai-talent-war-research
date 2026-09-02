@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-
 DATE_FORMATS = ("%m/%d/%y", "%m/%d/%Y")
 TARGET_TERMS: tuple[tuple[str, int], ...] = (
     (r"\bai\b", 5),
@@ -58,7 +57,8 @@ def normalize_header(value: str) -> str:
 def parse_date(value: str) -> date | None:
     for fmt in DATE_FORMATS:
         try:
-            return datetime.strptime(value.strip(), fmt).date()
+            # Only the calendar date is kept; the intermediate naive datetime never escapes.
+            return datetime.strptime(value.strip(), fmt).date()  # noqa: DTZ007
         except ValueError:
             pass
     return None
