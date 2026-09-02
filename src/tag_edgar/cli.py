@@ -22,6 +22,7 @@ from .corpus_relevance_audit import (
 )
 from .corpus_validation import resolve_corpus_validation
 from .deal_architecture import build_deal_architecture, write_deal_architecture
+from .disclosure_freeze import build_frozen_sample, write_frozen_sample
 from .disclosure_pool import (
     build_disclosure_pool,
     load_disclosure_pool_config,
@@ -941,6 +942,36 @@ def run_disclosure_sample_command(
         fields = sorted({key for row in summaries for key in row} - {"deal_id"})
         write_dict_csv(output_dir / "run_summary.csv", summaries, ["deal_id", *fields])
     typer.echo(f"Retrieved {completed} deals -> {output_dir}")
+
+
+@app.command("freeze-disclosure-sample")
+def freeze_disclosure_sample_command(
+    queue_csv: Path = typer.Argument(..., exists=True, readable=True),
+    passages_csv: Path = typer.Argument(..., exists=True, readable=True),
+    runs_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "disclosure_frozen_sample"
+    ),
+    probe_csv: Path | None = typer.Option(
+        None, exists=True, readable=True, help="Probe results, to carry probe evidence forward."
+    ),
+    config_path: Path = typer.Option(
+        PROJECT_ROOT / "config" / "disclosure_pool.toml", exists=True, readable=True
+    ),
+) -> None:
+    """Apply the yield gate and freeze the deal list the report is built from (offline)."""
+    config = load_disclosure_pool_config(config_path)
+    sample = build_frozen_sample(
+        queue_csv, passages_csv, runs_dir, config, probe_csv=probe_csv
+    )
+    write_frozen_sample(output_dir, sample)
+    status_counts = sample.manifest["status_counts"]
+    if isinstance(status_counts, dict):
+        for status, count in sorted(status_counts.items()):
+            typer.echo(f"{status}: {count}")
+    typer.echo(f"modelled passages: {sample.manifest['modelled_passages']}")
+    typer.echo(f"largest deal share: {sample.manifest['largest_deal_share']}")
+    typer.echo(f"Wrote {output_dir}")
 
 
 if __name__ == "__main__":
