@@ -183,7 +183,8 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert "deal-2" in first.markdown
     assert "no stable topic assignment" in first.markdown
     assert "https://sec.gov/Archives/doc-1.htm" in first.markdown
-    assert "([Employee Matters](https://sec.gov/Archives/doc-1.htm))" in first.markdown
+    # The citation deep-links to the quoted paragraph via a text fragment, not just the document.
+    assert "([Employee Matters](https://sec.gov/Archives/doc-1.htm#:~:text=" in first.markdown
     deal_lines = [line for line in first.markdown.splitlines() if "deal-1" in line]
     assert deal_lines
     assert all("](https://" in line for line in deal_lines)

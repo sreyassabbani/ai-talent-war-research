@@ -97,39 +97,9 @@ def _cached_document(runs: Path, cache: Path, deal_id: str, document_id: str, bo
     )
 
 
-def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
-    monkeypatch, tmp_path: Path
-) -> None:
-    review = tmp_path / "review.csv"
-    runs = tmp_path / "runs"
-    cache = tmp_path / "cache"
-    corpus_dir = tmp_path / "corpus"
-    analysis_dir = tmp_path / "analysis"
-    report_dir = tmp_path / "report"
-    _review(review)
-    body = b"<h2>Employee Matters</h2><p>Key employees receive a retention bonus.</p>"
-    _cached_document(runs, cache, "deal-1", "doc-1", body)
-    _cached_document(runs, cache, "deal-2", "doc-2", body)
-
-    corpus_summary = build_employee_corpus_workflow(review, runs, corpus_dir, cache)
-
-    passages = _rows(corpus_dir / "passages.csv")
-    sources = _rows(corpus_dir / "passage_sources.csv")
-    assert corpus_summary.counts["deals"] == 3
-    assert len(passages) == 1
-    assert len(sources) == 2
-    assert {row["deal_id"] for row in sources} == {"deal-1", "deal-2"}
-    assert passages[0]["inclusion_status"] == "included"
-    assert passages[0]["raw_text"] == passages[0]["text"]
-    corpus_manifest = json.loads((corpus_dir / "corpus_manifest.json").read_text())
-    assert corpus_manifest["schema_version"] == 2
-    assert corpus_manifest["screened_candidate_passages"] == 1
-    assert corpus_manifest["included_screened_passages"] == 1
-    assert corpus_manifest["excluded_screened_passages"] == 0
-    assert "canonical_passages" not in corpus_manifest
-
-    passage = passages[0]
-    fake_result = EmployeeTopicResult(
+def _topic_result_for(passage: dict[str, str]) -> EmployeeTopicResult:
+    """A single-topic result pinned to one corpus passage, shared by workflow tests."""
+    return EmployeeTopicResult(
         status="modeled",
         reason=None,
         assignments=(
@@ -166,6 +136,41 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
         sensitivity_assignments=(),
         stability=(),
     )
+
+
+def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
+    monkeypatch, tmp_path: Path
+) -> None:
+    review = tmp_path / "review.csv"
+    runs = tmp_path / "runs"
+    cache = tmp_path / "cache"
+    corpus_dir = tmp_path / "corpus"
+    analysis_dir = tmp_path / "analysis"
+    report_dir = tmp_path / "report"
+    _review(review)
+    body = b"<h2>Employee Matters</h2><p>Key employees receive a retention bonus.</p>"
+    _cached_document(runs, cache, "deal-1", "doc-1", body)
+    _cached_document(runs, cache, "deal-2", "doc-2", body)
+
+    corpus_summary = build_employee_corpus_workflow(review, runs, corpus_dir, cache)
+
+    passages = _rows(corpus_dir / "passages.csv")
+    sources = _rows(corpus_dir / "passage_sources.csv")
+    assert corpus_summary.counts["deals"] == 3
+    assert len(passages) == 1
+    assert len(sources) == 2
+    assert {row["deal_id"] for row in sources} == {"deal-1", "deal-2"}
+    assert passages[0]["inclusion_status"] == "included"
+    assert passages[0]["raw_text"] == passages[0]["text"]
+    corpus_manifest = json.loads((corpus_dir / "corpus_manifest.json").read_text())
+    assert corpus_manifest["schema_version"] == 2
+    assert corpus_manifest["screened_candidate_passages"] == 1
+    assert corpus_manifest["included_screened_passages"] == 1
+    assert corpus_manifest["excluded_screened_passages"] == 0
+    assert "canonical_passages" not in corpus_manifest
+
+    passage = passages[0]
+    fake_result = _topic_result_for(passage)
     monkeypatch.setattr(
         "tag_edgar.employee_workflow.analyze_employee_topics_csv",
         lambda _path, _config: fake_result,

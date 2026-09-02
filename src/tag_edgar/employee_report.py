@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
+from .source_links import text_fragment_url
+
 TOPIC_REVIEW_FIELDS = [
     "topic_id",
     "method",
@@ -16,6 +18,7 @@ TOPIC_REVIEW_FIELDS = [
     "deal_count",
     "representative_passage_ids",
     "representative_source_urls",
+    "representative_highlight_urls",
     "model_coherence",
     "stability_recovery_rate",
     "disclosure_salience",
@@ -775,6 +778,11 @@ def _topic_review_rows(
                 "representative_source_urls": "|".join(
                     row["source_url"] for row in representatives
                 ),
+                "representative_highlight_urls": "|".join(
+                    row.get("source_highlight_url", "")
+                    or text_fragment_url(row.get("source_url", ""), row.get("text", ""))
+                    for row in representatives
+                ),
                 "model_coherence": first.get("coherence", ""),
                 "stability_recovery_rate": first.get("stability_recovery_rate", ""),
                 "disclosure_salience": first["disclosure_salience"],
@@ -1127,8 +1135,12 @@ def _format_percent(value: str) -> str:
 
 
 def _source_citation(row: dict[str, str]) -> str:
+    """Cite the exact paragraph when a text fragment is available, else the whole document."""
     heading = row.get("heading", "") or "exact SEC document"
-    return f"([{_escape_inline(heading)}]({row['source_url']}))"
+    target = row.get("source_highlight_url", "") or text_fragment_url(
+        row.get("source_url", ""), row.get("text", "")
+    )
+    return f"([{_escape_inline(heading)}]({target or row['source_url']}))"
 
 
 def _excerpt(value: str, limit: int = 360) -> str:
