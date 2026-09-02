@@ -24,6 +24,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from .corpus_validation import CorpusValidationState
 from .storage import write_dict_csv
 
 TONE_LEXICON_VERSION = "employee-tone-v1"
@@ -462,8 +463,14 @@ def _deal_terms(texts: list[str]) -> list[tuple[str, int]]:
     return ranked[:40]
 
 
-def analyze_employee_tone(passages_csv: Path) -> ToneAnalysis:
-    """Analyze included passages and return deterministic tone/word-usage tables."""
+def analyze_employee_tone(
+    passages_csv: Path, *, corpus_validation: CorpusValidationState | None = None
+) -> ToneAnalysis:
+    """Analyze included passages and return deterministic tone/word-usage tables.
+
+    ``corpus_validation`` is recorded in the manifest so every tone table names the corpus gate
+    it was computed under; when omitted the manifest says so explicitly.
+    """
     with passages_csv.open(newline="", encoding="utf-8-sig") as file:
         reader = csv.DictReader(file)
         required = {"passage_id", "deal_id", "document_family_id", "text", "inclusion_status"}
@@ -685,6 +692,16 @@ def analyze_employee_tone(passages_csv: Path) -> ToneAnalysis:
             "tone describes drafting style only and is not evidence of employee outcomes"
         ),
         "passages_csv_sha256": hashlib.sha256(passages_csv.read_bytes()).hexdigest(),
+        "corpus_validation": (
+            corpus_validation.as_manifest()
+            if corpus_validation is not None
+            else {"status": "no_corpus_validation_evidence", "accepted": False}
+        ),
+        "interpretation_status": (
+            "secondary_diagnostic_on_validated_corpus"
+            if corpus_validation is not None and corpus_validation.accepted
+            else "secondary_diagnostic_corpus_not_validated"
+        ),
         "included_passages": len(included),
         "deals": len(deal_groups),
         "document_families": len(family_groups),

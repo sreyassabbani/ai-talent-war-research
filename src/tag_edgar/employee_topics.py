@@ -17,6 +17,8 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import adjusted_rand_score
 from sklearn.preprocessing import normalize
 
+FIT_BALANCE_MODES = ("deal", "source_family", "none")
+
 _REQUIRED_COLUMNS = frozenset(
     {
         "passage_id",
@@ -148,6 +150,7 @@ class PassageRow:
     model_text: str
     duplicate_group: str
     inclusion_status: str
+    source_document_family_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -179,6 +182,9 @@ class TopicModelConfig:
     min_agglomerative_ari: float = 0.20
     stability_threshold: float = 0.70
     min_topic_recovery_rate: float = 0.80
+    # How the bounded fit universe is spread: round-robin across deals (default), across
+    # source-document families, or plain stable-rank truncation with no balancing.
+    fit_balance: str = "deal"
 
 
 @dataclass(frozen=True)
@@ -439,10 +445,13 @@ def analyze_employee_topics(
             f"Need at least {config.min_deals} deals; found {deal_count}.",
         )
 
-    fit_indices = _balanced_fit_indices(prepared, config.max_fit_passages, config.seed)
+    fit_indices = _balanced_fit_indices(
+        prepared, config.max_fit_passages, config.seed, config.fit_balance
+    )
     fit_rows = tuple(prepared[index] for index in fit_indices)
     fit_deal_counts = Counter(row.deal_id for row in fit_rows)
     fit_family_count = len({(row.deal_id, _family_key(row)) for row in fit_rows})
+    fit_source_family_counts = Counter(_source_family_key(row) for row in fit_rows)
     corpus = _vectorize(fit_rows, config)
     full_corpus = _transform(prepared, corpus)
     zero_vectors = sum(not row for row in full_corpus.matrix)
@@ -453,7 +462,30 @@ def analyze_employee_topics(
                 "fit_passages",
                 len(fit_rows),
                 "pass",
-                "Deterministic deal-balanced passage families used to fit candidate models.",
+                f"Deterministic passage families used to fit candidate models "
+                f"(fit_balance={config.fit_balance}).",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "fit_balance_mode",
+                config.fit_balance,
+                "pass",
+                "deal: round-robin across deals; source_family: round-robin across "
+                "source-document families; none: stable-rank truncation only.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "fit_source_family_count",
+                len(fit_source_family_counts),
+                "pass",
+                "Distinct source-document families represented in model fitting.",
+            ),
+            DiagnosticRow(
+                "sampling",
+                "maximum_fit_source_family_share",
+                round(max(fit_source_family_counts.values()) / len(fit_rows), 4),
+                "pass",
+                "Largest single source-document family share of the fit sample.",
             ),
             DiagnosticRow(
                 "sampling",
@@ -719,13 +751,18 @@ def _validate_config(config: TopicModelConfig) -> None:
         raise ValueError("Iteration and fit-sample limits must be positive.")
     if config.embedding_hdbscan_min_cluster_size < 2:
         raise ValueError("embedding_hdbscan_min_cluster_size must be at least 2.")
+    if config.fit_balance not in FIT_BALANCE_MODES:
+        raise ValueError(f"fit_balance must be one of {FIT_BALANCE_MODES}.")
 
 
 def _passage_from_mapping(row: Mapping[str, str]) -> PassageRow:
     missing = sorted(_REQUIRED_COLUMNS - row.keys())
     if missing:
         raise ValueError(f"Passage row is missing required fields: {', '.join(missing)}")
-    return PassageRow(**{field: str(row[field]) for field in _REQUIRED_COLUMNS})
+    return PassageRow(
+        **{field: str(row[field]) for field in _REQUIRED_COLUMNS},
+        source_document_family_id=str(row.get("source_document_family_id", "")),
+    )
 
 
 def _prepare_passages(
@@ -766,7 +803,20 @@ def _family_key(row: PassageRow) -> str:
     return row.document_family_id.strip() or f"passage:{row.passage_id}"
 
 
-def _balanced_fit_indices(rows: Sequence[PassageRow], limit: int, seed: int) -> tuple[int, ...]:
+def _source_family_key(row: PassageRow) -> str:
+    return row.source_document_family_id.strip() or f"document:{row.document_id}"
+
+
+def _balanced_fit_indices(
+    rows: Sequence[PassageRow], limit: int, seed: int, balance: str = "deal"
+) -> tuple[int, ...]:
+    """Choose a bounded, deterministic fit universe.
+
+    One representative per (deal, provision family) is always taken first so repeated legal
+    boilerplate cannot dominate. When more representatives remain than ``limit``, ``balance``
+    decides how the cap is spread: round-robin over deals, round-robin over source-document
+    families, or no balancing beyond the stable hash order.
+    """
     by_deal_family: dict[tuple[str, str], list[int]] = defaultdict(list)
     for index, row in enumerate(rows):
         by_deal_family[(row.deal_id, _family_key(row))].append(index)
@@ -782,10 +832,20 @@ def _balanced_fit_indices(rows: Sequence[PassageRow], limit: int, seed: int) -> 
     ]
     if len(representatives) <= limit:
         return tuple(sorted(representatives))
+    if balance == "none":
+        ordered = sorted(
+            representatives,
+            key=lambda index: (
+                _stable_rank(seed, rows[index].deal_id, rows[index].passage_id),
+                rows[index].passage_id,
+            ),
+        )
+        return tuple(sorted(ordered[:limit]))
+    group_of = _source_family_key if balance == "source_family" else (lambda row: row.deal_id)
     by_deal: dict[str, list[int]] = defaultdict(list)
     for index in representatives:
         row = rows[index]
-        by_deal[row.deal_id].append(index)
+        by_deal[group_of(row)].append(index)
     for deal_id, indices in by_deal.items():
         indices.sort(
             key=lambda index: (

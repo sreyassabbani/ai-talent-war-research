@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict
 from datetime import date
@@ -8,6 +9,7 @@ from pathlib import Path
 import typer
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn
 
+from .architecture_topic_crosstable import build_crosstable, write_crosstable
 from .audit import SUMMARY_FIELDS, pilot_audit_rows
 from .catalog import CATALOG_FIELDS, build_catalog, create_review_queue
 from .cik import fetch_candidates
@@ -17,6 +19,7 @@ from .corpus_relevance_audit import (
     write_corpus_relevance_audit,
     write_corpus_relevance_scores,
 )
+from .corpus_validation import resolve_corpus_validation
 from .deal_architecture import build_deal_architecture, write_deal_architecture
 from .employee_tone import analyze_employee_tone, write_employee_tone
 from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
@@ -466,13 +469,56 @@ def build_deal_architecture_command(
     typer.echo(f"Wrote {output_dir}")
 
 
+@app.command("build-architecture-topic-crosstable")
+def build_architecture_topic_crosstable_command(
+    architecture_csv: Path = typer.Argument(..., exists=True, readable=True),
+    deal_topic_matrix_csv: Path = typer.Argument(..., exists=True, readable=True),
+    corpus_passages_csv: Path = typer.Argument(
+        ..., exists=True, readable=True, help="passages.csv the topic model was fitted on."
+    ),
+    topic_assignments_csv: Path | None = typer.Option(None, exists=True, readable=True),
+    corpus_audit_dir: Path | None = typer.Option(None, exists=True, file_okay=False),
+    corpus_scores_dir: Path | None = typer.Option(None, exists=True, file_okay=False),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "architecture_topic_crosstable"
+    ),
+) -> None:
+    """Join deal-architecture attributes to deal-level topic weights, descriptively.
+
+    Every row carries the corpus-validation and architecture-review labels of its inputs.
+    """
+    corpus_validation = resolve_corpus_validation(
+        corpus_audit_dir,
+        corpus_scores_dir,
+        expected_candidate_sha256=hashlib.sha256(corpus_passages_csv.read_bytes()).hexdigest(),
+    )
+    table = build_crosstable(
+        architecture_csv, deal_topic_matrix_csv, topic_assignments_csv, corpus_validation
+    )
+    write_crosstable(output_dir, table)
+    typer.echo(f"Cross-table rows: {table.manifest['row_count']}")
+    typer.echo(f"Corpus validation: {corpus_validation.status}")
+    typer.echo(f"Wrote {output_dir}")
+
+
 @app.command("analyze-employee-tone")
 def analyze_employee_tone_command(
     passages_csv: Path = typer.Argument(..., exists=True, readable=True),
     output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_tone"),
+    corpus_audit_dir: Path | None = typer.Option(None, exists=True, file_okay=False),
+    corpus_scores_dir: Path | None = typer.Option(None, exists=True, file_okay=False),
 ) -> None:
-    """Analyze tone, hedging, and word usage in included employee passages."""
-    analysis = analyze_employee_tone(passages_csv)
+    """Analyze tone, hedging, and word usage in included employee passages.
+
+    Tone is a secondary drafting-style diagnostic. The manifest records the corpus hash and
+    its human relevance-audit state so the tables cannot outrun the corpus gate.
+    """
+    corpus_validation = resolve_corpus_validation(
+        corpus_audit_dir,
+        corpus_scores_dir,
+        expected_candidate_sha256=hashlib.sha256(passages_csv.read_bytes()).hexdigest(),
+    )
+    analysis = analyze_employee_tone(passages_csv, corpus_validation=corpus_validation)
     write_employee_tone(output_dir, analysis)
     typer.echo(
         f"Analyzed tone for {analysis.passage_count} passages across {analysis.deal_count} deals"
@@ -493,6 +539,9 @@ def analyze_employee_topics_command(
     bootstrap_replicates: int = typer.Option(100, min=1),
     embedding_svd_components: int = typer.Option(50, min=1),
     embedding_hdbscan_min_cluster_size: int = typer.Option(5, min=2),
+    fit_balance: str = typer.Option(
+        "deal", help="Fit-universe balancing: deal, source_family, or none."
+    ),
 ) -> None:
     """Fit deterministic topics and propagate assignments through every passage source."""
     config = TopicModelConfig(
@@ -504,6 +553,7 @@ def analyze_employee_topics_command(
         bootstrap_replicates=bootstrap_replicates,
         embedding_svd_components=embedding_svd_components,
         embedding_hdbscan_min_cluster_size=embedding_hdbscan_min_cluster_size,
+        fit_balance=fit_balance,
     )
     summary = analyze_employee_topics_workflow(
         review_csv,
