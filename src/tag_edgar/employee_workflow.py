@@ -665,20 +665,40 @@ def _provision_family_ids(passages: Sequence[Mapping[str, object]]) -> dict[str,
         lower, higher = sorted((left_root, right_root))
         parents[higher] = lower
 
-    buckets: defaultdict[tuple[int, tuple[int, ...]], list[str]] = defaultdict(list)
+    # Passages whose shingle sets are identical have Jaccard similarity 1.0 with each other and
+    # identical similarity to every other passage, so they always land in one family. Merging
+    # them up front and then comparing only one representative per distinct shingle set gives
+    # exactly the same components. It also removes the quadratic blow-up that repeated legal
+    # boilerplate would otherwise cause: at 400 deals a single recurring employee-matters clause
+    # can appear tens of thousands of times, and comparing every such pair does not finish.
+    by_shingles: defaultdict[frozenset[str], list[str]] = defaultdict(list)
     for passage_id in sorted(passage_ids):
+        by_shingles[shingles[passage_id]].append(passage_id)
+    representatives: list[str] = []
+    for shingle_set, group in by_shingles.items():
+        if not shingle_set:
+            # A passage too short to shingle never matches anything: the original size guard
+            # rejects every pair when one side is empty. Keep them separate.
+            representatives.extend(group)
+            continue
+        first = group[0]
+        representatives.append(first)
+        for passage_id in group[1:]:
+            union(first, passage_id)
+
+    buckets: defaultdict[tuple[int, tuple[int, ...]], list[str]] = defaultdict(list)
+    for passage_id in representatives:
         signature = _minhash(shingles[passage_id])
         for band in range(3):
             buckets[(band, signature[band * 4 : (band + 1) * 4])].append(passage_id)
 
-    compared: set[tuple[str, str]] = set()
     for bucket in buckets.values():
         for left_index, left in enumerate(bucket):
             for right in bucket[left_index + 1 :]:
-                pair = (left, right)
-                if pair in compared:
+                # Union is idempotent, so a pair already joined through another band or a
+                # transitive match needs no similarity computation.
+                if find(left) == find(right):
                     continue
-                compared.add(pair)
                 left_shingles = shingles[left]
                 right_shingles = shingles[right]
                 larger = max(len(left_shingles), len(right_shingles))
