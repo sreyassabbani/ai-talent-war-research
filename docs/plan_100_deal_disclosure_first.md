@@ -256,3 +256,66 @@ and probes again (adds ~30 minutes).
 1. A real `SEC_USER_AGENT` value in `.env` (name and contact email, per SEC fair-access policy).
 2. Go-ahead to write the four new commands on this branch and run the probe.
 3. About one hour each from Aarav and Sreyas on Day 2 for the audit packet.
+
+---
+
+# Execution record (2026-09-02)
+
+This section records what was actually run and where the plan above changed. It is appended
+rather than edited into the plan so the difference between what was planned and what happened
+stays visible.
+
+## Change of plan: the human relevance audit was skipped
+
+Aarav directed that the 150-row corpus relevance audit be skipped for time. That decision is
+recorded here rather than worked around. The consequence is stated, not hidden:
+
+- No downstream artifact may report a passing corpus gate, and none does. The report's limits
+  section states that the audit was **not run** and gives the reason it matters.
+- The comparable cycle-4 audit of a different corpus scored 72% included-passage relevance
+  against a 90% threshold. The risk that a meaningful share of "employee" passages are not
+  about employees is therefore real and quantified, not hypothetical.
+- No human-review field is filled by the program, and nothing claims human assessment.
+
+The blinded packet can still be built and labelled later; doing so upgrades the report without
+re-running any model.
+
+## What the probe actually found
+
+The 60-day probe window in section 4.2 was **wrong** and was corrected before the full run. It
+classified Take-Two/Zynga and Intuit/Mailchimp as announcement-only although both yielded
+hundreds of passages in the pilot, because merger proxies and tender-offer statements are filed
+months after announcement. The probe now uses `tag_edgar.windows.event_window`, the same window
+the retrieval pipeline uses. A second bug: exhibit types were read from the accession
+`index.json`, whose `type` field holds icon filenames, not SEC exhibit types. They now come from
+the filing-detail page through the pipeline's own parser.
+
+Full probe of the 1,060-deal pool:
+
+| Probe outcome | Deals |
+| --- | ---: |
+| Filed a transaction agreement (EX-2) | 89 |
+| Filed a merger proxy or tender offer | 81 |
+| Filed only an announcement in the window | 724 |
+| Filed nothing in the window | 166 |
+| **Probe-positive** | **170** |
+| Target name corroborated in the buyer's own filing | 112 |
+
+## Queue and retrieval
+
+170 probe-positive deals is a thin margin over 100 once the yield gate applies, and the pilot
+showed that announcement-only deals can still be rich: Microsoft-Nuance is announcement-only by
+this test and produced 231 passages. So the queue takes all 170 positives plus the 230
+announcement-only deals with the most filings in their window, 400 in total, ranked so the
+richest disclosure is retrieved first. Retrieval is resumable and averages about 150 documents
+per deal, far above the pilot's 47.
+
+## Settings frozen before the run
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Fit balance | `source_family` | Prespecified from the cycle-5 diagnostic, before seeing any 100-deal result |
+| `max_fit_passages` | 1,500 | The 240 default would leave about one row per deal |
+| K range | 3-7 | The stability gates decide, not the author |
+| Seed | 20260823 | Same as the pilot |
+| Yield gate | 10 passages from 2 documents | `config/disclosure_pool.toml` |
