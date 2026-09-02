@@ -350,9 +350,11 @@ def gates_section(diagnostics: list[dict[str, str]], analysis: dict[str, object]
     status = analysis.get("status")
     if status:
         lines += [
-            f"Model status recorded in the manifest: `{status}`. That word means the model ran "
-            "and its own checks are recorded. It does not mean the corpus was validated by a "
-            "person; section 11 says what was not done.",
+            (
+                f"Model status recorded in the manifest: `{status}`. That word means the model "
+                "ran and its own checks are recorded. It does not mean the corpus was validated "
+                "by a person; section 11 says what was not done."
+            ),
             "",
         ]
     return "\n".join(lines)

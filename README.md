@@ -182,6 +182,12 @@ and prefers the longest configured phrase when patterns overlap at the same posi
 
 ## Employee-text topic pilot
 
+For the complete project history and current status of the unsupervised models, diagnostics, human-review gates, and 100-deal expansion, see [`docs/unsupervised_models_progress.md`](docs/unsupervised_models_progress.md).
+
+The generated 100-candidate metadata/results snapshot is under [`data/published/ai_100_overnight/`](data/published/ai_100_overnight/). It excludes the raw SDC archive and large scraped corpus; see its README for exact counts and evidence boundaries.
+
+For a results-focused explanation of which deals produced passages, how the three exploratory topics were formed, and why the current clustering result is not release-ready, see [`docs/ai_100_clustering_results_report.md`](docs/ai_100_clustering_results_report.md) and the editable [`docs/ai_100_clustering_results_report.docx`](docs/ai_100_clustering_results_report.docx).
+
 Build the employee-related passage corpus from the same reviewed deals and cache. This command is
 offline: a missing cached body is recorded in `document_texts.csv` instead of being downloaded.
 
