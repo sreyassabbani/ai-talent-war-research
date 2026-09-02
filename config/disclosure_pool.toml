@@ -1,0 +1,35 @@
+# Disclosure-first selection rule for the 100+ deal sample.
+#
+# The AI-keyword-first screen selected deals whose acquirers largely do not file with the SEC,
+# so it produced 72 employee passages from 13 deals. This rule instead selects deals whose
+# acquirer is an SEC registrant with a technology target, then *probes* EDGAR to confirm a
+# transaction filing actually exists before any bulk retrieval. "AI" becomes a post-hoc label,
+# not an entry filter.
+version = "disclosure-first-v1"
+
+[pool]
+# Acquirer must resolve to an EDGAR CIK at these confidence levels.
+cik_match_confidence = ["high", "medium"]
+# Target SIC must appear in config/technology_sic.toml.
+require_technology_target = true
+# No transaction-value floor: value is missing for roughly 70% of the pool and the probe,
+# not the reported value, decides whether employee language can exist.
+minimum_transaction_value_mil = 0.0
+
+[probe]
+# Window around the announcement date searched for a transaction filing.
+days_before_announcement = 5
+days_after_announcement = 60
+
+# Ranked probe outcomes. A deal is probe-positive at agreement_exhibit or merger_proxy.
+agreement_forms = ["8-K", "8-K/A", "S-4", "S-4/A"]
+proxy_forms = [
+  "DEFM14A", "DEFM14A/A", "PREM14A", "PREM14A/A",
+  "SC 14D9", "SC 14D9/A", "SC TO-T", "SC TO-T/A", "424B3",
+]
+announcement_forms = ["8-K", "8-K/A"]
+
+[yield_gate]
+# A deal enters the topic model only with enough employee text to contribute more than noise.
+minimum_passages = 10
+minimum_documents = 2

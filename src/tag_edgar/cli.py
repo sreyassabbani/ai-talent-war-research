@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from dataclasses import asdict
@@ -21,6 +22,17 @@ from .corpus_relevance_audit import (
 )
 from .corpus_validation import resolve_corpus_validation
 from .deal_architecture import build_deal_architecture, write_deal_architecture
+from .disclosure_pool import (
+    build_disclosure_pool,
+    load_disclosure_pool_config,
+    write_disclosure_pool,
+)
+from .disclosure_probe import (
+    PROBE_STATUS_RANK,
+    probe_deal,
+    probe_row,
+    write_probe_results,
+)
 from .employee_tone import analyze_employee_tone, write_employee_tone
 from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
 from .employee_topics import TopicModelConfig
@@ -708,6 +720,227 @@ def vertical_slice(
     typer.echo(f"Wrote {output_dir}")
     for label, count in counts.items():
         typer.echo(f"{label}: {count}")
+
+
+def _value_or(raw: str, default: float) -> float:
+    try:
+        return float(raw.replace(",", ""))
+    except ValueError:
+        return default
+
+
+@app.command("screen-disclosure-pool")
+def screen_disclosure_pool_command(
+    catalog_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "disclosure_pool"),
+    config_path: Path = typer.Option(
+        PROJECT_ROOT / "config" / "disclosure_pool.toml", exists=True, readable=True
+    ),
+    technology_config: Path = typer.Option(
+        PROJECT_ROOT / "config" / "technology_sic.toml", exists=True, readable=True
+    ),
+    start: str = typer.Option("", help="Optional ISO start date for announcement filtering."),
+    end: str = typer.Option("", help="Optional ISO end date for announcement filtering."),
+) -> None:
+    """Select the disclosure-first candidate pool from the deal catalog (offline)."""
+    config = load_disclosure_pool_config(config_path)
+    screen = load_technology_screen(technology_config)
+    result = build_disclosure_pool(
+        catalog_csv,
+        screen,
+        config,
+        start=_parse_date(start) if start else None,
+        end=_parse_date(end) if end else None,
+    )
+    write_disclosure_pool(output_dir, result)
+    typer.echo(f"Pool rows: {len(result.rows)}")
+    for reason, count in sorted(result.exclusions.items()):
+        if count:
+            typer.echo(f"excluded {reason}: {count}")
+    typer.echo(f"Wrote {output_dir}")
+
+
+@app.command("probe-disclosure")
+def probe_disclosure_command(
+    pool_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "disclosure_probe"),
+    config_path: Path = typer.Option(
+        PROJECT_ROOT / "config" / "disclosure_pool.toml", exists=True, readable=True
+    ),
+    limit: int = typer.Option(0, min=0, help="Probe at most this many deals; 0 probes all."),
+    confirm_target_name: bool = typer.Option(
+        True,
+        "--confirm-target-name/--skip-target-name",
+        help="Check that the acquirer filing names the target (corroborates the CIK match).",
+    ),
+) -> None:
+    """Ask EDGAR which pooled deals actually have a transaction filing (live)."""
+    config = load_disclosure_pool_config(config_path)
+    settings = load_settings(require_user_agent=True)
+    with pool_csv.open(newline="", encoding="utf-8") as file:
+        pool = [{k: (v or "") for k, v in row.items()} for row in csv.DictReader(file)]
+    if limit:
+        pool = pool[:limit]
+
+    rows: list[dict[str, str]] = []
+    counts: dict[str, int] = {}
+    with (
+        SecClient(settings.user_agent, settings.cache_dir, settings.rate_per_second) as client,
+        Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+        ) as progress,
+    ):
+        task = progress.add_task("probing", total=len(pool))
+        for row in pool:
+            outcome = probe_deal(
+                client,
+                row,
+                config,
+                settings.selected_forms(False),
+                confirm_target_name=confirm_target_name,
+            )
+            rows.append(probe_row(row, outcome))
+            counts[outcome.status] = counts.get(outcome.status, 0) + 1
+            progress.advance(task)
+
+    rows.sort(
+        key=lambda item: (
+            PROBE_STATUS_RANK.get(item["probe_status"], 9),
+            item["target_name_hit"] != "yes",
+            -_value_or(item.get("windowed_filings", ""), 0.0),
+            -_value_or(item.get("transaction_value_mil", ""), -1.0),
+            item["deal_id"],
+        )
+    )
+    positive = sum(counts.get(status, 0) for status in ("agreement_exhibit", "merger_proxy"))
+    manifest: dict[str, object] = {
+        "schema_version": 1,
+        "pool_rule_version": config.version,
+        "pool_csv_sha256": hashlib.sha256(pool_csv.read_bytes()).hexdigest(),
+        "probed_deals": len(rows),
+        "status_counts": counts,
+        "probe_positive_deals": positive,
+        "target_name_confirmed": sum(1 for row in rows if row["target_name_hit"] == "yes"),
+        "probe_window": (
+            "tag_edgar.windows.event_window: announcement-30d to effective+30d, or "
+            "announcement+365d when no closing date is recorded"
+        ),
+        "confirm_target_name": confirm_target_name,
+        "evidence_boundary": (
+            "probe_status records which forms exist, not what they disclose; target_name_hit is a "
+            "machine corroboration and is not human review"
+        ),
+    }
+    write_probe_results(output_dir, rows, manifest)
+    for status, count in sorted(counts.items()):
+        typer.echo(f"{status}: {count}")
+    typer.echo(f"probe-positive: {positive}")
+    typer.echo(f"Wrote {output_dir}")
+
+
+@app.command("build-disclosure-queue")
+def build_disclosure_queue_command(
+    probe_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_csv: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "disclosure_review_queue.csv"
+    ),
+    limit: int = typer.Option(300, min=1, help="Cap the number of deals queued for retrieval."),
+    include_announcement_only: bool = typer.Option(
+        False,
+        "--include-announcement-only/--positive-only",
+        help="Also queue deals whose window holds only a press release.",
+    ),
+) -> None:
+    """Turn probe-positive deals into a retrieval queue the existing pipeline can run."""
+    accepted = {"agreement_exhibit", "merger_proxy"}
+    if include_announcement_only:
+        accepted.add("announcement_only")
+    with probe_csv.open(newline="", encoding="utf-8") as file:
+        rows = [
+            {k: (v or "") for k, v in row.items()}
+            for row in csv.DictReader(file)
+            if (row.get("probe_status") or "") in accepted
+        ]
+    queued: list[dict[str, str]] = []
+    for row in rows[:limit]:
+        confirmed = row.get("target_name_hit") == "yes"
+        queued.append(
+            {
+                "deal_id": row["deal_id"],
+                "announcement_date": row["announcement_date"],
+                "effective_date": row["effective_date"],
+                "acquirer_name": row["acquirer_name"],
+                "target_name": row["target_name"],
+                "target_public_status": row.get("target_public_status", ""),
+                "transaction_value_mil": row.get("transaction_value_mil", ""),
+                "candidate_cik": row["candidate_cik"],
+                "cik_match_method": row.get("cik_confirmation_basis", ""),
+                "cik_match_confidence": "machine_probe_confirmed",
+                "cik_manual_status": "confirmed",
+                "cik_reviewer_note": (
+                    "Machine confirmation: an acquirer filing in the announcement window names "
+                    "the target. This is not human review."
+                    if confirmed
+                    else "Machine confirmation: transaction form present in window; target name "
+                    "not corroborated in the primary document."
+                ),
+                "pilot_status": "selected",
+                "technology_scope_status": "in_scope",
+                "technology_screen_version": "digital-tech-v1",
+                "technology_screen_reason": "target SIC in config/technology_sic.toml",
+                "pilot_reviewer_note": f"probe_status={row['probe_status']}",
+                "target_candidate_cik": row.get("target_candidate_cik", ""),
+                "target_cik_manual_status": "",
+                "target_cik_reviewer_note": "",
+            }
+        )
+    if not queued:
+        raise typer.BadParameter("No probe-positive deals to queue.")
+    write_dict_csv(output_csv, queued, list(queued[0]))
+    typer.echo(f"Queued {len(queued)} deals -> {output_csv}")
+
+
+@app.command("run-disclosure-sample")
+def run_disclosure_sample_command(
+    queue_csv: Path = typer.Argument(..., exists=True, readable=True),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "disclosure_runs"),
+    include_expanded: bool = typer.Option(False, "--include-expanded/--core-only"),
+    resume: bool = typer.Option(
+        True, "--resume/--no-resume", help="Skip deals whose run directory already has documents."
+    ),
+) -> None:
+    """Retrieve EDGAR documents for every queued deal, resumably (live, long-running)."""
+    deals = approved_deals(queue_csv)
+    if not deals:
+        raise typer.BadParameter("Queue holds no approved rows.")
+    settings = load_settings(require_user_agent=True)
+    forms = settings.selected_forms(include_expanded)
+    summaries: list[dict[str, str | int]] = []
+    completed = 0
+    for index, deal in enumerate(deals, start=1):
+        deal_dir = output_dir / deal.deal_id
+        if resume and (deal_dir / "documents.csv").exists():
+            typer.echo(f"[{index}/{len(deals)}] {deal.deal_id}: already retrieved")
+            continue
+        try:
+            counts = run_vertical_slice(deal, settings, deal_dir, forms)
+        except (RuntimeError, ValueError, TypeError) as error:
+            typer.echo(f"[{index}/{len(deals)}] {deal.deal_id}: FAILED {error}")
+            summaries.append({"deal_id": deal.deal_id, "error": str(error)[:200]})
+            continue
+        completed += 1
+        summaries.append({"deal_id": deal.deal_id, **counts})
+        typer.echo(
+            f"[{index}/{len(deals)}] {deal.deal_id}: {counts['documents']} documents, "
+            f"{counts['evidence']} evidence"
+        )
+    if summaries:
+        fields = sorted({key for row in summaries for key in row} - {"deal_id"})
+        write_dict_csv(output_dir / "run_summary.csv", summaries, ["deal_id", *fields])
+    typer.echo(f"Retrieved {completed} deals -> {output_dir}")
 
 
 if __name__ == "__main__":
