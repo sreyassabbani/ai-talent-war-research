@@ -3,6 +3,12 @@ from pathlib import Path
 
 import pytest
 
+from tag_edgar.corpus_validation import (
+    STATUS_FAILED,
+    STATUS_PASSED,
+    STATUS_PENDING,
+    CorpusValidationState,
+)
 from tag_edgar.employee_report import (
     TOPIC_REVIEW_FIELDS,
     assert_deal_claim_links,
@@ -169,11 +175,16 @@ def _inputs(tmp_path: Path, *, gate_status: str = "pass") -> tuple[Path, ...]:
     return documents, passages, topics, deal_topics, diagnostics
 
 
+PASSED_CORPUS = CorpusValidationState(
+    STATUS_PASSED, "pass", "abc123", "Human relevance audit passed.", "scores/score_manifest.json"
+)
+
+
 def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path: Path) -> None:
     inputs = _inputs(tmp_path)
 
-    first = build_employee_report(*inputs, expected_deal_count=2)
-    second = build_employee_report(*inputs, expected_deal_count=2)
+    first = build_employee_report(*inputs, expected_deal_count=2, corpus_validation=PASSED_CORPUS)
+    second = build_employee_report(*inputs, expected_deal_count=2, corpus_validation=PASSED_CORPUS)
 
     assert first == second
     assert first.gate_passed is True
@@ -183,7 +194,8 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
     assert "deal-2" in first.markdown
     assert "no stable topic assignment" in first.markdown
     assert "https://sec.gov/Archives/doc-1.htm" in first.markdown
-    assert "([Employee Matters](https://sec.gov/Archives/doc-1.htm))" in first.markdown
+    # The citation deep-links to the quoted paragraph via a text fragment, not just the document.
+    assert "([Employee Matters](https://sec.gov/Archives/doc-1.htm#:~:text=" in first.markdown
     deal_lines = [line for line in first.markdown.splitlines() if "deal-1" in line]
     assert deal_lines
     assert all("](https://" in line for line in deal_lines)
@@ -210,7 +222,11 @@ def test_report_is_deterministic_source_linked_and_includes_zero_states(tmp_path
 
 
 def test_failed_diagnostic_produces_an_explicit_fail_verdict(tmp_path: Path) -> None:
-    report = build_employee_report(*_inputs(tmp_path, gate_status="fail"), expected_deal_count=2)
+    report = build_employee_report(
+        *_inputs(tmp_path, gate_status="fail"),
+        expected_deal_count=2,
+        corpus_validation=PASSED_CORPUS,
+    )
 
     assert report.gate_passed is False
     assert "**FAIL**" in report.markdown
@@ -504,3 +520,43 @@ def test_writer_emits_markdown_and_review_csv(tmp_path: Path) -> None:
         assert reader.fieldnames == TOPIC_REVIEW_FIELDS
         rows = list(reader)
     assert rows == list(report.topic_review_rows)
+
+
+def test_report_withholds_pass_when_no_corpus_validation_is_supplied(tmp_path: Path) -> None:
+    """Leaving the corpus state out must never read as an accepted corpus."""
+    report = build_employee_report(*_inputs(tmp_path), expected_deal_count=2)
+
+    assert report.gate_passed is False
+    assert report.corpus_validation.status == "no_corpus_validation_evidence"
+    assert "**WITHHELD**" in report.markdown
+    assert "**PASS**" not in report.markdown
+    assert "CORPUS VALIDATION: no_corpus_validation_evidence" in report.markdown
+    assert "corpus_validation / human_relevance_audit_gate: WARNING" in report.markdown
+    assert "none of it may be presented as an accepted result" in report.markdown
+
+
+def test_pending_corpus_audit_withholds_the_verdict_without_calling_it_a_failure(
+    tmp_path: Path,
+) -> None:
+    pending = CorpusValidationState(
+        STATUS_PENDING, "pending", "abc123", "Blinded audit packet has no human labels yet.", "x"
+    )
+    report = build_employee_report(*_inputs(tmp_path), expected_deal_count=2, corpus_validation=pending)
+
+    assert report.gate_passed is False
+    assert "**WITHHELD**" in report.markdown
+    assert "**FAIL**" not in report.markdown
+    assert "CORPUS VALIDATION: pending_human_corpus_validation" in report.markdown
+
+
+def test_failed_corpus_audit_produces_a_fail_verdict_even_when_model_gates_pass(
+    tmp_path: Path,
+) -> None:
+    failed = CorpusValidationState(
+        STATUS_FAILED, "fail", "abc123", "Human relevance audit failed a prespecified gate.", "x"
+    )
+    report = build_employee_report(*_inputs(tmp_path), expected_deal_count=2, corpus_validation=failed)
+
+    assert report.gate_passed is False
+    assert "**FAIL**" in report.markdown
+    assert "corpus_validation / human_relevance_audit_gate: FAIL" in report.markdown

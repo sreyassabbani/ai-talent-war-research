@@ -11,6 +11,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from .accessions import canonical_document_url
+from .corpus_validation import CorpusValidationState, resolve_corpus_validation
 from .employee_corpus import CorpusDocument, build_employee_corpus, parse_document
 from .employee_report import build_employee_report, write_employee_report
 from .employee_topics import (
@@ -19,6 +20,7 @@ from .employee_topics import (
     TopicModelConfig,
     analyze_employee_topics_csv,
 )
+from .source_links import text_fragment_url
 
 PASSAGE_FIELDS = [
     "passage_id",
@@ -30,6 +32,7 @@ PASSAGE_FIELDS = [
     "accession_number",
     "document_type",
     "source_url",
+    "source_highlight_url",
     "heading",
     "block_start",
     "block_end",
@@ -58,6 +61,7 @@ PASSAGE_SOURCE_FIELDS = [
     "accession_number",
     "document_type",
     "source_url",
+    "source_highlight_url",
     "heading",
     "block_start",
     "block_end",
@@ -123,6 +127,7 @@ TOPIC_ASSIGNMENT_FIELDS = [
     "document_id",
     "document_family_id",
     "source_url",
+    "source_highlight_url",
     "topic_id",
     "topic_weight",
     "primary_topic",
@@ -999,6 +1004,7 @@ def build_employee_corpus_workflow(
                 "accession_number": passage.accession_number,
                 "document_type": passage.document_type,
                 "source_url": passage.source_url,
+                "source_highlight_url": text_fragment_url(passage.source_url, passage.text),
                 "heading": passage.heading or "",
                 "block_start": passage.block_start,
                 "block_end": passage.block_end,
@@ -1029,11 +1035,17 @@ def build_employee_corpus_workflow(
         )
         for row in passage_rows
     }
+    # Each occurrence records where one canonical passage was seen; the quoted text lives on the
+    # passage, so the highlight target is resolved per occurrence URL using that text.
+    passage_text_by_id = {str(row["passage_id"]): str(row["text"]) for row in passage_rows}
     for occurrence in corpus.occurrences:
         inclusion_status, exclusion_reason = passage_status[occurrence.passage_id]
         source_rows.append(
             {
                 **asdict(occurrence),
+                "source_highlight_url": text_fragment_url(
+                    occurrence.source_url, passage_text_by_id.get(occurrence.passage_id, "")
+                ),
                 "document_family_id": provision_family_by_passage[occurrence.passage_id],
                 "source_document_family_id": family_by_occurrence[
                     (occurrence.deal_id, occurrence.document_id)
@@ -1158,16 +1170,22 @@ def _format_number(value: float | str | None) -> str:
 
 
 def _assignment_rows(
-    result: EmployeeTopicResult, disclosure_salience: Mapping[str, float] | None = None
+    result: EmployeeTopicResult,
+    disclosure_salience: Mapping[str, float] | None = None,
+    passage_text: Mapping[str, str] | None = None,
 ) -> list[dict[str, object]]:
     topics = {row.topic_id: row for row in result.topics}
     salience = disclosure_salience or {}
+    texts = passage_text or {}
     output: list[dict[str, object]] = []
     for assignment in result.assignments:
         topic = topics[assignment.topic_id]
         output.append(
             {
                 **asdict(assignment),
+                "source_highlight_url": text_fragment_url(
+                    assignment.source_url, texts.get(assignment.passage_id, "")
+                ),
                 "canonical_passage_id": assignment.passage_id,
                 "topic_weight": _format_number(assignment.topic_weight),
                 "primary_topic": str(assignment.primary_topic).lower(),
@@ -1214,6 +1232,9 @@ def _source_passages(
                 "accession_number": source["accession_number"],
                 "document_type": source["document_type"],
                 "source_url": source["source_url"],
+                "source_highlight_url": text_fragment_url(
+                    source["source_url"], canonical.get("text", "")
+                ),
                 "heading": source["heading"],
                 "block_start": source["block_start"],
                 "block_end": source["block_end"],
@@ -1230,8 +1251,9 @@ def _propagated_assignment_rows(
     result: EmployeeTopicResult,
     source_passages: Sequence[dict[str, object]],
     disclosure_salience: Mapping[str, float] | None = None,
+    passage_text: Mapping[str, str] | None = None,
 ) -> list[dict[str, object]]:
-    canonical_rows = _assignment_rows(result, disclosure_salience)
+    canonical_rows = _assignment_rows(result, disclosure_salience, passage_text)
     by_passage: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
     for row in canonical_rows:
         by_passage[str(row["canonical_passage_id"])].append(row)
@@ -1248,6 +1270,7 @@ def _propagated_assignment_rows(
                     "document_id": passage["document_id"],
                     "document_family_id": passage["document_family_id"],
                     "source_url": passage["source_url"],
+                    "source_highlight_url": passage.get("source_highlight_url", ""),
                 }
             )
     return output
@@ -1397,8 +1420,11 @@ def analyze_employee_topics_workflow(
     source_passage_rows = _source_passages(canonical_passages, included_source_rows)
     deal_topic_rows = _propagated_deal_topics(deals, result, included_source_rows)
     disclosure_salience = _disclosure_salience(deals, deal_topic_rows)
-    canonical_assignment_rows = _assignment_rows(result, disclosure_salience)
-    assignment_rows = _propagated_assignment_rows(result, source_passage_rows, disclosure_salience)
+    canonical_text = {row["passage_id"]: row.get("text", "") for row in canonical_passages}
+    canonical_assignment_rows = _assignment_rows(result, disclosure_salience, canonical_text)
+    assignment_rows = _propagated_assignment_rows(
+        result, source_passage_rows, disclosure_salience, canonical_text
+    )
 
     _write_rows(output_dir / "source_passages.csv", PASSAGE_FIELDS, source_passage_rows)
     _write_rows(output_dir / "topic_assignments.csv", TOPIC_ASSIGNMENT_FIELDS, assignment_rows)
@@ -1569,6 +1595,17 @@ def analyze_employee_topics_workflow(
     )
 
 
+def _release_status(gate_passed: bool, corpus_validation: CorpusValidationState) -> str:
+    """Collapse the gate and corpus state into one status no artifact can misread as accepted."""
+    if gate_passed:
+        return "pass"
+    if corpus_validation.status == "failed_human_corpus_validation":
+        return "fail"
+    if corpus_validation.blocks_release:
+        return corpus_validation.status
+    return "fail"
+
+
 def summarize_employee_topics_workflow(
     review_csv: Path,
     corpus_dir: Path,
@@ -1576,9 +1613,21 @@ def summarize_employee_topics_workflow(
     output_dir: Path,
     *,
     representative_limit: int = 3,
+    corpus_audit_dir: Path | None = None,
+    corpus_scores_dir: Path | None = None,
 ) -> WorkflowSummary:
-    """Validate the full artifact chain and write the descriptive report plus review queue."""
+    """Validate the full artifact chain and write the descriptive report plus review queue.
+
+    The corpus relevance-audit state is resolved against the hash of the exact ``passages.csv``
+    in ``corpus_dir`` so a verdict from a different corpus can never be borrowed.
+    """
     deals = _selected_deals(review_csv)
+    corpus_passages_sha256 = _file_sha256(corpus_dir / "passages.csv")
+    corpus_validation = resolve_corpus_validation(
+        corpus_audit_dir,
+        corpus_scores_dir,
+        expected_candidate_sha256=corpus_passages_sha256,
+    )
     report = build_employee_report(
         corpus_dir / "documents.csv",
         analysis_dir / "source_passages.csv",
@@ -1587,6 +1636,7 @@ def summarize_employee_topics_workflow(
         analysis_dir / "model_diagnostics.csv",
         expected_deal_count=len(deals),
         representative_limit=representative_limit,
+        corpus_validation=corpus_validation,
     )
     write_employee_report(
         report,
@@ -1596,8 +1646,11 @@ def summarize_employee_topics_workflow(
     _write_json(
         output_dir / "report_manifest.json",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "gate_passed": report.gate_passed,
+            "release_status": _release_status(report.gate_passed, corpus_validation),
+            "corpus_validation": corpus_validation.as_manifest(),
+            "corpus_passages_sha256": corpus_passages_sha256,
             "selected_deal_ids": [deal["deal_id"] for deal in deals],
             "representative_limit": representative_limit,
             "passages_sha256": _file_sha256(analysis_dir / "source_passages.csv"),
@@ -1607,7 +1660,7 @@ def summarize_employee_topics_workflow(
         },
     )
     return WorkflowSummary(
-        status="pass" if report.gate_passed else "fail",
+        status=_release_status(report.gate_passed, corpus_validation),
         output_dir=output_dir,
         counts={"deals": len(deals), "topic_review_rows": len(report.topic_review_rows)},
     )

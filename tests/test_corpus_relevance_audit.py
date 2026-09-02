@@ -175,8 +175,8 @@ def test_score_reports_point_rates_wilson_intervals_and_gate(tmp_path: Path) -> 
     }
     assert overall["included_passage_relevance"]["point_rate"] == "1.000000"
     assert overall["excluded_candidate_missed_content"]["point_rate"] == "0.000000"
-    assert float(overall["included_passage_relevance"]["wilson_lower"]) < 1
-    assert float(overall["excluded_candidate_missed_content"]["wilson_upper"]) > 0
+    assert float(str(overall["included_passage_relevance"]["wilson_lower"])) < 1
+    assert float(str(overall["excluded_candidate_missed_content"]["wilson_upper"])) > 0
     manifest = json.loads((scores_dir / "score_manifest.json").read_text())
     assert manifest["gate_status"] == "pass"
     assert manifest["labels_are_human_attested"] is True
@@ -209,7 +209,9 @@ def test_score_fails_strict_excluded_threshold(tmp_path: Path) -> None:
     )
 
     assert score.status == "fail"
-    assert score.manifest["gate_results"]["excluded_candidate_missed_content"]["point_rate"] == 0.1
+    gate_results = score.manifest["gate_results"]
+    assert isinstance(gate_results, dict)
+    assert gate_results["excluded_candidate_missed_content"]["point_rate"] == 0.1
 
 
 def test_score_rejects_a_private_key_changed_after_preparation(tmp_path: Path) -> None:

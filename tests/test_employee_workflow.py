@@ -97,39 +97,9 @@ def _cached_document(runs: Path, cache: Path, deal_id: str, document_id: str, bo
     )
 
 
-def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
-    monkeypatch, tmp_path: Path
-) -> None:
-    review = tmp_path / "review.csv"
-    runs = tmp_path / "runs"
-    cache = tmp_path / "cache"
-    corpus_dir = tmp_path / "corpus"
-    analysis_dir = tmp_path / "analysis"
-    report_dir = tmp_path / "report"
-    _review(review)
-    body = b"<h2>Employee Matters</h2><p>Key employees receive a retention bonus.</p>"
-    _cached_document(runs, cache, "deal-1", "doc-1", body)
-    _cached_document(runs, cache, "deal-2", "doc-2", body)
-
-    corpus_summary = build_employee_corpus_workflow(review, runs, corpus_dir, cache)
-
-    passages = _rows(corpus_dir / "passages.csv")
-    sources = _rows(corpus_dir / "passage_sources.csv")
-    assert corpus_summary.counts["deals"] == 3
-    assert len(passages) == 1
-    assert len(sources) == 2
-    assert {row["deal_id"] for row in sources} == {"deal-1", "deal-2"}
-    assert passages[0]["inclusion_status"] == "included"
-    assert passages[0]["raw_text"] == passages[0]["text"]
-    corpus_manifest = json.loads((corpus_dir / "corpus_manifest.json").read_text())
-    assert corpus_manifest["schema_version"] == 2
-    assert corpus_manifest["screened_candidate_passages"] == 1
-    assert corpus_manifest["included_screened_passages"] == 1
-    assert corpus_manifest["excluded_screened_passages"] == 0
-    assert "canonical_passages" not in corpus_manifest
-
-    passage = passages[0]
-    fake_result = EmployeeTopicResult(
+def _topic_result_for(passage: dict[str, str]) -> EmployeeTopicResult:
+    """A single-topic result pinned to one corpus passage, shared by workflow tests."""
+    return EmployeeTopicResult(
         status="modeled",
         reason=None,
         assignments=(
@@ -166,6 +136,41 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
         sensitivity_assignments=(),
         stability=(),
     )
+
+
+def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
+    monkeypatch, tmp_path: Path
+) -> None:
+    review = tmp_path / "review.csv"
+    runs = tmp_path / "runs"
+    cache = tmp_path / "cache"
+    corpus_dir = tmp_path / "corpus"
+    analysis_dir = tmp_path / "analysis"
+    report_dir = tmp_path / "report"
+    _review(review)
+    body = b"<h2>Employee Matters</h2><p>Key employees receive a retention bonus.</p>"
+    _cached_document(runs, cache, "deal-1", "doc-1", body)
+    _cached_document(runs, cache, "deal-2", "doc-2", body)
+
+    corpus_summary = build_employee_corpus_workflow(review, runs, corpus_dir, cache)
+
+    passages = _rows(corpus_dir / "passages.csv")
+    sources = _rows(corpus_dir / "passage_sources.csv")
+    assert corpus_summary.counts["deals"] == 3
+    assert len(passages) == 1
+    assert len(sources) == 2
+    assert {row["deal_id"] for row in sources} == {"deal-1", "deal-2"}
+    assert passages[0]["inclusion_status"] == "included"
+    assert passages[0]["raw_text"] == passages[0]["text"]
+    corpus_manifest = json.loads((corpus_dir / "corpus_manifest.json").read_text())
+    assert corpus_manifest["schema_version"] == 2
+    assert corpus_manifest["screened_candidate_passages"] == 1
+    assert corpus_manifest["included_screened_passages"] == 1
+    assert corpus_manifest["excluded_screened_passages"] == 0
+    assert "canonical_passages" not in corpus_manifest
+
+    passage = passages[0]
+    fake_result = _topic_result_for(passage)
     monkeypatch.setattr(
         "tag_edgar.employee_workflow.analyze_employee_topics_csv",
         lambda _path, _config: fake_result,
@@ -241,11 +246,55 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
         row["disclosure_salience"] for row in _rows(analysis_dir / "topic_assignments.csv")
     } == {summary_row["disclosure_salience"]}
 
+    # Without any corpus audit evidence the report must not claim a pass.
+    withheld = summarize_employee_topics_workflow(
+        review, corpus_dir, analysis_dir, tmp_path / "withheld"
+    )
+    assert withheld.status == "no_corpus_validation_evidence"
+    withheld_manifest = json.loads((tmp_path / "withheld" / "report_manifest.json").read_text())
+    assert withheld_manifest["gate_passed"] is False
+    assert withheld_manifest["release_status"] == "no_corpus_validation_evidence"
+    assert withheld_manifest["corpus_validation"]["accepted"] is False
+
+    # A scored, passing audit hash-linked to this exact passages.csv unlocks the pass.
+    scores_dir = tmp_path / "scores"
+    scores_dir.mkdir()
+    passages_sha = hashlib.sha256((corpus_dir / "passages.csv").read_bytes()).hexdigest()
+    (scores_dir / "score_manifest.json").write_text(
+        json.dumps(
+            {
+                "audit_status": "scored_human_labels",
+                "gate_status": "pass",
+                "candidate_csv_sha256": passages_sha,
+            }
+        ),
+        encoding="utf-8",
+    )
     report_summary = summarize_employee_topics_workflow(
-        review, corpus_dir, analysis_dir, report_dir
+        review, corpus_dir, analysis_dir, report_dir, corpus_scores_dir=scores_dir
     )
 
     assert report_summary.status == "pass"
+    manifest = json.loads((report_dir / "report_manifest.json").read_text())
+    assert manifest["release_status"] == "pass"
+    assert manifest["corpus_validation"]["status"] == "passed_human_corpus_validation"
+    assert manifest["corpus_passages_sha256"] == passages_sha
+
+    # The same scored audit cannot be borrowed by a corpus with a different passages.csv.
+    (scores_dir / "score_manifest.json").write_text(
+        json.dumps(
+            {
+                "audit_status": "scored_human_labels",
+                "gate_status": "pass",
+                "candidate_csv_sha256": "0" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    borrowed = summarize_employee_topics_workflow(
+        review, corpus_dir, analysis_dir, tmp_path / "borrowed", corpus_scores_dir=scores_dir
+    )
+    assert borrowed.status == "pending_human_corpus_validation"
     report = (report_dir / "employee_topics_report.md").read_text(encoding="utf-8")
     assert "Buyer Two–Target Two" in report
     assert "no employee passages" in report

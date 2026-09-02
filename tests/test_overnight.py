@@ -76,7 +76,7 @@ def _write_inventory(out_dir: Path, texts: dict[tuple[str, str], str]) -> None:
             }
         )
     with (out_dir / "document_inventory.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=list(INVENTORY_FIELDS))
+        writer: csv.DictWriter[str] = csv.DictWriter(file, fieldnames=list(INVENTORY_FIELDS))
         writer.writeheader()
         writer.writerows(rows)
 

@@ -65,7 +65,7 @@ def test_passage_rows_carry_deal_and_family() -> None:
     rows = passage_tone_rows(passages)
     assert [row["passage_id"] for row in rows] == ["p1", "p2", "p3"]
     assert rows[0]["raw_or_adjusted"] == "raw"
-    assert rows[0]["rate_retention_per100"] > 0
+    assert float(str(rows[0]["rate_retention_per100"])) > 0
 
 
 def test_deal_summary_uses_unweighted_passage_means() -> None:
@@ -77,7 +77,7 @@ def test_deal_summary_uses_unweighted_passage_means() -> None:
     assert len(summary) == 1
     row = summary[0]
     assert row["passage_count"] == 2
-    raw_rate = float(row["rate_retention_per100"])
+    raw_rate = float(str(row["rate_retention_per100"]))
     single = lexicon_rates("retention bonus retention bonus")["retention"]
     zero = lexicon_rates("nothing relevant here at all")["retention"]
     assert abs(raw_rate - (single + zero) / 2) < 0.01
@@ -120,5 +120,7 @@ def test_family_baseline_with_fallback_recorded() -> None:
     adjusted = apply_baselines(rows, baselines, config=BaselineConfig(min_group_size=5))
     sample = adjusted[0]
     assert sample["raw_or_adjusted"] == "raw_and_baseline_adjusted"
-    expected = float(sample["rate_retention_per100"]) - float(sample["baseline_mean_retention"])
-    assert abs(float(sample["rate_retention_per100_adjusted"]) - expected) < 0.01
+    expected = float(str(sample["rate_retention_per100"])) - float(
+        str(sample["baseline_mean_retention"])
+    )
+    assert abs(float(str(sample["rate_retention_per100_adjusted"])) - expected) < 0.01
