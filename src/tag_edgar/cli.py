@@ -21,7 +21,9 @@ from .corpus_relevance_audit import (
     write_corpus_relevance_scores,
 )
 from .corpus_validation import resolve_corpus_validation
+from .deal_ai_label import label_deal, label_row, write_deal_ai_labels
 from .deal_architecture import build_deal_architecture, write_deal_architecture
+from .deal_retrieval import html_to_text
 from .disclosure_freeze import build_frozen_sample, write_frozen_sample
 from .disclosure_pool import (
     build_disclosure_pool,
@@ -987,6 +989,119 @@ def freeze_disclosure_sample_command(
             typer.echo(f"{status}: {count}")
     typer.echo(f"modelled passages: {sample.manifest['modelled_passages']}")
     typer.echo(f"largest deal share: {sample.manifest['largest_deal_share']}")
+    typer.echo(f"Wrote {output_dir}")
+
+
+def _cached_document_text(cache_dir: Path, url: str) -> str:
+    """Read one already-retrieved document body from the HTTP cache, or return empty text."""
+    digest = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    body_path = cache_dir / f"{digest}.body"
+    metadata_path = cache_dir / f"{digest}.json"
+    if not body_path.exists():
+        return ""
+    content_type = ""
+    if metadata_path.exists():
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            metadata = {}
+        if isinstance(metadata, dict):
+            content_type = str(metadata.get("content_type", ""))
+    try:
+        raw = body_path.read_bytes()
+    except OSError:
+        return ""
+    # Cached bodies observed so far decode as UTF-8 and carry typographic quotes as HTML
+    # entities. This fallback is a guard for older cp1252 bodies, so a decoding failure yields
+    # readable text rather than U+FFFD inside an excerpt that gets quoted in the report.
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raw = raw.decode("cp1252", errors="replace").encode("utf-8")
+    try:
+        return html_to_text(raw, content_type)
+    except ValueError:
+        return ""
+
+
+@app.command("label-deal-ai")
+def label_deal_ai_command(
+    queue_csv: Path = typer.Argument(..., exists=True, readable=True),
+    corpus_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "deal_ai_labels"),
+    cache_dir: Path | None = typer.Option(None, exists=True, file_okay=False),
+    max_documents_per_deal: int = typer.Option(
+        12, min=1, help="Screen at most this many documents per deal, largest families first."
+    ),
+) -> None:
+    """Label each retrieved deal for AI and talent language, after selection (offline)."""
+    settings = load_settings(require_user_agent=False)
+    selected_cache = cache_dir or settings.cache_dir
+    with queue_csv.open(newline="", encoding="utf-8") as file:
+        queue = {
+            row["deal_id"]: row
+            for row in csv.DictReader(file)
+            if (row.get("pilot_status") or "").lower() == "selected"
+        }
+
+    texts_csv = corpus_dir / "document_texts.csv"
+    if not texts_csv.exists():
+        raise typer.BadParameter(
+            f"{texts_csv} not found. Run build-employee-corpus first."
+        )
+    urls_by_deal: dict[str, list[str]] = {}
+    csv.field_size_limit(10**9)
+    with texts_csv.open(newline="", encoding="utf-8") as file:
+        for row in csv.DictReader(file):
+            deal_id = row.get("deal_id", "")
+            url = row.get("source_url", "")
+            if deal_id not in queue or not url:
+                continue
+            urls = urls_by_deal.setdefault(deal_id, [])
+            if len(urls) < max_documents_per_deal:
+                urls.append(url)
+
+    rows: list[dict[str, str]] = []
+    counts: dict[str, int] = {}
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+    ) as progress:
+        task = progress.add_task("labelling", total=len(queue))
+        for deal_id, entry in sorted(queue.items()):
+            documents = [
+                (url, _cached_document_text(selected_cache, url))
+                for url in urls_by_deal.get(deal_id, [])
+            ]
+            label = label_deal(deal_id, entry.get("target_name", ""), documents)
+            rows.append(
+                label_row(label, entry.get("acquirer_name", ""), entry.get("target_name", ""))
+            )
+            counts[label.label] = counts.get(label.label, 0) + 1
+            progress.advance(task)
+
+    manifest: dict[str, object] = {
+        "schema_version": 1,
+        "labelled_deals": len(rows),
+        "label_counts": counts,
+        "talent_join_language_deals": sum(
+            1 for row in rows if row["talent_join_language"] == "yes"
+        ),
+        "acquihire_explicit_deals": sum(
+            1 for row in rows if row["talent_acquihire_explicit"] == "yes"
+        ),
+        "max_documents_per_deal": max_documents_per_deal,
+        "evidence_boundary": (
+            "labels are machine-derived from retrieved filing text and pending human review; a "
+            "'none' label means the retrieved filings do not describe the target in AI terms, "
+            "not that the target is not an AI company"
+        ),
+    }
+    write_deal_ai_labels(output_dir, rows, manifest)
+    for label, count in sorted(counts.items()):
+        typer.echo(f"{label}: {count}")
     typer.echo(f"Wrote {output_dir}")
 
 
