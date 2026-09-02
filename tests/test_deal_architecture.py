@@ -17,6 +17,18 @@ from tag_edgar.deal_architecture import (
 
 REGISTER = Path(__file__).resolve().parents[1] / "config" / "pilot_deal_architecture_evidence.csv"
 URL = "https://www.sec.gov/Archives/edgar/data/1/000000000100000001/ex21.htm"
+EXPECTED_SELECTED_DEAL_IDS = {
+    "2647141020",
+    "3700303020",
+    "3705005020",
+    "3741094020",
+    "3783818020",
+    "3847595020",
+    "3859429020",
+    "3923067020",
+    "3948517040",
+    "3968186020",
+}
 
 
 def _row(deal_id: str, attribute: str, value: str, **overrides: str) -> dict[str, str]:
@@ -61,6 +73,7 @@ def _full_deal(deal_id: str = "deal-1", **values: str) -> list[dict[str, str]]:
         "business_product_continuity": "unknown",
         "workforce_movement": "group_continuing_employees",
         "talent_motive_explicit": "unknown",
+        "talent_salience_signal": "unknown",
     }
     defaults.update(values)
     return [_row(deal_id, attribute, defaults[attribute]) for attribute in ATTRIBUTES]
@@ -70,7 +83,7 @@ def test_committed_register_builds_ten_reviewed_deals_with_blank_human_fields() 
     result = build_deal_architecture(REGISTER)
 
     assert result.manifest["deal_count"] == 10
-    assert result.manifest["evidence_row_count"] == 60
+    assert result.manifest["evidence_row_count"] == 70
     assert [row["deal_id"] for row in result.deal_rows] == sorted(
         row["deal_id"] for row in result.deal_rows
     )
@@ -92,8 +105,30 @@ def test_committed_register_builds_ten_reviewed_deals_with_blank_human_fields() 
     assert all(row["source_highlight_url"] == "" for row in result.evidence_rows)
 
 
-def test_pilot_deals_are_all_control_transferring_acquisitions() -> None:
-    """The pilot contains no license-and-hire structure; the layer must say so, not invent one."""
+def test_committed_register_exactly_matches_selected_pilot_ids() -> None:
+    queue_path = REGISTER.parents[1] / "data" / "derived" / "pilot_review_queue.csv"
+    manifest_path = (
+        REGISTER.parents[1] / "data" / "derived" / "employee_corpus_cycle5" / "corpus_manifest.json"
+    )
+    register_ids = {row["deal_id"] for row in load_evidence_register(REGISTER)}
+
+    assert register_ids == EXPECTED_SELECTED_DEAL_IDS
+    # These generated inputs are git-ignored, but when present they must agree with the committed
+    # pilot contract as well as with one another.
+    if queue_path.exists() and manifest_path.exists():
+        with queue_path.open(newline="", encoding="utf-8") as file:
+            selected_queue_ids = {
+                row["deal_id"] for row in csv.DictReader(file) if row["pilot_status"] == "selected"
+            }
+        manifest_ids = set(
+            json.loads(manifest_path.read_text(encoding="utf-8"))["selected_deal_ids"]
+        )
+        assert selected_queue_ids == manifest_ids == EXPECTED_SELECTED_DEAL_IDS
+    assert "3923067020" in register_ids  # Fastly–Glitch is the intentional zero/unknown case.
+
+
+def test_pilot_does_not_invent_license_or_acquihire_structures() -> None:
+    """The pilot contains no evidenced license-and-hire or traditional acquihire structure."""
     result = build_deal_architecture(REGISTER)
     suggested = {
         archetype
@@ -104,8 +139,11 @@ def test_pilot_deals_are_all_control_transferring_acquisitions() -> None:
     assert "reverse_acquihire" not in suggested
     assert "traditional_acquihire" not in suggested
     assert {"full_acquisition", "asset_acquisition"} & suggested
-    skyworks = next(row for row in result.deal_rows if row["deal_id"] == "pilot_009_skyworks_silabs")
+    skyworks = next(row for row in result.deal_rows if row["deal_id"] == "3700303020")
     assert skyworks["machine_suggested_archetypes"].startswith("asset_acquisition")
+    fastly = next(row for row in result.deal_rows if row["deal_id"] == "3923067020")
+    assert fastly["machine_suggested_archetypes"] == "unknown"
+    assert fastly["unknown_attribute_count"] == str(len(ATTRIBUTES))
 
 
 def test_verbatim_excerpts_produce_highlight_urls(tmp_path: Path) -> None:
@@ -127,6 +165,7 @@ def test_archetype_rules_cover_the_structures_the_study_distinguishes() -> None:
             "business_product_continuity": "unknown",
             "workforce_movement": "group_continuing_employees",
             "talent_motive_explicit": "no",
+            "talent_salience_signal": "unknown",
         }
     )
     assert conventional[0] == ["full_acquisition"]
@@ -138,10 +177,11 @@ def test_archetype_rules_cover_the_structures_the_study_distinguishes() -> None:
             "ip_treatment": "acquired_with_entity",
             "business_product_continuity": "unknown",
             "workforce_movement": "named_founders_and_key_employees",
-            "talent_motive_explicit": "partial",
+            "talent_motive_explicit": "unknown",
+            "talent_salience_signal": "yes",
         }
     )
-    assert emphasis[0] == ["full_acquisition", "acquisition_with_talent_emphasis"]
+    assert emphasis[0] == ["full_acquisition", "acquisition_with_talent_salience"]
     assert emphasis[1] == "medium"
 
     acquihire = suggest_archetypes(
@@ -151,6 +191,7 @@ def test_archetype_rules_cover_the_structures_the_study_distinguishes() -> None:
             "business_product_continuity": "discontinued",
             "workforce_movement": "named_founders_and_key_employees",
             "talent_motive_explicit": "yes",
+            "talent_salience_signal": "yes",
         }
     )
     assert acquihire[0] == ["traditional_acquihire"]
@@ -162,6 +203,7 @@ def test_archetype_rules_cover_the_structures_the_study_distinguishes() -> None:
             "business_product_continuity": "continues_independently",
             "workforce_movement": "named_founders_and_key_employees",
             "talent_motive_explicit": "yes",
+            "talent_salience_signal": "yes",
         }
     )
     assert licence[0] == ["hire_and_license", "reverse_acquihire"]
@@ -173,6 +215,7 @@ def test_archetype_rules_cover_the_structures_the_study_distinguishes() -> None:
             "business_product_continuity": "unknown",
             "workforce_movement": "unknown",
             "talent_motive_explicit": "unknown",
+            "talent_salience_signal": "unknown",
         }
     )
     assert unknown[0] == ["unknown"]
@@ -203,6 +246,10 @@ def test_register_refuses_unpinned_claims_and_incomplete_deals(tmp_path: Path) -
     rows[-1]["evidence_status"] = "direct"
     with pytest.raises(ValueError, match="unknown value must carry"):
         load_evidence_register(_write(tmp_path / "e.csv", rows))
+
+    rows = _full_deal(talent_motive_explicit="partial")
+    with pytest.raises(ValueError, match="talent_motive_explicit must be yes, no, or unknown"):
+        load_evidence_register(_write(tmp_path / "f.csv", rows))
 
 
 def test_written_artifacts_are_hash_linked_and_deterministic(tmp_path: Path) -> None:
