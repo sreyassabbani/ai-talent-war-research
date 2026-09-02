@@ -199,11 +199,20 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     )
     analysis_manifest = json.loads((analysis_dir / "analysis_manifest.json").read_text())
     assert analysis_manifest["status"] == "modeled"
+    assert analysis_manifest["release_status"] == "modeled_provisional"
+    assert analysis_manifest["corpus_validation"] == {
+        "accepted": False,
+        "candidate_csv_sha256": analysis_manifest["passages_sha256"],
+        "detail": "No relevance audit packet or scores were supplied for this corpus.",
+        "evidence_path": "",
+        "gate_status": "pending",
+        "status": "no_corpus_validation_evidence",
+    }
     assert analysis_manifest["schema_version"] == 3
     assert analysis_manifest["config"]["bootstrap_replicates"] == 100
     assert analysis_manifest["bootstrap_design"] == {
         "alignment": "one_to_one_maximum_total_cosine",
-        "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+        "fit_universe": "same_configured_fit_rows_as_full_nmf_fit",
         "per_deal_sample_size": "preserve_original_fit_row_count",
         "projected_passages_included": False,
         "purpose": "complementary_robustness_diagnostic_not_model_selection",
@@ -266,6 +275,11 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
                 "audit_status": "scored_human_labels",
                 "gate_status": "pass",
                 "candidate_csv_sha256": passages_sha,
+                "labels_present": True,
+                "labels_are_human_attested": True,
+                "completed_item_count": 2,
+                "sample_counts": {"included": 1, "excluded": 1},
+                "audit_manifest_sha256": "c" * 64,
             }
         ),
         encoding="utf-8",

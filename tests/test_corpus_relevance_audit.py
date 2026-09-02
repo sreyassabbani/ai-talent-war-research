@@ -180,6 +180,8 @@ def test_score_reports_point_rates_wilson_intervals_and_gate(tmp_path: Path) -> 
     manifest = json.loads((scores_dir / "score_manifest.json").read_text())
     assert manifest["gate_status"] == "pass"
     assert manifest["labels_are_human_attested"] is True
+    assert manifest["completed_item_count"] == 20
+    assert manifest["sample_counts"] == {"included": 10, "excluded": 10}
 
 
 def test_score_fails_strict_excluded_threshold(tmp_path: Path) -> None:

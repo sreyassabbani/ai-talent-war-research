@@ -1406,10 +1406,17 @@ def analyze_employee_topics_workflow(
     output_dir: Path,
     *,
     config: TopicModelConfig = TopicModelConfig(),
+    corpus_audit_dir: Path | None = None,
+    corpus_scores_dir: Path | None = None,
 ) -> WorkflowSummary:
     """Analyze canonical passages and propagate their assignments to every represented deal."""
     passages_path = corpus_dir / "passages.csv"
     sources_path = corpus_dir / "passage_sources.csv"
+    corpus_validation = resolve_corpus_validation(
+        corpus_audit_dir,
+        corpus_scores_dir,
+        expected_candidate_sha256=_file_sha256(passages_path),
+    )
     deals = _selected_deals(review_csv)
     canonical_passages = _read_rows(passages_path)
     source_rows = _read_rows(sources_path)
@@ -1514,6 +1521,14 @@ def analyze_employee_topics_workflow(
     manifest: dict[str, object] = {
         "schema_version": 3,
         "status": result.status,
+        "release_status": (
+            "modeled_corpus_validated"
+            if result.status == "modeled" and corpus_validation.accepted
+            else "modeled_provisional"
+            if result.status == "modeled"
+            else result.status
+        ),
+        "corpus_validation": corpus_validation.as_manifest(),
         "reason": result.reason,
         "review_sha256": _file_sha256(review_csv),
         "passages_sha256": _file_sha256(passages_path),
@@ -1525,7 +1540,7 @@ def analyze_employee_topics_workflow(
             "sampling_scope": "within_deal",
             "replacement": True,
             "per_deal_sample_size": "preserve_original_fit_row_count",
-            "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+            "fit_universe": "same_configured_fit_rows_as_full_nmf_fit",
             "vocabulary": "fixed_from_full_fit",
             "projected_passages_included": False,
             "seed_formula": "config.seed + 1700003 + replicate_id",
@@ -1534,7 +1549,7 @@ def analyze_employee_topics_workflow(
         },
         "embedding_robustness_design": {
             "purpose": "complementary_robustness_diagnostic_not_model_selection",
-            "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+            "fit_universe": "same_configured_fit_rows_as_full_nmf_fit",
             "input_features": "word_bigram_tfidf",
             "embedding": "normalized_truncated_svd_lsa_not_transformer_semantics",
             "svd_algorithm": "randomized",
