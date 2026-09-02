@@ -555,10 +555,17 @@ def analyze_employee_topics_command(
     fit_balance: str = typer.Option(
         "deal", help="Fit-universe balancing: deal, source_family, or none."
     ),
+    max_fit_passages: int = typer.Option(
+        240,
+        min=10,
+        help="Bounded fit-universe size. Raise it with the deal count so each deal keeps "
+        "several representative rows.",
+    ),
 ) -> None:
     """Fit deterministic topics and propagate assignments through every passage source."""
     config = TopicModelConfig(
         seed=seed,
+        max_fit_passages=max_fit_passages,
         min_passages=min_passages,
         min_deals=min_deals,
         k_min=k_min,
