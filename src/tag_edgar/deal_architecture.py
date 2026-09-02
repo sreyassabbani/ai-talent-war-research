@@ -69,6 +69,7 @@ ARCHETYPES: tuple[str, ...] = (
 
 EVIDENCE_FIELDS = [
     "deal_id",
+    "sdc_deal_id",
     "deal_name",
     "acquirer",
     "target",
@@ -97,6 +98,7 @@ EVIDENCE_OUTPUT_FIELDS = [
 
 OUTPUT_FIELDS = [
     "deal_id",
+    "sdc_deal_id",
     "deal_name",
     "acquirer",
     "target",
@@ -313,6 +315,7 @@ def build_deal_architecture(register_path: Path) -> DealArchitecture:
         deal_rows.append(
             {
                 "deal_id": deal_id,
+                "sdc_deal_id": header["sdc_deal_id"],
                 "deal_name": header["deal_name"],
                 "acquirer": header["acquirer"],
                 "target": header["target"],

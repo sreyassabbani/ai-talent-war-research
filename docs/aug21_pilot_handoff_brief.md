@@ -49,8 +49,8 @@ See `docs/deal_architecture_codebook.md`.
 | Cycle-4 corpus relevance audit (historical) | **failed** | 72.0% relevance (≥90% needed); 5.33% missed content (<5% needed); 150/150 human rows, 2026-08-26 |
 | Cycle-5 screen repair | implemented | `51281a4`; 2,331 included / 3,219 excluded in the originating checkout |
 | Cycle-5 corpus relevance audit | **pending** — 75 + 75 rows, no labels | packet built only in the originating checkout; not present here |
-| Cycle-5 corpus in this checkout | **absent** | `data/derived/` is git-ignored; pilot queue, runs, and document cache absent |
-| Topic model on cycle 5 | **not run** | blocked on the corpus |
+| Cycle-5 corpus in this checkout | recovered | counts match exactly; hash-links to the audit packet |
+| Topic model on cycle 5 | **run — taxonomy gate fails** | overall leave-one-deal-out recovery 0.630 (need 0.80); agglomerative ARI 0.020 (need 0.20); topic_3 (tax/payroll) recovers 0.000 |
 | Earlier topic model (cycle-4 corpus) | **rejected** | corpus gate failed; component 2 recovered in 6/9 folds and 21/100 bootstraps; human review blank |
 | Human topic-fit review | pending | packet infrastructure ready; no reviewer labels |
 | Deal-architecture register validation | pass (machine) | 60 evidence rows, 10 deals, schema-validated; human review pending |
@@ -83,17 +83,23 @@ is a license-and-hire or reverse acquihire. IP treatment is inferred from legal 
 cases; no reviewed passage addresses it. Business continuity has direct evidence only for
 Microsoft–Nuance (an announced intention, not an observation).
 
-**Employee-language topics:** none on cycle 5. The earlier three-component output (benefits and
-plan transitions; executive compensation, tax, and merger arrangements; equity-award conversion
-and vesting) is retained only as a rejected prototype.
+**Employee-language topics (cycle 5, K=3, deal-balanced):** benefit plans / ERISA / continuing
+employees (795 passages, recovery 1.000); equity awards at the effective time (1,300 passages,
+recovery 0.889); tax / payroll / social security (236 passages, recovery **0.000**). The first two
+reproduce the cycle-4 reading and are stable; the third is not, so the taxonomy gate fails again.
+Balancing the fit universe by source-document family instead of by deal raises overall recovery to
+0.815 and cuts the largest family's share from 10.8% to 2.1% — a diagnostic pointing at
+document-type imbalance, deliberately **not** adopted as the headline model after the fact.
 
-**Tone and word-use:** secondary drafting-style diagnostics; not rerun, and their manifests now
-state the corpus gate they were computed under.
+**Tone (secondary diagnostic, corpus not validated):** Clarivate–ProQuest (+0.606) and
+Intuit–Mailchimp (+0.261) carry the highest protection-language residuals; Skyworks (−0.318) and
+Okta (−0.265) the lowest; Oracle–Cerner has the highest negative-outcome rate (0.162). The ordering
+reproduces the independent hand-coding of those agreements.
 
-**Cross-table:** the generator is built and tested, but it cannot be populated until the cycle-5
-topic matrix exists. Because the architecture layer has almost no variation, the cross-table on
-these ten deals will describe one archetype family with different topic weights, not a contrast
-between structures.
+**Cross-table:** 28 rows, nine deals joined on the SDC key. Salesforce–Tableau is
+architecture-only (the salvage package substituted it for Fastly–Glitch); Fastly–Glitch is
+topic-only, as the explicit zero-passage control. With nine conventional acquisitions and no stated
+talent motive, there is almost no structural variation to describe.
 
 ## 5. Which exact paragraphs support each displayed example?
 

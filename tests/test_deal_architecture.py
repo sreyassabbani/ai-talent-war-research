@@ -85,11 +85,19 @@ def test_committed_register_builds_ten_reviewed_deals_with_blank_human_fields() 
     for row in result.evidence_rows:
         if row["machine_value"] != "unknown":
             assert row["document_id"] and row["source_url"].startswith("https://www.sec.gov/")
-    # The salvage excerpts are paraphrases, so no highlight URL is fabricated for them.
+    # Paraphrased excerpts never get a fabricated highlight URL; verbatim excerpts always do.
     statuses = result.manifest["highlight_status_counts"]
     assert isinstance(statuses, dict)
     assert statuses.get("unsupported_paraphrase_not_quotable", 0) > 0
-    assert all(row["source_highlight_url"] == "" for row in result.evidence_rows)
+    kinds = {row["excerpt_kind"] for row in result.evidence_rows}
+    assert kinds <= {"verbatim", "paraphrase"}
+    for row in result.evidence_rows:
+        if row["excerpt_kind"] == "paraphrase":
+            assert row["source_highlight_url"] == ""
+            assert row["highlight_status"] == "unsupported_paraphrase_not_quotable"
+        elif row["machine_value"] != "unknown":
+            assert row["highlight_status"] == "ok"
+            assert row["source_highlight_url"].startswith(row["source_url"] + "#:~:text=")
 
 
 def test_pilot_deals_are_all_control_transferring_acquisitions() -> None:

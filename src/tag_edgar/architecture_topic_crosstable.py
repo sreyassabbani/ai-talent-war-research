@@ -24,6 +24,7 @@ __all__ = ["CROSSTABLE_FIELDS", "CrossTable", "build_crosstable", "write_crossta
 
 CROSSTABLE_FIELDS = [
     "deal_id",
+    "sdc_deal_id",
     "deal_name",
     "legal_transaction_form",
     "scope_and_control",
@@ -76,7 +77,11 @@ def build_crosstable(
     explicit ``zero_state`` so unknown or zero-passage cases stay visible. Each topic cell carries
     the highest-weight primary passage for that deal and topic as a source-linked example.
     """
-    architecture = {row["deal_id"]: row for row in _read(architecture_csv)}
+    # The architecture layer keys deals by pilot id; the corpus/topic layer keys them by SDC deal
+    # number. Join on sdc_deal_id when the register supplies one, so neither layer is silently
+    # dropped, and report both unmatched directions in the manifest.
+    architecture_rows = _read(architecture_csv)
+    architecture = {(row.get("sdc_deal_id") or row["deal_id"]): row for row in architecture_rows}
     if not architecture:
         raise ValueError("deal_architecture.csv contains no deals.")
     topic_rows = _read(deal_topic_matrix_csv)
@@ -100,7 +105,8 @@ def build_crosstable(
     for deal_id in sorted(architecture):
         arch = architecture[deal_id]
         base = {
-            "deal_id": deal_id,
+            "deal_id": arch.get("deal_id", deal_id),
+            "sdc_deal_id": arch.get("sdc_deal_id", ""),
             "deal_name": arch.get("deal_name", ""),
             "legal_transaction_form": arch.get("legal_transaction_form", ""),
             "scope_and_control": arch.get("scope_and_control", ""),
@@ -148,6 +154,7 @@ def build_crosstable(
     manifest: dict[str, object] = {
         "schema_version": 1,
         "deal_count": len(architecture),
+        "join_key": "sdc_deal_id when present, else deal_id",
         "row_count": len(output),
         "deals_without_topic_rows": [
             deal_id for deal_id in sorted(architecture) if not by_deal.get(deal_id)

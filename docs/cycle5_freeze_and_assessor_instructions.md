@@ -19,27 +19,24 @@ The historical cycle-4 audit remains a **failed** gate (72.0% included-passage r
 90% threshold; 5.33% missed content against a <5% threshold; assessor `sreyas-sabbani`, 150/150
 rows, 2026-08-26). Nothing in cycle 5 rescored or altered it.
 
-## 2. What exists in this checkout, and what does not
+## 2. What exists in this checkout
 
-`data/derived/` is git-ignored, so the corpus artifacts were never committed. In this checkout:
+`data/derived/` is git-ignored, so these artifacts travel outside git. They were recovered on
+2026-09-02 from `Downloads/data (1).zip` and `Downloads/cache.zip` and are now present:
 
 | Path | Present | Notes |
 | --- | --- | --- |
-| `data/derived/employee_corpus_cycle5/` | **no** | built only in the originating checkout |
-| `data/derived/corpus_relevance_audit_cycle5/` | **no** | same |
-| `data/derived/pilot_review_queue.csv`, `data/derived/pilot_runs/` | **no** | pilot inputs; human-confirmed CIK/scope columns |
-| `cache/http/` for the 10 pilot deals | **no** | the local 409 MB cache holds the ai_100 expansion filers, not the pilot CIKs |
+| `data/derived/employee_corpus_cycle5/` | yes | 469/358/111 documents; 2,331 included and 3,219 excluded passages |
+| `data/derived/corpus_relevance_audit_cycle5/` | yes | 150-row packet, still `pending_human_labels` |
+| `data/derived/pilot_review_queue.csv`, `pilot_manual_coding.csv` | yes | 10 selected deals with confirmed CIK/scope columns |
+| `data/derived/pilot_runs/` | yes | all 10 pilot deals |
+| `cache/http/` | yes | 4,950 entries / 520 MB, including the pilot documents |
 | Cycle-5 screen code + tests | yes | `51281a4` |
 | Human-curated 10-deal source record | yes | `audit_salvage_2026-08-30/` (untracked) |
 
-Consequently the cycle-5 corpus, its audit packet, the topic rerun, tone rerun, and the
-architecture/topic cross-table **cannot be executed here** without first rebuilding the corpus.
-Rebuilding needs (a) the pilot queue with its human-confirmed CIK and scope columns, and (b)
-either the original `pilot_runs/` cache or a live SEC retrieval of the 469 documents under a real
-`SEC_USER_AGENT` contact. Neither is something this workflow may reconstruct or fabricate.
-
-The code paths for every downstream step were completed and tested against fixtures; the exact
-commands are in §4 so the run is a single sequence once the corpus is present.
+The audit packet's `candidate_csv_sha256` equals the SHA-256 of the recovered `passages.csv`, so
+the gate machinery hash-links them without borrowing another corpus's verdict. Results of the run
+are in [`cycle5_results.md`](cycle5_results.md).
 
 ## 3. Freeze and hash-linking contract
 
