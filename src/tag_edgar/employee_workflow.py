@@ -11,6 +11,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from .accessions import canonical_document_url
+from .corpus_validation import CorpusValidationState, resolve_corpus_validation
 from .employee_corpus import CorpusDocument, build_employee_corpus, parse_document
 from .employee_report import build_employee_report, write_employee_report
 from .employee_topics import (
@@ -1594,6 +1595,17 @@ def analyze_employee_topics_workflow(
     )
 
 
+def _release_status(gate_passed: bool, corpus_validation: CorpusValidationState) -> str:
+    """Collapse the gate and corpus state into one status no artifact can misread as accepted."""
+    if gate_passed:
+        return "pass"
+    if corpus_validation.status == "failed_human_corpus_validation":
+        return "fail"
+    if corpus_validation.blocks_release:
+        return corpus_validation.status
+    return "fail"
+
+
 def summarize_employee_topics_workflow(
     review_csv: Path,
     corpus_dir: Path,
@@ -1601,9 +1613,21 @@ def summarize_employee_topics_workflow(
     output_dir: Path,
     *,
     representative_limit: int = 3,
+    corpus_audit_dir: Path | None = None,
+    corpus_scores_dir: Path | None = None,
 ) -> WorkflowSummary:
-    """Validate the full artifact chain and write the descriptive report plus review queue."""
+    """Validate the full artifact chain and write the descriptive report plus review queue.
+
+    The corpus relevance-audit state is resolved against the hash of the exact ``passages.csv``
+    in ``corpus_dir`` so a verdict from a different corpus can never be borrowed.
+    """
     deals = _selected_deals(review_csv)
+    corpus_passages_sha256 = _file_sha256(corpus_dir / "passages.csv")
+    corpus_validation = resolve_corpus_validation(
+        corpus_audit_dir,
+        corpus_scores_dir,
+        expected_candidate_sha256=corpus_passages_sha256,
+    )
     report = build_employee_report(
         corpus_dir / "documents.csv",
         analysis_dir / "source_passages.csv",
@@ -1612,6 +1636,7 @@ def summarize_employee_topics_workflow(
         analysis_dir / "model_diagnostics.csv",
         expected_deal_count=len(deals),
         representative_limit=representative_limit,
+        corpus_validation=corpus_validation,
     )
     write_employee_report(
         report,
@@ -1621,8 +1646,11 @@ def summarize_employee_topics_workflow(
     _write_json(
         output_dir / "report_manifest.json",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "gate_passed": report.gate_passed,
+            "release_status": _release_status(report.gate_passed, corpus_validation),
+            "corpus_validation": corpus_validation.as_manifest(),
+            "corpus_passages_sha256": corpus_passages_sha256,
             "selected_deal_ids": [deal["deal_id"] for deal in deals],
             "representative_limit": representative_limit,
             "passages_sha256": _file_sha256(analysis_dir / "source_passages.csv"),
@@ -1632,7 +1660,7 @@ def summarize_employee_topics_workflow(
         },
     )
     return WorkflowSummary(
-        status="pass" if report.gate_passed else "fail",
+        status=_release_status(report.gate_passed, corpus_validation),
         output_dir=output_dir,
         counts={"deals": len(deals), "topic_review_rows": len(report.topic_review_rows)},
     )

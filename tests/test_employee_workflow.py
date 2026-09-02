@@ -246,11 +246,55 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
         row["disclosure_salience"] for row in _rows(analysis_dir / "topic_assignments.csv")
     } == {summary_row["disclosure_salience"]}
 
+    # Without any corpus audit evidence the report must not claim a pass.
+    withheld = summarize_employee_topics_workflow(
+        review, corpus_dir, analysis_dir, tmp_path / "withheld"
+    )
+    assert withheld.status == "no_corpus_validation_evidence"
+    withheld_manifest = json.loads((tmp_path / "withheld" / "report_manifest.json").read_text())
+    assert withheld_manifest["gate_passed"] is False
+    assert withheld_manifest["release_status"] == "no_corpus_validation_evidence"
+    assert withheld_manifest["corpus_validation"]["accepted"] is False
+
+    # A scored, passing audit hash-linked to this exact passages.csv unlocks the pass.
+    scores_dir = tmp_path / "scores"
+    scores_dir.mkdir()
+    passages_sha = hashlib.sha256((corpus_dir / "passages.csv").read_bytes()).hexdigest()
+    (scores_dir / "score_manifest.json").write_text(
+        json.dumps(
+            {
+                "audit_status": "scored_human_labels",
+                "gate_status": "pass",
+                "candidate_csv_sha256": passages_sha,
+            }
+        ),
+        encoding="utf-8",
+    )
     report_summary = summarize_employee_topics_workflow(
-        review, corpus_dir, analysis_dir, report_dir
+        review, corpus_dir, analysis_dir, report_dir, corpus_scores_dir=scores_dir
     )
 
     assert report_summary.status == "pass"
+    manifest = json.loads((report_dir / "report_manifest.json").read_text())
+    assert manifest["release_status"] == "pass"
+    assert manifest["corpus_validation"]["status"] == "passed_human_corpus_validation"
+    assert manifest["corpus_passages_sha256"] == passages_sha
+
+    # The same scored audit cannot be borrowed by a corpus with a different passages.csv.
+    (scores_dir / "score_manifest.json").write_text(
+        json.dumps(
+            {
+                "audit_status": "scored_human_labels",
+                "gate_status": "pass",
+                "candidate_csv_sha256": "0" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    borrowed = summarize_employee_topics_workflow(
+        review, corpus_dir, analysis_dir, tmp_path / "borrowed", corpus_scores_dir=scores_dir
+    )
+    assert borrowed.status == "pending_human_corpus_validation"
     report = (report_dir / "employee_topics_report.md").read_text(encoding="utf-8")
     assert "Buyer Two–Target Two" in report
     assert "no employee passages" in report

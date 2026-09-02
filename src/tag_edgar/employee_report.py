@@ -8,6 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
+from .corpus_validation import (
+    STATUS_ABSENT,
+    STATUS_FAILED,
+    CorpusValidationState,
+    corpus_validation_diagnostic,
+)
 from .source_links import text_fragment_url
 
 TOPIC_REVIEW_FIELDS = [
@@ -230,6 +236,7 @@ class EmployeeReport:
     topic_review_rows: tuple[dict[str, str], ...]
     gate_passed: bool
     taxonomy_ready: bool
+    corpus_validation: CorpusValidationState
 
 
 _CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -416,8 +423,15 @@ def build_employee_report(
     *,
     expected_deal_count: int = 10,
     representative_limit: int = 3,
+    corpus_validation: CorpusValidationState | None = None,
 ) -> EmployeeReport:
-    """Build deterministic Markdown and a blank human topic-review template from CSV outputs."""
+    """Build deterministic Markdown and a blank human topic-review template from CSV outputs.
+
+    ``corpus_validation`` is the human relevance-audit state of the passage corpus these
+    artifacts were built from. When it is omitted the corpus is treated as unvalidated, which
+    withholds the automated PASS verdict: a report can never present a pending or failed corpus
+    as accepted by leaving the argument out.
+    """
     if expected_deal_count < 1:
         raise ValueError("expected_deal_count must be positive.")
     if representative_limit < 1:
@@ -445,7 +459,15 @@ def build_employee_report(
         passage_by_id,
         representative_limit,
     )
-    automated_diagnostics = [*diagnostics, quality_diagnostic]
+    validation_state = corpus_validation or CorpusValidationState(
+        STATUS_ABSENT,
+        "pending",
+        "",
+        "No relevance audit packet or scores were supplied for this corpus.",
+        "",
+    )
+    validation_diagnostic = corpus_validation_diagnostic(validation_state)
+    automated_diagnostics = [*diagnostics, quality_diagnostic, validation_diagnostic]
     gate_passed = all(row["status"].lower() == "pass" for row in automated_diagnostics)
     human_review_diagnostic = _pending_human_review_diagnostic(assignments)
     report_diagnostics = [*automated_diagnostics, human_review_diagnostic]
@@ -465,6 +487,7 @@ def build_employee_report(
         deals,
         gate_passed,
         taxonomy_ready,
+        validation_state,
     )
     assert_descriptive_claims("\n".join(authored_sections))
     representative_section = _representative_passage_section(
@@ -480,6 +503,7 @@ def build_employee_report(
         topic_review_rows=tuple(review_rows),
         gate_passed=gate_passed,
         taxonomy_ready=taxonomy_ready,
+        corpus_validation=validation_state,
     )
 
 
@@ -942,8 +966,15 @@ def _authored_report_sections(
     deals: dict[str, dict[str, str]],
     gate_passed: bool,
     taxonomy_ready: bool,
+    corpus_validation: CorpusValidationState,
 ) -> list[str]:
-    verdict = "PASS" if gate_passed else "FAIL"
+    if gate_passed:
+        verdict = "PASS"
+    elif corpus_validation.blocks_release and corpus_validation.status != STATUS_FAILED:
+        # Nothing has been measured as failing; the corpus simply has not been validated yet.
+        verdict = "WITHHELD"
+    else:
+        verdict = "FAIL"
     passed_count = sum(row["status"].lower() == "pass" for row in diagnostics)
     gate_lines = [
         "# Employee disclosure topic report",
@@ -962,10 +993,20 @@ def _authored_report_sections(
             f"{status}** ({_escape_inline(value)}){_escape_inline(detail)}"
         )
     gate_lines.append(
+        f"**CORPUS VALIDATION: {_escape_inline(corpus_validation.status)}** — "
+        f"{_escape_inline(corpus_validation.detail)}"
+    )
+    gate_lines.append(
         "**PENDING HUMAN REVIEW** — representative-to-theme fit has not been scored; taxonomy "
         "release is withheld."
     )
-    if gate_passed and taxonomy_ready:
+    if verdict == "WITHHELD":
+        gate_lines.append(
+            "The automated verdict is withheld because the passage corpus has not completed its "
+            "human relevance audit. Treat every topic, tone, and cross-table output built on it "
+            "as provisional; none of it may be presented as an accepted result."
+        )
+    elif gate_passed and taxonomy_ready:
         gate_lines.append(
             "The prespecified descriptive gate passed; the topic structure may proceed to "
             "human interpretation and held-out validation."

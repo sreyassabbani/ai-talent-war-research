@@ -500,14 +500,25 @@ def summarize_employee_topics_command(
     analysis_dir: Path = typer.Argument(..., exists=True, file_okay=False),
     output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "employee_report"),
     representative_limit: int = typer.Option(3, min=1),
+    corpus_audit_dir: Path | None = typer.Option(
+        None, exists=True, file_okay=False, help="Prepared relevance-audit packet directory."
+    ),
+    corpus_scores_dir: Path | None = typer.Option(
+        None, exists=True, file_okay=False, help="Scored relevance-audit directory."
+    ),
 ) -> None:
-    """Validate model artifacts and write the descriptive report and review queue."""
+    """Validate model artifacts and write the descriptive report and review queue.
+
+    Without a scored, passing corpus audit the report verdict is withheld rather than passed.
+    """
     summary = summarize_employee_topics_workflow(
         review_csv,
         corpus_dir,
         analysis_dir,
         output_dir,
         representative_limit=representative_limit,
+        corpus_audit_dir=corpus_audit_dir,
+        corpus_scores_dir=corpus_scores_dir,
     )
     typer.echo(f"Report gate: {summary.status}")
     for label, count in summary.counts.items():
