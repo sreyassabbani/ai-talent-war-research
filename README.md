@@ -182,6 +182,8 @@ and prefers the longest configured phrase when patterns overlap at the same posi
 
 ## Employee-text topic pilot
 
+**Current deliverable:** [`docs/disclosure_sample_report.md`](docs/disclosure_sample_report.md) (also as [.docx](docs/disclosure_sample_report.docx)) reports the unsupervised model over 133 technology acquisitions selected by whether their acquirer actually filed the transaction with the SEC. The result tables it cites are published under [`data/published/disclosure_sample_133/`](data/published/disclosure_sample_133/); rebuild everything after retrieval with `bash scripts/run_disclosure_analysis.sh`.
+
 For the complete project history and current status of the unsupervised models, diagnostics, human-review gates, and 100-deal expansion, see [`docs/unsupervised_models_progress.md`](docs/unsupervised_models_progress.md).
 
 The generated 100-candidate metadata/results snapshot is under [`data/published/ai_100_overnight/`](data/published/ai_100_overnight/). It excludes the raw SDC archive and large scraped corpus; see its README for exact counts and evidence boundaries.
