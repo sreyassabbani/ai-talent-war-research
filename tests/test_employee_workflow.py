@@ -203,7 +203,7 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     assert analysis_manifest["config"]["bootstrap_replicates"] == 100
     assert analysis_manifest["bootstrap_design"] == {
         "alignment": "one_to_one_maximum_total_cosine",
-        "fit_universe": "same_deal_balanced_family_level_rows_as_full_nmf_fit",
+        "fit_universe": "same_configured_fit_rows_as_full_nmf_fit",
         "per_deal_sample_size": "preserve_original_fit_row_count",
         "projected_passages_included": False,
         "purpose": "complementary_robustness_diagnostic_not_model_selection",
@@ -266,6 +266,11 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
                 "audit_status": "scored_human_labels",
                 "gate_status": "pass",
                 "candidate_csv_sha256": passages_sha,
+                "labels_present": True,
+                "labels_are_human_attested": True,
+                "completed_item_count": 2,
+                "sample_counts": {"included": 1, "excluded": 1},
+                "audit_manifest_sha256": "c" * 64,
             }
         ),
         encoding="utf-8",

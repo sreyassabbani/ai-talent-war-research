@@ -54,7 +54,9 @@ records automatically:
   `passages_csv_sha256` plus a `corpus_validation` block.
 
 `tag_edgar.corpus_validation` resolves the audit state against the hash of the corpus a downstream
-artifact actually used. A scored audit from a different `passages.csv` reports
+artifact actually used. It also requires the score manifest to attest human labels for every
+sampled row, and verifies the score-to-audit-manifest hash link whenever both are supplied. A
+scored audit from a different `passages.csv` reports
 `pending_human_corpus_validation` for this corpus rather than lending it a verdict. Until a scored,
 passing audit is hash-linked:
 
@@ -174,6 +176,14 @@ uv run tag-edgar build-architecture-topic-crosstable `
 
 The agglomerative sensitivity check, leave-one-deal-out stability, and the fixed-seed bootstrap run
 inside `analyze-employee-topics` and need no separate command.
+
+### Historical topic-review provenance warning
+
+The older `data/derived/employee_topic_review/reviewer_2.csv` and
+`reviewer_2_muse-spark.csv` files contain AI-simulated coding. Despite legacy rows containing the
+literal text `human_assessed`, they are **not human evidence**, must not be supplied to the scorer,
+and cannot satisfy the two-independent-human-review gate. Cycle-5 review must start from the newly
+generated blank reviewer files and be completed by two actual human reviewers.
 
 ## 5. What no one should do
 
