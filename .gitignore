@@ -9,3 +9,8 @@ __pycache__/
 cache/
 data/raw/
 data/derived/
+
+# Salvage package and its renders: clean_deal_index.csv alone is 82 MB of
+# SDC-derived vendor data, which must not enter git. These travel by zip.
+audit_salvage_2026-08-30/
+outputs/

@@ -1,0 +1,609 @@
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-26T19:32:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3312269020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:33:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3321073020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:22+00:00"}
+{"confidence": "not_applicable", "deal_id": "3941044020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3353700020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3434593020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3716276020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3456854020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3963056020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3348911020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:36:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3666590040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:40:05+00:00"}
+{"processed": 10, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T19:40:05+00:00"}
+{"confidence": "not_applicable", "deal_id": "3257183040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:40:05+00:00"}
+{"confidence": "not_applicable", "deal_id": "3078525020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261765040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3201487020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3581166040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3624132020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "2988960020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3141517020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947466040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3535746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:49+00:00"}
+{"processed": 20, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T19:41:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3698920040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3984774040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3739054020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824154020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3883453040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3769973020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:45:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844522020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:37+00:00"}
+{"confidence": "not_applicable", "deal_id": "3331513020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701621020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3255869020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"processed": 30, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701573020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3277163020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3372510020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3426068020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3411731040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3543722040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3263747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3939905020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3648957020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947075020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:39+00:00"}
+{"processed": 40, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T19:49:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3727571020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:49:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3524280020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:54:16+00:00"}
+{"confidence": "not_applicable", "deal_id": "3279851020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:54:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3421959020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3289586020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3742169040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3754779020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3778252040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3075321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3854487020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:02+00:00"}
+{"processed": 50, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T19:58:02+00:00"}
+{"deal_id": "3759466020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0001645590.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T19:58:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3623364020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3815848040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763322020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:18+00:00"}
+{"deal_id": "3233708040", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000943819.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T19:58:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3791403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931884040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T19:58:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254421020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3897450020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3541403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:10+00:00"}
+{"processed": 60, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:00:10+00:00"}
+{"deal_id": "3572126040", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000037785.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:00:25+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931591040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:25+00:00"}
+{"confidence": "not_applicable", "deal_id": "3977482040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:26+00:00"}
+{"deal_id": "3268975020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0001372612.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:00:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3688880020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824479040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:41+00:00"}
+{"deal_id": "3153170020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0001404655.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:00:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763340020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3865096040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3247675020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:58+00:00"}
+{"processed": 70, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:00:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3505729020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:00:58+00:00"}
+{"deal_id": "3767523020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000877212.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:01:13+00:00"}
+{"confidence": "not_applicable", "deal_id": "3630683020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:01:13+00:00"}
+{"deal_id": "3708541020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000737758.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:01:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3803400020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:01:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3189601020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:01:29+00:00"}
+{"deal_id": "3601921020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0001371489.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:01:44+00:00"}
+{"confidence": "not_applicable", "deal_id": "3827631020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:01:44+00:00"}
+{"confidence": "not_applicable", "deal_id": "3533268020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:01:45+00:00"}
+{"deal_id": "3045947020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000012927.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:02:00+00:00"}
+{"processed": 80, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:02:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3848240020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3496497020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:01+00:00"}
+{"deal_id": "3681964040", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0001701605.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:02:16+00:00"}
+{"confidence": "not_applicable", "deal_id": "3345746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3728982040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:17+00:00"}
+{"deal_id": "3884762020", "error": "Could not retrieve https://data.sec.gov/submissions/CIK0000831641.json after retries: [Errno 11001] getaddrinfo failed", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:02:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3439275020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3800015040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3555360020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"processed": 90, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3105608040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3349861020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3313350040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3160146020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3711060020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3395934020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3338656040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3118318020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3420608020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3517288020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:02:34+00:00"}
+{"processed": 100, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:02:34+00:00"}
+{"candidates": 100, "document_rows": 352, "manifest_rows": 100, "qualifying_machine_rows": 0, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-26T20:02:34+00:00"}
+{"documents": 0, "occurrences": 0, "passages": 0, "stage": "build_corpus", "status": "completed", "ts": "2026-08-26T20:02:34+00:00", "zero_passage_deals": 0}
+{"passages": 0, "stage": "analyze", "status": "completed", "tone_deals": 0, "topic_status": "skipped_insufficient_corpus", "topics": 0, "ts": "2026-08-26T20:02:34+00:00"}
+{"employee_passages": 0, "failed_documents": 36, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 100, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 0, "retrieved_documents": 316, "run_failures": 11, "shortfall": 100, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "skipped_insufficient_corpus", "ts": "2026-08-26T20:02:34+00:00", "zero_passage_deals": 0}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-26T20:02:34+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-26T20:26:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3312269020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:27:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3321073020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:27:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3941044020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:27:56+00:00"}
+{"confidence": "not_applicable", "deal_id": "3353700020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:27:56+00:00"}
+{"confidence": "medium", "deal_id": "3434593020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:27:58+00:00"}
+{"deal_id": "3716276020", "error": "[WinError 5] Access is denied: 'data\\\\derived\\\\ai_100_overnight\\\\state.json.tmp' -> 'data\\\\derived\\\\ai_100_overnight\\\\state.json'", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:27:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3456854020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:27:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3963056020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:16+00:00"}
+{"deal_id": "3348911020", "error": "[WinError 5] Access is denied: 'data\\\\derived\\\\ai_100_overnight\\\\state.json.tmp' -> 'data\\\\derived\\\\ai_100_overnight\\\\state.json'", "stage": "freeze_universe", "status": "failed", "ts": "2026-08-26T20:28:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3666590040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:23+00:00"}
+{"processed": 10, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:28:23+00:00"}
+{"confidence": "high", "deal_id": "3257183040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:28:33+00:00"}
+{"confidence": "medium", "deal_id": "3078525020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:28:40+00:00"}
+{"confidence": "medium", "deal_id": "3261765040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:28:41+00:00"}
+{"confidence": "high", "deal_id": "3201487020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:28:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "3581166040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "3624132020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "2988960020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "3141517020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:43+00:00"}
+{"confidence": "high", "deal_id": "3947466040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:28:45+00:00"}
+{"confidence": "not_applicable", "deal_id": "3535746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:46+00:00"}
+{"processed": 20, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:28:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3698920040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:28:46+00:00"}
+{"confidence": "medium", "deal_id": "3984774040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:31:03+00:00"}
+{"confidence": "not_applicable", "deal_id": "3739054020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:31:04+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824154020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:33:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3883453040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:33:21+00:00"}
+{"confidence": "medium", "deal_id": "3769973020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:33:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844522020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:07+00:00"}
+{"confidence": "not_applicable", "deal_id": "3331513020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:08+00:00"}
+{"confidence": "high", "deal_id": "3701621020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:36:13+00:00"}
+{"confidence": "not_applicable", "deal_id": "3255869020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:15+00:00"}
+{"processed": 30, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:36:15+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701573020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:16+00:00"}
+{"confidence": "not_applicable", "deal_id": "3277163020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3372510020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3426068020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:19+00:00"}
+{"confidence": "not_applicable", "deal_id": "3411731040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3543722040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3263747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:22+00:00"}
+{"confidence": "high", "deal_id": "3939905020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3648957020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947075020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:36:25+00:00"}
+{"processed": 40, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:36:25+00:00"}
+{"confidence": "high", "deal_id": "3727571020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T20:36:25+00:00"}
+{"confidence": "not_applicable", "deal_id": "3524280020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:55:03+00:00"}
+{"confidence": "not_applicable", "deal_id": "3279851020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:55:05+00:00"}
+{"confidence": "not_applicable", "deal_id": "3421959020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:31+00:00"}
+{"confidence": "not_applicable", "deal_id": "3289586020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3742169040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3754779020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3778252040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3075321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3854487020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T20:58:51+00:00"}
+{"processed": 50, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T20:58:51+00:00"}
+{"confidence": "high", "deal_id": "3759466020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T21:06:31+00:00"}
+{"confidence": "high", "deal_id": "3623364020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T21:06:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3815848040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:06:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763322020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:06:35+00:00"}
+{"confidence": "not_applicable", "deal_id": "3233708040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:09:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3791403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:09:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931884040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:09:56+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254421020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:15:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3897450020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:15:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3541403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:15:55+00:00"}
+{"processed": 60, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T21:15:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3572126040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:19:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931591040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:19:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3977482040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:19:03+00:00"}
+{"confidence": "medium", "deal_id": "3268975020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T21:21:09+00:00"}
+{"confidence": "not_applicable", "deal_id": "3688880020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:21:09+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824479040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:21:12+00:00"}
+{"confidence": "medium", "deal_id": "3153170020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T21:23:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763340020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:24:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3865096040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:24:03+00:00"}
+{"confidence": "not_applicable", "deal_id": "3247675020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:24:05+00:00"}
+{"processed": 70, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T21:24:05+00:00"}
+{"confidence": "not_applicable", "deal_id": "3505729020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:24:06+00:00"}
+{"confidence": "medium", "deal_id": "3767523020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-26T21:27:25+00:00"}
+{"confidence": "not_applicable", "deal_id": "3630683020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:27:25+00:00"}
+{"confidence": "not_applicable", "deal_id": "3708541020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:32:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3803400020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:33:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3189601020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:33:15+00:00"}
+{"confidence": "not_applicable", "deal_id": "3601921020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:35:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3827631020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:35:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3533268020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T21:35:35+00:00"}
+{"confidence": "not_applicable", "deal_id": "3045947020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:51:57+00:00"}
+{"processed": 80, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T23:51:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3848240020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:51:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3496497020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:51:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3681964040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:55:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3345746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:55:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3728982040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:55:17+00:00"}
+{"confidence": "not_applicable", "deal_id": "3884762020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3439275020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3800015040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3555360020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:48+00:00"}
+{"processed": 90, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T23:58:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3105608040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3349861020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3313350040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3160146020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3711060020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3395934020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3338656040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3118318020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3420608020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3517288020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-26T23:58:50+00:00"}
+{"processed": 100, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-26T23:58:50+00:00"}
+{"candidates": 100, "document_rows": 1089, "manifest_rows": 102, "qualifying_machine_rows": 17, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-26T23:58:51+00:00"}
+{"documents": 39, "occurrences": 1555, "passages": 789, "stage": "build_corpus", "status": "completed", "ts": "2026-08-26T23:59:31+00:00", "zero_passage_deals": 0}
+{"passages": 789, "stage": "analyze", "status": "completed", "tone_deals": 17, "topic_status": "completed_provisional_pending_human_review", "topics": 7, "ts": "2026-08-26T23:59:44+00:00"}
+{"employee_passages": 789, "failed_documents": 23, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 102, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 17, "retrieved_documents": 1066, "run_failures": 2, "shortfall": 83, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "completed_provisional_pending_human_review", "ts": "2026-08-26T23:59:44+00:00", "zero_passage_deals": 0}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-26T23:59:44+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T01:06:08+00:00"}
+{"confidence": "not_applicable", "deal_id": "3312269020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3321073020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3941044020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3353700020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:54+00:00"}
+{"confidence": "medium", "deal_id": "3434593020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:06:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3716276020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3456854020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:06:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3963056020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:11+00:00"}
+{"confidence": "high", "deal_id": "3348911020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:11+00:00"}
+{"confidence": "not_applicable", "deal_id": "3666590040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:16+00:00"}
+{"processed": 10, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-27T01:07:16+00:00"}
+{"confidence": "high", "deal_id": "3257183040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:16+00:00"}
+{"confidence": "medium", "deal_id": "3078525020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:20+00:00"}
+{"confidence": "medium", "deal_id": "3261765040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:20+00:00"}
+{"confidence": "high", "deal_id": "3201487020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3581166040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3624132020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "2988960020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3141517020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "high", "deal_id": "3947466040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3535746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"processed": 20, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "not_applicable", "deal_id": "3698920040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T01:07:21+00:00"}
+{"confidence": "medium", "deal_id": "3984774040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T09:34:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3739054020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T09:34:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824154020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:52:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3883453040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:52:32+00:00"}
+{"confidence": "medium", "deal_id": "3769973020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T19:52:36+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844522020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3331513020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:00+00:00"}
+{"confidence": "high", "deal_id": "3701621020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T19:53:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3255869020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"processed": 30, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701573020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3277163020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3372510020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3426068020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3411731040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3543722040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3263747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "high", "deal_id": "3939905020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3648957020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947075020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:53:02+00:00"}
+{"processed": 40, "stage": "freeze_universe", "status": "progress", "total": 100, "ts": "2026-08-27T19:53:02+00:00"}
+{"confidence": "high", "deal_id": "3727571020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T19:53:02+00:00"}
+{"confidence": "not_applicable", "deal_id": "3524280020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:58:14+00:00"}
+{"confidence": "not_applicable", "deal_id": "3279851020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T19:58:18+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T20:07:44+00:00"}
+{"confidence": "not_applicable", "deal_id": "3312269020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:14+00:00"}
+{"confidence": "not_applicable", "deal_id": "3321073020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3941044020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3353700020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:29+00:00"}
+{"confidence": "medium", "deal_id": "3434593020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:09:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3716276020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3456854020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3963056020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:49+00:00"}
+{"confidence": "high", "deal_id": "3348911020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:09:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3666590040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:09:59+00:00"}
+{"processed": 10, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:09:59+00:00"}
+{"confidence": "high", "deal_id": "3257183040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:09:59+00:00"}
+{"confidence": "medium", "deal_id": "3078525020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:10:11+00:00"}
+{"confidence": "medium", "deal_id": "3261765040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:10:11+00:00"}
+{"confidence": "high", "deal_id": "3201487020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3581166040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3624132020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "2988960020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3141517020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "high", "deal_id": "3947466040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3535746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:12+00:00"}
+{"processed": 20, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:10:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3698920040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:10:13+00:00"}
+{"confidence": "medium", "deal_id": "3984774040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:12:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3739054020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:12:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824154020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:14:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3883453040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:14:46+00:00"}
+{"confidence": "medium", "deal_id": "3769973020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:14:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844522020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:45+00:00"}
+{"confidence": "not_applicable", "deal_id": "3331513020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:46+00:00"}
+{"confidence": "high", "deal_id": "3701621020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:15:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3255869020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:46+00:00"}
+{"processed": 30, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:15:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701573020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3277163020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3372510020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3426068020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3411731040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3543722040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:48+00:00"}
+{"confidence": "not_applicable", "deal_id": "3263747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:48+00:00"}
+{"confidence": "high", "deal_id": "3939905020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:15:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3648957020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947075020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:15:49+00:00"}
+{"processed": 40, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:15:49+00:00"}
+{"confidence": "high", "deal_id": "3727571020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:15:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3524280020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:16:28+00:00"}
+{"confidence": "not_applicable", "deal_id": "3279851020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:16:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3421959020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:16:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3289586020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:16:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3742169040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:16:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3754779020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:17:08+00:00"}
+{"confidence": "not_applicable", "deal_id": "3778252040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:17:09+00:00"}
+{"confidence": "not_applicable", "deal_id": "3075321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:17:09+00:00"}
+{"confidence": "not_applicable", "deal_id": "3854487020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:17:09+00:00"}
+{"processed": 50, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:17:09+00:00"}
+{"confidence": "high", "deal_id": "3759466020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:19:31+00:00"}
+{"confidence": "high", "deal_id": "3623364020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:19:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3815848040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:19:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763322020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:19:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3233708040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:20:15+00:00"}
+{"confidence": "not_applicable", "deal_id": "3791403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:20:15+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931884040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:20:15+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254421020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:21:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3897450020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:21:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3541403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:18+00:00"}
+{"processed": 60, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:22:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3572126040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931591040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3977482040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:33+00:00"}
+{"confidence": "medium", "deal_id": "3268975020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:22:44+00:00"}
+{"confidence": "not_applicable", "deal_id": "3688880020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:44+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824479040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:44+00:00"}
+{"confidence": "medium", "deal_id": "3153170020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:22:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763340020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3865096040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3247675020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:55+00:00"}
+{"processed": 70, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:22:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3505729020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:22:55+00:00"}
+{"confidence": "medium", "deal_id": "3767523020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:23:30+00:00"}
+{"confidence": "not_applicable", "deal_id": "3630683020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:23:30+00:00"}
+{"confidence": "not_applicable", "deal_id": "3708541020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:06+00:00"}
+{"confidence": "not_applicable", "deal_id": "3803400020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:22+00:00"}
+{"confidence": "not_applicable", "deal_id": "3189601020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:22+00:00"}
+{"confidence": "not_applicable", "deal_id": "3601921020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3827631020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3533268020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3045947020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:46+00:00"}
+{"processed": 80, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:26:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3848240020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3496497020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:26:47+00:00"}
+{"confidence": "not_applicable", "deal_id": "3681964040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3345746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3728982040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3884762020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3439275020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3800015040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3555360020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"processed": 90, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3105608040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3349861020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3313350040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3160146020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3711060020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3395934020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3338656040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3118318020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3420608020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "not_applicable", "deal_id": "3517288020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:39+00:00"}
+{"processed": 100, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:27:39+00:00"}
+{"confidence": "medium", "deal_id": "3844957040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:27:40+00:00"}
+{"confidence": "medium", "deal_id": "3529115020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T20:27:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3343896020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254751020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:27:42+00:00"}
+{"confidence": "not_applicable", "deal_id": "3781439020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:30:46+00:00"}
+{"confidence": "not_applicable", "deal_id": "3115747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:32:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3681294020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:32:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3217176020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:32:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3144306020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:32:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3741554020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:32:58+00:00"}
+{"processed": 110, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T20:32:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3832746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:35:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3646764020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:35:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3328543020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:35:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3788092020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:35:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3206456020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:36:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3149903020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:36:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "2935321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:38:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3108787020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:38:38+00:00"}
+{"confidence": "not_applicable", "deal_id": "3508418020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T20:38:39+00:00"}
+{"candidates": 119, "document_rows": 1397, "manifest_rows": 119, "qualifying_machine_rows": 19, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-27T20:38:39+00:00"}
+{"documents": 41, "occurrences": 1559, "passages": 793, "stage": "build_corpus", "status": "completed", "ts": "2026-08-27T20:39:10+00:00", "zero_passage_deals": 0}
+{"passages": 793, "stage": "analyze", "status": "completed", "tone_deals": 19, "topic_status": "completed_provisional_pending_human_review", "topics": 7, "ts": "2026-08-27T20:39:19+00:00"}
+{"employee_passages": 793, "failed_documents": 14, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 19, "retrieved_documents": 1383, "run_failures": 0, "shortfall": 81, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "completed_provisional_pending_human_review", "ts": "2026-08-27T20:39:19+00:00", "zero_passage_deals": 0}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-27T20:39:19+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T20:45:51+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T20:50:48+00:00"}
+{"candidates": 119, "document_rows": 1397, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 15, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-27T20:50:53+00:00"}
+{"documents": 16, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-27T20:50:54+00:00", "zero_passage_deals": 1}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 14, "topic_status": "completed_provisional_pending_human_review", "topics": 3, "ts": "2026-08-27T20:50:55+00:00"}
+{"employee_passages": 74, "failed_documents": 14, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 15, "retrieved_documents": 1383, "run_failures": 0, "shortfall": 85, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "completed_provisional_pending_human_review", "ts": "2026-08-27T20:50:55+00:00", "zero_passage_deals": 1}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-27T20:50:55+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T20:53:24+00:00"}
+{"candidates": 119, "document_rows": 1397, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 15, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-27T20:53:26+00:00"}
+{"documents": 16, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-27T20:53:26+00:00", "zero_passage_deals": 1}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 14, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-27T20:53:27+00:00"}
+{"employee_passages": 74, "failed_documents": 14, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 15, "retrieved_documents": 1383, "run_failures": 0, "shortfall": 85, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-27T20:53:27+00:00", "zero_passage_deals": 1}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-27T20:53:27+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T20:56:13+00:00"}
+{"candidates": 119, "document_rows": 1397, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 15, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-27T20:56:16+00:00"}
+{"documents": 16, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-27T20:56:16+00:00", "zero_passage_deals": 1}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 14, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-27T20:56:17+00:00"}
+{"employee_passages": 74, "failed_documents": 14, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 15, "retrieved_documents": 1383, "run_failures": 0, "shortfall": 85, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-27T20:56:17+00:00", "zero_passage_deals": 1}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-27T20:56:17+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-27T22:21:19+00:00"}
+{"confidence": "medium", "deal_id": "3312269020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:24:40+00:00"}
+{"confidence": "not_applicable", "deal_id": "3321073020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:24:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3941044020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:00+00:00"}
+{"confidence": "not_applicable", "deal_id": "3353700020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:01+00:00"}
+{"confidence": "not_applicable", "deal_id": "3434593020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:06+00:00"}
+{"confidence": "not_applicable", "deal_id": "3716276020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:07+00:00"}
+{"confidence": "not_applicable", "deal_id": "3456854020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:07+00:00"}
+{"confidence": "high", "deal_id": "3963056020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:25:09+00:00"}
+{"confidence": "high", "deal_id": "3348911020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:25:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3666590040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:25:38+00:00"}
+{"processed": 10, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:25:38+00:00"}
+{"confidence": "high", "deal_id": "3257183040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:25:40+00:00"}
+{"confidence": "medium", "deal_id": "3078525020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:26:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261765040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:11+00:00"}
+{"confidence": "medium", "deal_id": "3201487020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:26:11+00:00"}
+{"confidence": "not_applicable", "deal_id": "3581166040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3624132020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "2988960020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:12+00:00"}
+{"confidence": "not_applicable", "deal_id": "3141517020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:12+00:00"}
+{"confidence": "high", "deal_id": "3947466040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:26:13+00:00"}
+{"confidence": "medium", "deal_id": "3535746020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:26:14+00:00"}
+{"processed": 20, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:26:14+00:00"}
+{"confidence": "not_applicable", "deal_id": "3698920040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:26:15+00:00"}
+{"confidence": "medium", "deal_id": "3984774040", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:28:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3739054020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:28:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824154020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:28:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3883453040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:28:26+00:00"}
+{"confidence": "medium", "deal_id": "3769973020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:28:53+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844522020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:27+00:00"}
+{"confidence": "not_applicable", "deal_id": "3331513020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:28+00:00"}
+{"confidence": "high", "deal_id": "3701621020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:31:29+00:00"}
+{"confidence": "not_applicable", "deal_id": "3255869020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:30+00:00"}
+{"processed": 30, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:31:30+00:00"}
+{"confidence": "not_applicable", "deal_id": "3701573020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:30+00:00"}
+{"confidence": "not_applicable", "deal_id": "3277163020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:31+00:00"}
+{"confidence": "not_applicable", "deal_id": "3372510020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3426068020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3411731040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3543722040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3263747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:34+00:00"}
+{"confidence": "high", "deal_id": "3939905020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:31:35+00:00"}
+{"confidence": "not_applicable", "deal_id": "3648957020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:35+00:00"}
+{"confidence": "not_applicable", "deal_id": "3947075020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:31:36+00:00"}
+{"processed": 40, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:31:36+00:00"}
+{"confidence": "high", "deal_id": "3727571020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:31:36+00:00"}
+{"confidence": "not_applicable", "deal_id": "3524280020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:33:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3279851020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:33:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3421959020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3289586020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:34+00:00"}
+{"confidence": "not_applicable", "deal_id": "3742169040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:34+00:00"}
+{"confidence": "medium", "deal_id": "3754779020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:34:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3778252040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3075321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3854487020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:34:53+00:00"}
+{"processed": 50, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:34:53+00:00"}
+{"confidence": "high", "deal_id": "3759466020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:37:26+00:00"}
+{"confidence": "high", "deal_id": "3623364020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:37:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3815848040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:37:26+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763322020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:37:27+00:00"}
+{"confidence": "not_applicable", "deal_id": "3233708040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:38:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3791403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:38:18+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931884040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:38:19+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254421020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:11+00:00"}
+{"confidence": "not_applicable", "deal_id": "3897450020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:11+00:00"}
+{"confidence": "not_applicable", "deal_id": "3541403020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:27+00:00"}
+{"processed": 60, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:41:27+00:00"}
+{"confidence": "not_applicable", "deal_id": "3572126040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3931591040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3977482040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:41:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3268975020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:14+00:00"}
+{"confidence": "not_applicable", "deal_id": "3688880020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:14+00:00"}
+{"confidence": "not_applicable", "deal_id": "3824479040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:15+00:00"}
+{"confidence": "medium", "deal_id": "3153170020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:42:36+00:00"}
+{"confidence": "not_applicable", "deal_id": "3763340020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:36+00:00"}
+{"confidence": "not_applicable", "deal_id": "3865096040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:37+00:00"}
+{"confidence": "not_applicable", "deal_id": "3247675020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:37+00:00"}
+{"processed": 70, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:42:37+00:00"}
+{"confidence": "not_applicable", "deal_id": "3505729020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:42:37+00:00"}
+{"confidence": "medium", "deal_id": "3767523020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:43:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3630683020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:43:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3708541020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:46:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3803400020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:47:09+00:00"}
+{"confidence": "not_applicable", "deal_id": "3189601020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:47:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3601921020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:47:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3827631020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:47:32+00:00"}
+{"confidence": "not_applicable", "deal_id": "3533268020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:47:33+00:00"}
+{"confidence": "not_applicable", "deal_id": "3045947020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:50:19+00:00"}
+{"processed": 80, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:50:19+00:00"}
+{"confidence": "not_applicable", "deal_id": "3848240020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:50:19+00:00"}
+{"confidence": "not_applicable", "deal_id": "3496497020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:50:20+00:00"}
+{"confidence": "not_applicable", "deal_id": "3681964040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:53:41+00:00"}
+{"confidence": "not_applicable", "deal_id": "3345746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:53:42+00:00"}
+{"confidence": "not_applicable", "deal_id": "3728982040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:53:42+00:00"}
+{"confidence": "not_applicable", "deal_id": "3884762020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3261321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:49+00:00"}
+{"confidence": "not_applicable", "deal_id": "3439275020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:50+00:00"}
+{"confidence": "not_applicable", "deal_id": "3800015040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3555360020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:51+00:00"}
+{"processed": 90, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:54:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3105608040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:51+00:00"}
+{"confidence": "not_applicable", "deal_id": "3349861020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:52+00:00"}
+{"confidence": "not_applicable", "deal_id": "3313350040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:53+00:00"}
+{"confidence": "not_applicable", "deal_id": "3160146020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:53+00:00"}
+{"confidence": "not_applicable", "deal_id": "3711060020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:54+00:00"}
+{"confidence": "not_applicable", "deal_id": "3395934020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3338656040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:55+00:00"}
+{"confidence": "not_applicable", "deal_id": "3118318020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:56+00:00"}
+{"confidence": "not_applicable", "deal_id": "3420608020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3517288020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:57+00:00"}
+{"processed": 100, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:54:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3844957040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3529115020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:57+00:00"}
+{"confidence": "not_applicable", "deal_id": "3343896020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:58+00:00"}
+{"confidence": "not_applicable", "deal_id": "3254751020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:54:59+00:00"}
+{"confidence": "not_applicable", "deal_id": "3781439020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:56:10+00:00"}
+{"confidence": "not_applicable", "deal_id": "3115747040", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:06+00:00"}
+{"confidence": "not_applicable", "deal_id": "3681294020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:06+00:00"}
+{"confidence": "not_applicable", "deal_id": "3217176020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:07+00:00"}
+{"confidence": "not_applicable", "deal_id": "3144306020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:07+00:00"}
+{"confidence": "not_applicable", "deal_id": "3741554020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:08+00:00"}
+{"processed": 110, "stage": "freeze_universe", "status": "progress", "total": 119, "ts": "2026-08-27T22:57:08+00:00"}
+{"confidence": "not_applicable", "deal_id": "3832746020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:42+00:00"}
+{"confidence": "not_applicable", "deal_id": "3646764020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:42+00:00"}
+{"confidence": "not_applicable", "deal_id": "3328543020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "3788092020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:57:43+00:00"}
+{"confidence": "not_applicable", "deal_id": "3206456020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:58:23+00:00"}
+{"confidence": "not_applicable", "deal_id": "3149903020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:58:24+00:00"}
+{"confidence": "not_applicable", "deal_id": "2935321020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:59:06+00:00"}
+{"confidence": "not_applicable", "deal_id": "3108787020", "stage": "freeze_universe", "status": "no_evidence", "ts": "2026-08-27T22:59:11+00:00"}
+{"confidence": "medium", "deal_id": "3508418020", "stage": "freeze_universe", "status": "ok", "ts": "2026-08-27T22:59:28+00:00"}
+{"candidates": 119, "document_rows": 1397, "manifest_rows": 119, "qualifying_machine_rows": 19, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-27T22:59:28+00:00"}
+{"documents": 20, "occurrences": 74, "passages": 73, "stage": "build_corpus", "status": "completed", "ts": "2026-08-27T22:59:30+00:00", "zero_passage_deals": 5}
+{"passages": 73, "stage": "analyze", "status": "completed", "tone_deals": 14, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-27T22:59:33+00:00"}
+{"employee_passages": 73, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 19, "retrieved_documents": 1388, "run_failures": 0, "shortfall": 81, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-27T22:59:34+00:00", "zero_passage_deals": 5}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-27T22:59:34+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T02:37:00+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T02:46:41+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T02:50:30+00:00"}
+{"candidates": 119, "document_rows": 1399, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 23, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T02:52:01+00:00"}
+{"documents": 24, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T02:52:03+00:00", "zero_passage_deals": 8}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 15, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T02:52:09+00:00"}
+{"employee_passages": 74, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 23, "retrieved_documents": 1390, "run_failures": 0, "shortfall": 77, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T02:52:10+00:00", "zero_passage_deals": 8}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T02:52:10+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T02:52:50+00:00"}
+{"candidates": 119, "document_rows": 1399, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 23, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T02:54:16+00:00"}
+{"documents": 24, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T02:54:18+00:00", "zero_passage_deals": 8}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 15, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T02:54:21+00:00"}
+{"employee_passages": 74, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 23, "retrieved_documents": 1390, "run_failures": 0, "shortfall": 77, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T02:54:21+00:00", "zero_passage_deals": 8}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T02:54:21+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T03:02:31+00:00"}
+{"candidates": 119, "document_rows": 1411, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 33, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T03:03:49+00:00"}
+{"documents": 34, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T03:03:51+00:00", "zero_passage_deals": 18}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 15, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T03:03:55+00:00"}
+{"employee_passages": 74, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 33, "retrieved_documents": 1402, "run_failures": 0, "shortfall": 67, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T03:03:55+00:00", "zero_passage_deals": 18}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T03:03:55+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T03:05:08+00:00"}
+{"candidates": 119, "document_rows": 1411, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 34, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T03:06:29+00:00"}
+{"documents": 35, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T03:06:31+00:00", "zero_passage_deals": 19}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 15, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T03:06:34+00:00"}
+{"employee_passages": 74, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 34, "retrieved_documents": 1402, "run_failures": 0, "shortfall": 66, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T03:06:35+00:00", "zero_passage_deals": 19}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T03:06:35+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T03:07:04+00:00"}
+{"candidates": 119, "document_rows": 1411, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 34, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T03:08:23+00:00"}
+{"documents": 35, "occurrences": 75, "passages": 74, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T03:08:24+00:00", "zero_passage_deals": 19}
+{"passages": 74, "stage": "analyze", "status": "completed", "tone_deals": 15, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T03:08:28+00:00"}
+{"employee_passages": 74, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 34, "retrieved_documents": 1402, "run_failures": 0, "shortfall": 66, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T03:08:28+00:00", "zero_passage_deals": 19}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T03:08:28+00:00"}
+{"max_deals": null, "stage": "run", "status": "started", "target_deals": 100, "ts": "2026-08-28T03:10:00+00:00"}
+{"candidates": 119, "document_rows": 1411, "manifest_rows": 119, "mode": "rescreen_cached", "qualifying_machine_rows": 35, "stage": "freeze_universe", "status": "completed", "ts": "2026-08-28T03:11:19+00:00"}
+{"documents": 36, "occurrences": 73, "passages": 72, "stage": "build_corpus", "status": "completed", "ts": "2026-08-28T03:11:21+00:00", "zero_passage_deals": 22}
+{"passages": 72, "stage": "analyze", "status": "completed", "tone_deals": 13, "topic_status": "exploratory_rejected_deal_concentration", "topics": 3, "ts": "2026-08-28T03:11:25+00:00"}
+{"employee_passages": 72, "failed_documents": 9, "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md", "manifest_rows": 119, "outcome_status": "partial", "qualifying_machine_rows_pending_human_review": 35, "retrieved_documents": 1402, "run_failures": 0, "shortfall": 65, "stage": "report", "status": "completed", "target_deals": 100, "topic_status": "exploratory_rejected_deal_concentration", "ts": "2026-08-28T03:11:25+00:00", "zero_passage_deals": 22}
+{"exit_code": 2, "outcome_status": "partial", "stage": "run", "status": "finished", "ts": "2026-08-28T03:11:25+00:00"}

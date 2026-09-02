@@ -1,0 +1,14 @@
+{
+  "blocks_matched": 73,
+  "blocks_scanned": 4764,
+  "document_inventory_sha256": "ae80417868018bfc4a88d9ae016d5c7844e640a9d6feafd8ff94b372c47245fd",
+  "documents_scanned": 36,
+  "frozen_manifest_sha256": "e0a49c707f5e999ca64be4d2277caefa787d62c44d48cf356adf8b20cbbf585c",
+  "generated_at": "2026-08-28T03:11:21+00:00",
+  "passages_sha256": "8efe9d7aa2872a43b5b7f91d1f5403d5cfbfa5c7847423efdbfbb3cf987bbddc",
+  "qualifying_machine_deals": 35,
+  "schema_version": 1,
+  "source_occurrences": 73,
+  "unique_passages": 72,
+  "zero_passage_deals": 22
+}

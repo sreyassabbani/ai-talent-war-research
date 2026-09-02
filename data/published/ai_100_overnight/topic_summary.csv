@@ -1,0 +1,4 @@
+topic_id,topic_label,top_terms,selected_k,half_sample_stability,release_status
+0,topic_5787d58e,zebra technologies; technologies; zebra; workers; front; front line; line; productivity; worker; worker productivity; line workers; productivity zebra,3,0.2464,exploratory_deal_concentration
+1,topic_1a765e60,workforce; management; workforce management; nucleus; research; nucleus research; research workforce; value matrix; matrix; technology value; management technology; leader nucleus,3,0.2464,exploratory_deal_concentration
+2,topic_0036981e,ai; founder; ceo; founder ceo; data; said; glia; platform; co; co founder; customers; technology,3,0.2464,exploratory_deal_concentration

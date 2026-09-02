@@ -1,0 +1,47 @@
+{
+  "agglomerative_ari": 0.3775,
+  "baseline_config": {
+    "min_group_size": 5,
+    "rate_prefix": "rate_",
+    "rate_suffix": "_per100"
+  },
+  "deal_count_with_passages": 13,
+  "generated_at": "2026-08-28T03:11:25+00:00",
+  "interpretation_boundary": "Textual disclosure characteristics only; no actual-retention or causal claims.",
+  "max_deal_passage_share": 0.4444,
+  "max_deal_passage_share_threshold": 0.35,
+  "package_versions": {
+    "beautifulsoup4": "4.15.0",
+    "httpx": "0.28.1",
+    "numpy": "2.5.2",
+    "scikit-learn": "1.9.0"
+  },
+  "passage_count": 72,
+  "passages_sha256": "8efe9d7aa2872a43b5b7f91d1f5403d5cfbfa5c7847423efdbfbb3cf987bbddc",
+  "python_version": "3.12.10",
+  "schema_version": 1,
+  "tone_deal_count": 13,
+  "tone_summary_sha256": "2cf82c8cba7808c513b7361fafdda1c1cf539b23f38cd30768f384a694703f18",
+  "topic_assignments_sha256": "e3e9de7eaa198967a5c490fa4369ac55f33f050b62b70b99ea119666e87abbfd",
+  "topic_count": 3,
+  "topic_status": "exploratory_rejected_deal_concentration",
+  "topics_config": {
+    "k_range": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "max_features": 5000,
+    "max_iter": 600,
+    "min_df": 2,
+    "ngram_range": [
+      1,
+      2
+    ],
+    "seed": 20260826,
+    "stability_threshold": 0.55
+  },
+  "wordcloud_group_count": 4
+}

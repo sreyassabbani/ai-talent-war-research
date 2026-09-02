@@ -1,0 +1,12 @@
+document_family,metric,mean_rate,group_size,fallback_to_global
+official_announcement,benefits,0.0063,72,False
+official_announcement,employee_workforce,3.5338,72,False
+official_announcement,equity_vesting,0.0,72,False
+official_announcement,hedging,0.1288,72,False
+official_announcement,modality,0.204,72,False
+official_announcement,negative,0.0189,72,False
+official_announcement,pay_wages,0.0,72,False
+official_announcement,positive,0.5521,72,False
+official_announcement,protection_program,0.0,72,False
+official_announcement,retention,0.1347,72,False
+official_announcement,termination_severance,0.0063,72,False
