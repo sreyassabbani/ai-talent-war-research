@@ -20,7 +20,7 @@ MODELLED = "modelled"
 
 def main(argv: list[str]) -> int:
     if len(argv) != 4:
-        print(__doc__.strip(), file=sys.stderr)
+        print((__doc__ or "").strip(), file=sys.stderr)
         return 2
     queue_path, frozen_path, out_path = (Path(value) for value in argv[1:4])
 

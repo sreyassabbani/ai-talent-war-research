@@ -534,6 +534,17 @@ python scripts/build_disclosure_sample_report.py"""
     )
 
 
+def manifest_int(manifest: dict[str, object], key: str, default: int = 0) -> int:
+    """Read an integer out of a JSON manifest without trusting its declared type."""
+    value = manifest.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 def build_report(args: argparse.Namespace) -> str:
     pool = read_json(args.pool_dir / "pool_manifest.json")
     probe = read_json(args.probe_dir / "probe_manifest.json")
@@ -612,10 +623,10 @@ def build_report(args: argparse.Namespace) -> str:
             passages,
             args.examples,
             deal_topic_rows,
-            int(frozen.get("modelled_deals") or 0),
+            manifest_int(frozen, "modelled_deals"),
             descriptors,
         ),
-        ai_section(ai_labels, int(frozen.get("modelled_deals") or 0)),
+        ai_section(ai_labels, manifest_int(frozen, "modelled_deals")),
         sensitivity_section(sensitivity),
         tone_section(tone_rows, tone_manifest, deal_names),
         gates_section(diagnostics, analysis),

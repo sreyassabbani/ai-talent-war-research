@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from docx import Document
+from docx.document import Document as DocumentObject
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor
 
@@ -58,7 +59,7 @@ def split_row(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip("|").split("|")]
 
 
-def add_table(document: Document, rows: list[list[str]]) -> None:
+def add_table(document: DocumentObject, rows: list[list[str]]) -> None:
     if not rows:
         return
     width = max(len(row) for row in rows)
@@ -78,9 +79,13 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
 
 def convert(markdown_path: Path, docx_path: Path) -> None:
     document = Document()
+    # python-docx types styles as BaseStyle, which has no font attribute; the Normal paragraph
+    # style does. Set it defensively so a future python-docx cannot fail the whole conversion.
     style = document.styles["Normal"]
-    style.font.name = "Calibri"
-    style.font.size = Pt(11)
+    font = getattr(style, "font", None)
+    if font is not None:
+        font.name = "Calibri"
+        font.size = Pt(11)
 
     lines = markdown_path.read_text(encoding="utf-8").split("\n")
     index = 0
@@ -158,7 +163,7 @@ def convert(markdown_path: Path, docx_path: Path) -> None:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
-        print(__doc__.strip(), file=sys.stderr)
+        print((__doc__ or "").strip(), file=sys.stderr)
         return 2
     source, target = Path(argv[1]), Path(argv[2])
     if not source.exists():
