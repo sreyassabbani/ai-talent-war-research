@@ -1,0 +1,15 @@
+{
+  "_note": "Plain-English descriptors written AFTER fitting, from each component's top terms and highest-weighted passages. They are the author's reading of what the model grouped, not labels the model was given, and they stay provisional until two blinded reviewers score the topic-fit packet. Edit them only alongside the evidence that justifies the change.",
+  "topic_1": {
+    "name": "Executive and officer language",
+    "reading": "References to executives, officers, directors and the board. This component mixes two things rather than one: contractual executive-employment and change-in-control terms, and the officer or director language that appears in proxies and announcement press releases, including quoted remarks by a chief executive. Its internal coherence is the lowest of the three, which is what a mixed component looks like. It should not be read as a single kind of employee provision."
+  },
+  "topic_2": {
+    "name": "Benefit plans and ERISA",
+    "reading": "Definitions and covenants about employee benefit plans: plan schedules, ERISA representations, pension and welfare arrangements, and undertakings about benefits after closing. This is the most self-consistent contractual component."
+  },
+  "topic_3": {
+    "name": "Equity awards at the effective time",
+    "reading": "Treatment of stock, options, restricted stock and restricted stock units when the transaction closes: conversion, assumption, vesting and cash-out of outstanding awards. It is the most stable component, recovering in nearly every leave-one-deal-out fold."
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "excluded": [
+    {
+      "path": "employee_corpus_100/passages.csv",
+      "reason": "117 MB of SEC body text"
+    },
+    {
+      "path": "disclosure_runs/",
+      "reason": "35,296 retrieved documents"
+    },
+    {
+      "path": "cache/http/",
+      "reason": "the HTTP cache, about 520 MB"
+    },
+    {
+      "path": "the SDC/Thomson archive",
+      "reason": "licensed vendor data"
+    }
+  ],
+  "files": [
+    {
+      "bytes": 591,
+      "name": "01_pool_manifest.json",
+      "sha256": "81300f16a31e592e6c95aa2f0528cb9e0ef3838f4fdc817907aa7fb207277044"
+    },
+    {
+      "bytes": 197381,
+      "name": "02_probe_results.csv",
+      "sha256": "59aae90384398ee5889eecedee61b6bf6eafc6f1b96d5fccb9d43f9ba0e4f4d3"
+    },
+    {
+      "bytes": 737,
+      "name": "02_probe_manifest.json",
+      "sha256": "a2bbc866b5c7265d61dfa47066b34570172baf4045b93d8a2a4baeb4a817b7f1"
+    },
+    {
+      "bytes": 9502,
+      "name": "03_corpus_manifest.json",
+      "sha256": "2960f53758400d1f3a1a21d8df8fc0a2958f125651c506bb4e95614f55747b26"
+    },
+    {
+      "bytes": 90609,
+      "name": "04_frozen_sample.csv",
+      "sha256": "ca4bfff892d6bdc0695680d5313ea8a0f112ace2c61e3f71a96a93a2697cb9ea"
+    },
+    {
+      "bytes": 809,
+      "name": "04_frozen_sample_manifest.json",
+      "sha256": "dcf079287ef8a677aa33b82442667839c23b38c56a98c2b22f52dc3ea10fb81f"
+    },
+    {
+      "bytes": 46049,
+      "name": "05_deal_ai_labels.csv",
+      "sha256": "028d072d41fc161be8a9e3603c1d48d648606770a26d80ca2e0c65e2dc0eed76"
+    },
+    {
+      "bytes": 1462,
+      "name": "06_topic_summary.csv",
+      "sha256": "908c61e43407b5b807946a05149b092d5e6ecc5778363380619f43376986fbe5"
+    },
+    {
+      "bytes": 34139,
+      "name": "06_deal_topic_matrix.csv",
+      "sha256": "4123789faf326f45ca37183aca6a153df0d39aa9ec2c856c67500c8207e9b0d4"
+    },
+    {
+      "bytes": 8589,
+      "name": "06_model_diagnostics.csv",
+      "sha256": "b8a1c42146f9f1f4cb084f018035498ff8ab737a03338d8ef158522ba7b872e4"
+    },
+    {
+      "bytes": 6067,
+      "name": "06_analysis_manifest.json",
+      "sha256": "f04217ca7e88df40fb44672695478a70bcd53cbf1212d7b4e3ad4f142cd06295"
+    },
+    {
+      "bytes": 24555,
+      "name": "07_deal_tone_summary.csv",
+      "sha256": "2477b82654128a3919bc96398e579b485cd7f05322f0b639d9519bfaaa21304a"
+    }
+  ],
+  "schema_version": 1,
+  "total_bytes": 420490
+}

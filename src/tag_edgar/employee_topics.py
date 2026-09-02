@@ -876,10 +876,18 @@ def _stable_rank(seed: int, deal_id: str, passage_id: str) -> str:
 
 
 def _tokens(text: str) -> list[str]:
+    """Tokenize for the model, dropping single letters.
+
+    Agreements print headings letter-spaced ("W I T N E S S E T H"), which tokenizes into bare
+    letters. They are rare, so inverse-document-frequency weighting pushes them to the top of a
+    component and they read as if the model found something. They carry no meaning, so they are
+    dropped here rather than explained away in the report.
+    """
     return [
         token
         for token in _TOKEN.findall(text.lower())
-        if token not in _STOP_WORDS
+        if len(token) > 1
+        and token not in _STOP_WORDS
         and token not in _LEGAL_BOILERPLATE_STOP_WORDS
         and not _MODEL_MARKER_TOKEN.fullmatch(token)
     ]
