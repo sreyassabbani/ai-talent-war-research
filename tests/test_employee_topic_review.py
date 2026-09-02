@@ -43,6 +43,9 @@ def _model_inputs(tmp_path: Path) -> tuple[Path, Path]:
                     "document_id": f"document-{topic_number}-{passage_number}",
                     "document_family_id": f"family-{topic_number}-{passage_number}",
                     "source_url": f"https://example.test/{passage_id}",
+                    "source_highlight_url": (
+                        f"https://example.test/{passage_id}#:~:text=Substantive%20employee"
+                    ),
                     "raw_text": (
                         f"Substantive employee passage {passage_number} for theme {topic_number}."
                     ),
@@ -56,6 +59,9 @@ def _model_inputs(tmp_path: Path) -> tuple[Path, Path]:
                     "document_id": f"document-{topic_number}-{passage_number}",
                     "document_family_id": f"family-{topic_number}-{passage_number}",
                     "source_url": f"https://example.test/{passage_id}",
+                    "source_highlight_url": (
+                        f"https://example.test/{passage_id}#:~:text=Substantive%20employee"
+                    ),
                     "topic_id": f"topic_{topic_number}",
                     "topic_weight": str((passage_number + 1) / 12),
                     "primary_topic": "true",
@@ -78,6 +84,7 @@ def _coded_file(
     for row, code in zip(rows, codes, strict=True):
         row["fit_code"] = code
         row["reviewer_id"] = reviewer_id
+        row["human_attestation"] = "human_assessed"
     _write(output, REVIEW_PACKET_FIELDS, rows)
 
 
@@ -115,9 +122,15 @@ def test_prepare_writes_deterministic_blinded_top_ten_packet(tmp_path: Path) -> 
     assert "topic_weight" not in packet[0]
     assert "deal_id" not in packet[0]
     assert "source_url" not in packet[0]
-    assert all(not row["fit_code"] and not row["reviewer_id"] for row in packet)
+    assert all(
+        not row["fit_code"]
+        and not row["reviewer_id"]
+        and not row["human_attestation"]
+        for row in packet
+    )
     assert {row["topic_id"] for row in key} == {"topic_1", "topic_2"}
     assert set(key[0]) == set(REVIEW_KEY_FIELDS)
+    assert all(row["source_highlight_url"].startswith(row["source_url"]) for row in key)
     selected = {row["passage_id"] for row in key if row["topic_id"] == "topic_1"}
     assert "topic-1-passage-00" not in selected
     assert "topic-1-passage-01" not in selected
@@ -251,7 +264,9 @@ def test_score_fails_low_fit_and_low_agreement_without_changing_codes(tmp_path: 
     )
 
 
-@pytest.mark.parametrize("problem", ["missing", "bad_code", "same_reviewer"])
+@pytest.mark.parametrize(
+    "problem", ["missing", "bad_code", "same_reviewer", "missing_attestation", "simulated"]
+)
 def test_score_rejects_invalid_or_non_independent_coding(
     tmp_path: Path, problem: str
 ) -> None:
@@ -268,12 +283,16 @@ def test_score_rejects_invalid_or_non_independent_coding(
         "alex" if problem == "same_reviewer" else "blair",
         codes,
     )
-    if problem in {"missing", "bad_code"}:
+    if problem in {"missing", "bad_code", "missing_attestation", "simulated"}:
         rows = _rows(reviewer_two)
         if problem == "missing":
             rows.pop()
-        else:
+        elif problem == "bad_code":
             rows[0]["fit_code"] = "probably"
+        elif problem == "missing_attestation":
+            rows[0]["human_attestation"] = ""
+        else:
+            rows[0]["reviewer_notes"] = "AI-simulated review; not a human assessment."
         _write(reviewer_two, REVIEW_PACKET_FIELDS, rows)
 
     with pytest.raises(ValueError):

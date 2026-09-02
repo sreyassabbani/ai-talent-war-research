@@ -51,7 +51,9 @@ records automatically:
   `passages_csv_sha256` plus a `corpus_validation` block.
 
 `tag_edgar.corpus_validation` resolves the audit state against the hash of the corpus a downstream
-artifact actually used. A scored audit from a different `passages.csv` reports
+artifact actually used. It also requires the score manifest to attest human labels for every
+sampled row, and verifies the score-to-audit-manifest hash link whenever both are supplied. A
+scored audit from a different `passages.csv` reports
 `pending_human_corpus_validation` for this corpus rather than lending it a verdict. Until a scored,
 passing audit is hash-linked:
 
@@ -126,17 +128,20 @@ rates; 95% Wilson intervals reported alongside). `score_manifest.json` records `
 # Ordinary (deal-balanced) model, K in {3,4,5}
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5 `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance deal
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance deal `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Source-family-balanced comparison
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5_sourcebal `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance source_family
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance source_family `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Unbalanced comparison
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5_nobal `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance none
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance none `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Report — verdict WITHHELD until 4d passes and is hash-linked
 uv run tag-edgar summarize-employee-topics data/derived/pilot_review_queue.csv `
@@ -171,6 +176,14 @@ uv run tag-edgar build-architecture-topic-crosstable `
 
 The agglomerative sensitivity check, leave-one-deal-out stability, and the fixed-seed bootstrap run
 inside `analyze-employee-topics` and need no separate command.
+
+### Historical topic-review provenance warning
+
+The older `data/derived/employee_topic_review/reviewer_2.csv` and
+`reviewer_2_muse-spark.csv` files contain AI-simulated coding. Despite legacy rows containing the
+literal text `human_assessed`, they are **not human evidence**, must not be supplied to the scorer,
+and cannot satisfy the two-independent-human-review gate. Cycle-5 review must start from the newly
+generated blank reviewer files and be completed by two actual human reviewers.
 
 ## 5. What no one should do
 

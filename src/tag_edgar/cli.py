@@ -572,8 +572,18 @@ def analyze_employee_topics_command(
         help="Bounded fit-universe size. Raise it with the deal count so each deal keeps "
         "several representative rows.",
     ),
+    corpus_audit_dir: Path | None = typer.Option(
+        None, exists=True, file_okay=False, help="Prepared relevance-audit packet directory."
+    ),
+    corpus_scores_dir: Path | None = typer.Option(
+        None, exists=True, file_okay=False, help="Scored relevance-audit directory."
+    ),
 ) -> None:
-    """Fit deterministic topics and propagate assignments through every passage source."""
+    """Fit deterministic topics and propagate assignments through every passage source.
+
+    The manifest remains provisional unless a scored, passing corpus audit is hash-linked to the
+    exact passages.csv used by the model.
+    """
     config = TopicModelConfig(
         seed=seed,
         max_fit_passages=max_fit_passages,
@@ -591,6 +601,8 @@ def analyze_employee_topics_command(
         corpus_dir,
         output_dir,
         config=config,
+        corpus_audit_dir=corpus_audit_dir,
+        corpus_scores_dir=corpus_scores_dir,
     )
     typer.echo(f"Analysis status: {summary.status}")
     for label, count in summary.counts.items():

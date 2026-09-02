@@ -22,21 +22,21 @@ Register columns:
 
 | Column | Meaning |
 | --- | --- |
-| `attribute` | one of the six attributes below |
+| `attribute` | one of the seven attributes below |
 | `machine_value` | coded value; `\|` separates multiple values; `unknown` when the sources are silent |
 | `evidence_basis` | `direct_passage` (a reviewed passage states it), `inferred_from_legal_form` (follows from the agreement type, no passage), or `unknown` |
 | `evidence_status` | `direct`, `partial`, `indirect`, or `unknown` — the project's standard incentive-evidence scale |
 | `document_id`, `source_url`, `source_locator` | the document and section the claim rests on; required for every non-unknown value |
-| `excerpt_kind` | `verbatim` (quoted from the document) or `paraphrase` (a curated summary) |
+| `excerpt_kind` | `verbatim` (quoted from the document) or `paraphrase` (context for an `unknown` row only) |
 | `evidence_excerpt` | the supporting text |
 | `limitation` | what the excerpt cannot establish |
 | `salvage_reference` | provenance back to `audit_salvage_2026-08-30/` |
 
-A highlight URL (`#:~:text=`) is generated only for `verbatim` excerpts. Paraphrases receive
-`highlight_status = unsupported_paraphrase_not_quotable` and keep the canonical URL. The current
-register is transcribed from the human-curated salvage package, whose excerpts are paraphrases;
-replacing them with verbatim quotes once the pilot documents are retrieved will populate the
-highlight URLs without any other change.
+A non-`unknown` claim is valid only when its evidence excerpt is verbatim SEC text. Such rows
+receive a `#:~:text=` highlight URL. Paraphrases are permitted only to explain why an attribute is
+`unknown`; they receive `highlight_status = unsupported_paraphrase_not_quotable` and retain the
+canonical URL. If reliable verbatim support cannot be matched in the local document cache, the
+attribute must remain `unknown`.
 
 ## Attributes
 
@@ -75,11 +75,17 @@ contract is a contract role, not an observed post-deal role.
 ### `talent_motive_explicit`
 
 Whether a reviewed passage states that acquiring people or a team was a transaction motive:
-`yes`, `partial` (people-specific deal terms such as founder offer letters as closing
-conditions, but no stated motive), `no`, `unknown`. Absence of a statement is not evidence of
-absence.
+`yes`, `no`, `unknown`. People-specific deal terms do **not** count as an explicit motive.
+Absence of a statement is not evidence of absence.
 
-## Archetype suggestions (`deal-architecture-rules-v1`)
+### `talent_salience_signal`
+
+Whether disclosed retention, founder, executive-continuity, key-employee, or structured employee-
+transfer terms indirectly indicate that people mattered to transaction execution: `yes`, `no`,
+`unknown`. This attribute deliberately separates an indirect contractual signal from an explicit
+statement of transaction motive.
+
+## Archetype suggestions (`deal-architecture-rules-v2`)
 
 | Condition | Suggested archetype(s) | Ambiguity |
 | --- | --- | --- |
@@ -87,7 +93,8 @@ absence.
 | no control transfer, IP licensed, people moved | `hire_and_license`, `reverse_acquihire` | medium |
 | no control transfer otherwise | `mixed` | high |
 | control moved, talent motive `yes`, product discontinued | `traditional_acquihire` | low |
-| control moved, talent motive `yes` or `partial` | base + `acquisition_with_talent_emphasis` | medium |
+| control moved, talent motive `yes` | base + `acquisition_with_talent_emphasis` | medium |
+| control moved, indirect talent-salience signal `yes` | base + `acquisition_with_talent_salience` | medium |
 | control moved, named people, no motive | base | medium |
 | control moved, motive unknown | base | medium |
 | control moved, motive `no` | base | low |
@@ -100,10 +107,14 @@ blank in generated output.
 
 ## What the pilot shows about itself
 
-All ten pilot deals are control-transferring acquisitions (nine entity acquisitions and one
-business-unit asset purchase). None is a license-and-hire or reverse-acquihire structure, and no
-reviewed passage states a talent motive. The architecture layer therefore has little variation to
-cross against employee-language topics; that is a property of the pilot sample, not a result.
+The architecture register contains exactly the ten deal IDs selected in
+`data/derived/pilot_review_queue.csv` and the cycle-5 corpus manifest. Nine have enough transaction
+evidence for a machine-suggested control-transferring acquisition; Fastly–Glitch remains an explicit
+unknown architecture case because the URL recorded as its acquisition announcement resolves in the
+local SEC cache to an unrelated convertible-notes repurchase release, and no agreement was found.
+None has evidence for a license-and-hire or reverse-acquihire structure, and no
+reviewed passage states a talent motive. Several deals have separate indirect talent-salience
+signals. These are pending human review, not findings.
 
 ## Outputs
 

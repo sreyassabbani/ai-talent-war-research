@@ -40,7 +40,7 @@ __all__ = [
     "write_deal_architecture",
 ]
 
-RULES_VERSION = "deal-architecture-rules-v1"
+RULES_VERSION = "deal-architecture-rules-v2"
 REVIEW_STATUS = "machine_suggested_pending_human_review"
 
 ATTRIBUTES: tuple[str, ...] = (
@@ -50,6 +50,7 @@ ATTRIBUTES: tuple[str, ...] = (
     "business_product_continuity",
     "workforce_movement",
     "talent_motive_explicit",
+    "talent_salience_signal",
 )
 
 EVIDENCE_BASES = frozenset({"direct_passage", "inferred_from_legal_form", "unknown"})
@@ -63,13 +64,13 @@ ARCHETYPES: tuple[str, ...] = (
     "reverse_acquihire",
     "hire_and_license",
     "acquisition_with_talent_emphasis",
+    "acquisition_with_talent_salience",
     "mixed",
     "unknown",
 )
 
 EVIDENCE_FIELDS = [
     "deal_id",
-    "sdc_deal_id",
     "deal_name",
     "acquirer",
     "target",
@@ -98,7 +99,6 @@ EVIDENCE_OUTPUT_FIELDS = [
 
 OUTPUT_FIELDS = [
     "deal_id",
-    "sdc_deal_id",
     "deal_name",
     "acquirer",
     "target",
@@ -163,6 +163,10 @@ def load_evidence_register(path: Path) -> list[dict[str, str]]:
         seen.add(key)
         # A non-unknown claim must be pinned to a document and a canonical URL.
         if row["machine_value"] != "unknown" and row["evidence_basis"] != "unknown":
+            if row["excerpt_kind"] != "verbatim":
+                raise ValueError(
+                    f"Row {index}: a non-unknown claim must use excerpt_kind=verbatim."
+                )
             for field in ("document_id", "source_url", "evidence_excerpt"):
                 if not row[field]:
                     raise ValueError(
@@ -172,6 +176,13 @@ def load_evidence_register(path: Path) -> list[dict[str, str]]:
                 raise ValueError(f"Row {index}: source_url must be an absolute https URL.")
         if row["machine_value"] == "unknown" and row["evidence_status"] != "unknown":
             raise ValueError(f"Row {index}: an unknown value must carry evidence_status=unknown.")
+        if row["attribute"] in {"talent_motive_explicit", "talent_salience_signal"} and row[
+            "machine_value"
+        ] not in {"yes", "no", "unknown"}:
+            raise ValueError(
+                f"Row {index}: {row['attribute']} must be yes, no, or unknown; "
+                f"got {row['machine_value']!r}."
+            )
 
     deals = {row["deal_id"] for row in rows}
     for deal_id in sorted(deals):
@@ -195,6 +206,7 @@ def suggest_archetypes(attributes: Mapping[str, str]) -> tuple[list[str], str, s
     scope = _values(attributes["scope_and_control"])
     ip = attributes["ip_treatment"]
     talent = attributes["talent_motive_explicit"]
+    talent_salience = attributes["talent_salience_signal"]
     continuity = attributes["business_product_continuity"]
     workforce = _values(attributes["workforce_movement"])
 
@@ -235,12 +247,22 @@ def suggest_archetypes(attributes: Mapping[str, str]) -> tuple[list[str], str, s
                 f"a reviewer may still prefer {base} if the discontinuation is later reversed."
             ),
         )
-    if talent in {"yes", "partial"}:
+    if talent == "yes":
         competing = (
-            f"{base} with people-related deal terms. A reviewer must decide whether founder or "
-            "key-employee conditions rise to a talent motive or are ordinary deal protection."
+            f"{base} with an explicit talent motive. A reviewer must verify that the cited "
+            "language states transaction motive rather than merely recording employee terms."
         )
         return ([base, "acquisition_with_talent_emphasis"], "medium", competing)
+    if talent_salience == "yes":
+        return (
+            [base, "acquisition_with_talent_salience"],
+            "medium",
+            (
+                f"{base} with an indirect people-related signal. Retention, founder, executive, "
+                "or employee-transfer terms show talent salience but do not establish talent as "
+                "a transaction motive."
+            ),
+        )
     if named_people:
         return (
             [base],
@@ -315,7 +337,6 @@ def build_deal_architecture(register_path: Path) -> DealArchitecture:
         deal_rows.append(
             {
                 "deal_id": deal_id,
-                "sdc_deal_id": header["sdc_deal_id"],
                 "deal_name": header["deal_name"],
                 "acquirer": header["acquirer"],
                 "target": header["target"],

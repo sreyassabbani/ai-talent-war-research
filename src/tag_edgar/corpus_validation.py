@@ -11,6 +11,7 @@ labels, and it treats the absence of any audit evidence as an unvalidated corpus
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -69,6 +70,27 @@ def _sha_matches(expected: str | None, manifest: dict[str, object]) -> bool:
     return str(manifest.get("candidate_csv_sha256", "")) == expected
 
 
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _sample_count_total(manifest: dict[str, object]) -> int | None:
+    counts = manifest.get("sample_counts")
+    if not isinstance(counts, dict) or not counts:
+        return None
+    values = list(counts.values())
+    if any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in values):
+        return None
+    return sum(values)
+
+
+def _completed_item_count(manifest: dict[str, object]) -> int | None:
+    count = manifest.get("completed_item_count")
+    if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+        return None
+    return count
+
+
 def resolve_corpus_validation(
     audit_dir: Path | None,
     scores_dir: Path | None = None,
@@ -92,6 +114,60 @@ def resolve_corpus_validation(
                 expected_candidate_sha256 or "",
                 "Scored audit was prepared from a different passages.csv; this corpus has no "
                 "completed human relevance audit of its own.",
+                str(score_manifest),
+            )
+        if manifest.get("labels_present") is not True or manifest.get(
+            "labels_are_human_attested"
+        ) is not True:
+            return CorpusValidationState(
+                STATUS_PENDING,
+                "pending",
+                sha,
+                "Score manifest does not attest a complete set of genuine human labels.",
+                str(score_manifest),
+            )
+
+        completed_count = _completed_item_count(manifest)
+        score_sample_total = _sample_count_total(manifest)
+        audit_manifest = audit_dir / "audit_manifest.json" if audit_dir else None
+        if audit_manifest is not None and audit_manifest.exists():
+            audit = _load_json(audit_manifest)
+            expected_audit_hash = str(manifest.get("audit_manifest_sha256", ""))
+            if not expected_audit_hash or expected_audit_hash != _file_sha256(audit_manifest):
+                return CorpusValidationState(
+                    STATUS_PENDING,
+                    "pending",
+                    sha,
+                    "Score manifest is not hash-linked to the supplied audit manifest.",
+                    str(score_manifest),
+                )
+            if str(audit.get("candidate_csv_sha256", "")) != sha:
+                return CorpusValidationState(
+                    STATUS_PENDING,
+                    "pending",
+                    sha,
+                    "Supplied audit manifest and score manifest target different passages.csv files.",
+                    str(score_manifest),
+                )
+            audit_sample_total = _sample_count_total(audit)
+            if audit_sample_total is None or (
+                score_sample_total is not None and score_sample_total != audit_sample_total
+            ):
+                return CorpusValidationState(
+                    STATUS_PENDING,
+                    "pending",
+                    sha,
+                    "Audit and score manifests do not record consistent sample counts.",
+                    str(score_manifest),
+                )
+            score_sample_total = audit_sample_total
+
+        if completed_count is None or score_sample_total is None or completed_count != score_sample_total:
+            return CorpusValidationState(
+                STATUS_PENDING,
+                "pending",
+                sha,
+                "Score manifest does not establish complete human coding for every sampled row.",
                 str(score_manifest),
             )
         gate = str(manifest.get("gate_status", "")).lower()

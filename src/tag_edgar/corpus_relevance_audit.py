@@ -379,6 +379,13 @@ def score_corpus_relevance_audit(
     missing = sorted(_DECISIONS.difference(decision_rows))
     if missing:
         raise ValueError(f"Completed audit has no sampled rows for decisions: {missing}")
+    actual_sample_counts = {
+        decision: len(decision_rows[decision]) for decision in sorted(_DECISIONS)
+    }
+    if preparation_manifest.get("sample_counts") != actual_sample_counts:
+        raise ValueError(
+            "Completed audit decision counts do not match audit_manifest.json sample_counts."
+        )
 
     score_rows: list[dict[str, object]] = []
     metric_names = {
@@ -422,6 +429,7 @@ def score_corpus_relevance_audit(
         "audit_manifest_sha256": _file_sha256(audit_manifest_json),
         "completed_packet_sha256": _file_sha256(completed_packet_csv),
         "completed_item_count": len(joined),
+        "sample_counts": actual_sample_counts,
         "assessor_ids": sorted({packet["assessor_id"].strip() for _, packet in joined}),
         "gate_thresholds": {
             "included_passage_relevance_minimum": minimum_included_relevance,

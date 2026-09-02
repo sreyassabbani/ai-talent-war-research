@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict
 
+from .source_links import text_fragment_url
+
 REVIEW_PACKET_FIELDS = [
     "review_order",
     "review_item_id",
@@ -19,6 +21,7 @@ REVIEW_PACKET_FIELDS = [
     "fit_code",
     "reviewer_id",
     "reviewer_notes",
+    "human_attestation",
 ]
 
 REVIEW_KEY_FIELDS = [
@@ -32,6 +35,7 @@ REVIEW_KEY_FIELDS = [
     "document_id",
     "document_family_id",
     "source_url",
+    "source_highlight_url",
     "topic_weight",
     "topic_terms",
     "passage_text_sha256",
@@ -69,9 +73,17 @@ _ASSIGNMENT_COLUMNS = frozenset(
 _PASSAGE_COLUMNS = frozenset({"passage_id"})
 _KEY_COLUMNS = frozenset(REVIEW_KEY_FIELDS)
 _CODING_COLUMNS = frozenset(
-    {"review_item_id", "blind_topic_id", "fit_code", "reviewer_id"}
+    {
+        "review_item_id",
+        "blind_topic_id",
+        "fit_code",
+        "reviewer_id",
+        "human_attestation",
+    }
 )
 _FIT_CODES = ("fit", "partial", "not_fit")
+_HUMAN_ATTESTATION = "human_assessed"
+_SIMULATED_REVIEW_MARKERS = ("ai-simulated", "ai simulated", "muse-spark")
 
 
 @dataclass(frozen=True)
@@ -189,6 +201,7 @@ def prepare_topic_review(
                 "fit_code": "",
                 "reviewer_id": "",
                 "reviewer_notes": "",
+                "human_attestation": "",
             }
             key = {
                 "review_order": "",
@@ -205,6 +218,12 @@ def prepare_topic_review(
                 "document_family_id": assignment.get("document_family_id", "")
                 or passage.get("document_family_id", ""),
                 "source_url": assignment.get("source_url", "") or passage.get("source_url", ""),
+                "source_highlight_url": assignment.get("source_highlight_url", "")
+                or passage.get("source_highlight_url", "")
+                or text_fragment_url(
+                    assignment.get("source_url", "") or passage.get("source_url", ""),
+                    passage_text,
+                ),
                 "topic_weight": _format_float(
                     _parse_weight(assignment["topic_weight"], assignment["passage_id"])
                 ),
@@ -548,6 +567,19 @@ def _validated_codings(
             raise ValueError(f"{path} item {item_id!r} has an altered blind_topic_id.")
         if not row["reviewer_id"].strip():
             raise ValueError(f"{path} item {item_id!r} has a blank reviewer_id.")
+        if row["human_attestation"].strip() != _HUMAN_ATTESTATION:
+            raise ValueError(
+                f"{path} item {item_id!r} human_attestation must be exactly "
+                f"{_HUMAN_ATTESTATION!r}."
+            )
+        provenance_text = " ".join(
+            (row["reviewer_id"], row.get("reviewer_notes", ""))
+        ).lower()
+        if any(marker in provenance_text for marker in _SIMULATED_REVIEW_MARKERS):
+            raise ValueError(
+                f"{path} item {item_id!r} identifies simulated or AI-generated review; "
+                "only genuine human assessment may be scored."
+            )
         row["fit_code"] = code
         row["reviewer_id"] = row["reviewer_id"].strip()
     return by_id
