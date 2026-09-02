@@ -199,6 +199,15 @@ def test_workflows_deduplicate_globally_but_propagate_topics_to_each_deal(
     )
     analysis_manifest = json.loads((analysis_dir / "analysis_manifest.json").read_text())
     assert analysis_manifest["status"] == "modeled"
+    assert analysis_manifest["release_status"] == "modeled_provisional"
+    assert analysis_manifest["corpus_validation"] == {
+        "accepted": False,
+        "candidate_csv_sha256": analysis_manifest["passages_sha256"],
+        "detail": "No relevance audit packet or scores were supplied for this corpus.",
+        "evidence_path": "",
+        "gate_status": "pending",
+        "status": "no_corpus_validation_evidence",
+    }
     assert analysis_manifest["schema_version"] == 3
     assert analysis_manifest["config"]["bootstrap_replicates"] == 100
     assert analysis_manifest["bootstrap_design"] == {

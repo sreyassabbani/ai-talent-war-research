@@ -163,6 +163,10 @@ def load_evidence_register(path: Path) -> list[dict[str, str]]:
         seen.add(key)
         # A non-unknown claim must be pinned to a document and a canonical URL.
         if row["machine_value"] != "unknown" and row["evidence_basis"] != "unknown":
+            if row["excerpt_kind"] != "verbatim":
+                raise ValueError(
+                    f"Row {index}: a non-unknown claim must use excerpt_kind=verbatim."
+                )
             for field in ("document_id", "source_url", "evidence_excerpt"):
                 if not row[field]:
                     raise ValueError(

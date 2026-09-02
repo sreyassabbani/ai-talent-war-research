@@ -98,11 +98,16 @@ def test_committed_register_builds_ten_reviewed_deals_with_blank_human_fields() 
     for row in result.evidence_rows:
         if row["machine_value"] != "unknown":
             assert row["document_id"] and row["source_url"].startswith("https://www.sec.gov/")
-    # The salvage excerpts are paraphrases, so no highlight URL is fabricated for them.
+    # Every claim is backed by a verbatim excerpt and receives a highlight URL. Unknown rows may
+    # retain explanatory paraphrases, but they cannot support a machine claim.
     statuses = result.manifest["highlight_status_counts"]
     assert isinstance(statuses, dict)
     assert statuses.get("unsupported_paraphrase_not_quotable", 0) > 0
-    assert all(row["source_highlight_url"] == "" for row in result.evidence_rows)
+    for row in result.evidence_rows:
+        if row["machine_value"] != "unknown":
+            assert row["excerpt_kind"] == "verbatim"
+            assert row["highlight_status"] == "ok"
+            assert row["source_highlight_url"].startswith(row["source_url"] + "#:~:text=")
 
 
 def test_committed_register_exactly_matches_selected_pilot_ids() -> None:
@@ -232,6 +237,11 @@ def test_register_refuses_unpinned_claims_and_incomplete_deals(tmp_path: Path) -
     rows[0]["excerpt_kind"] = "summary"
     with pytest.raises(ValueError, match="excerpt_kind"):
         load_evidence_register(_write(tmp_path / "b.csv", rows))
+
+    rows = _full_deal()
+    rows[0]["excerpt_kind"] = "paraphrase"
+    with pytest.raises(ValueError, match="non-unknown claim must use excerpt_kind=verbatim"):
+        load_evidence_register(_write(tmp_path / "claim-paraphrase.csv", rows))
 
     rows = _full_deal()[:-1]
     with pytest.raises(ValueError, match="missing attribute rows"):

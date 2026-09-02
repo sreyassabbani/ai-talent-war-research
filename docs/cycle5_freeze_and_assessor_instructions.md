@@ -131,17 +131,20 @@ rates; 95% Wilson intervals reported alongside). `score_manifest.json` records `
 # Ordinary (deal-balanced) model, K in {3,4,5}
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5 `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance deal
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance deal `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Source-family-balanced comparison
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5_sourcebal `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance source_family
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance source_family `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Unbalanced comparison
 uv run tag-edgar analyze-employee-topics data/derived/pilot_review_queue.csv `
   data/derived/employee_corpus_cycle5 --output-dir data/derived/employee_topics_cycle5_nobal `
-  --seed 20260823 --k-min 3 --k-max 5 --fit-balance none
+  --seed 20260823 --k-min 3 --k-max 5 --fit-balance none `
+  --corpus-audit-dir data/derived/corpus_relevance_audit_cycle5
 
 # Report — verdict WITHHELD until 4d passes and is hash-linked
 uv run tag-edgar summarize-employee-topics data/derived/pilot_review_queue.csv `

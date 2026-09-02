@@ -27,16 +27,16 @@ Register columns:
 | `evidence_basis` | `direct_passage` (a reviewed passage states it), `inferred_from_legal_form` (follows from the agreement type, no passage), or `unknown` |
 | `evidence_status` | `direct`, `partial`, `indirect`, or `unknown` — the project's standard incentive-evidence scale |
 | `document_id`, `source_url`, `source_locator` | the document and section the claim rests on; required for every non-unknown value |
-| `excerpt_kind` | `verbatim` (quoted from the document) or `paraphrase` (a curated summary) |
+| `excerpt_kind` | `verbatim` (quoted from the document) or `paraphrase` (context for an `unknown` row only) |
 | `evidence_excerpt` | the supporting text |
 | `limitation` | what the excerpt cannot establish |
 | `salvage_reference` | provenance back to `audit_salvage_2026-08-30/` |
 
-A highlight URL (`#:~:text=`) is generated only for `verbatim` excerpts. Paraphrases receive
-`highlight_status = unsupported_paraphrase_not_quotable` and keep the canonical URL. The current
-register is transcribed from the human-curated salvage package, whose excerpts are paraphrases;
-replacing them with verbatim quotes once the pilot documents are retrieved will populate the
-highlight URLs without any other change.
+A non-`unknown` claim is valid only when its evidence excerpt is verbatim SEC text. Such rows
+receive a `#:~:text=` highlight URL. Paraphrases are permitted only to explain why an attribute is
+`unknown`; they receive `highlight_status = unsupported_paraphrase_not_quotable` and retain the
+canonical URL. If reliable verbatim support cannot be matched in the local document cache, the
+attribute must remain `unknown`.
 
 ## Attributes
 
@@ -110,8 +110,9 @@ blank in generated output.
 The architecture register contains exactly the ten deal IDs selected in
 `data/derived/pilot_review_queue.csv` and the cycle-5 corpus manifest. Nine have enough transaction
 evidence for a machine-suggested control-transferring acquisition; Fastly–Glitch remains an explicit
-unknown architecture case because the retrieved SEC material contains an acquisition announcement
-but no agreement. None has evidence for a license-and-hire or reverse-acquihire structure, and no
+unknown architecture case because the URL recorded as its acquisition announcement resolves in the
+local SEC cache to an unrelated convertible-notes repurchase release, and no agreement was found.
+None has evidence for a license-and-hire or reverse-acquihire structure, and no
 reviewed passage states a talent motive. Several deals have separate indirect talent-salience
 signals. These are pending human review, not findings.
 
