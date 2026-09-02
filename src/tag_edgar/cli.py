@@ -384,12 +384,21 @@ def build_employee_corpus_command(
     ),
     context_blocks: int = typer.Option(0, min=0),
     max_block_words: int = typer.Option(220, min=20),
+    manual_coding: bool = typer.Option(
+        True,
+        "--manual-coding/--no-manual-coding",
+        help="Apply the manually-coded positive-source recall gate. Disable only when the "
+        "sample contains none of the manually coded deals, since the gate then checks "
+        "sources this corpus was never meant to retrieve.",
+    ),
 ) -> None:
     """Build a source-linked employee passage corpus from the reviewed pilot cache."""
     selected_cache = cache_dir or load_settings(require_user_agent=False).cache_dir
     default_manual_coding = PROJECT_ROOT / "data" / "derived" / "pilot_manual_coding.csv"
-    selected_manual_coding = manual_coding_csv or (
-        default_manual_coding if default_manual_coding.exists() else None
+    selected_manual_coding = (
+        manual_coding_csv or (default_manual_coding if default_manual_coding.exists() else None)
+        if manual_coding
+        else None
     )
     summary = build_employee_corpus_workflow(
         review_csv,
