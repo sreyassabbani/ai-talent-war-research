@@ -17,6 +17,7 @@ from .corpus_relevance_audit import (
     write_corpus_relevance_audit,
     write_corpus_relevance_scores,
 )
+from .deal_architecture import build_deal_architecture, write_deal_architecture
 from .employee_tone import analyze_employee_tone, write_employee_tone
 from .employee_topic_review import TopicReviewConfig, prepare_topic_review, score_topic_review
 from .employee_topics import TopicModelConfig
@@ -440,6 +441,29 @@ def score_corpus_relevance_audit_command(
     write_corpus_relevance_scores(output_dir, score)
     typer.echo(f"Corpus relevance/recall gate: {score.status}")
     typer.echo(f"Wrote audit scores to {output_dir}")
+
+
+@app.command("build-deal-architecture")
+def build_deal_architecture_command(
+    evidence_register_csv: Path = typer.Argument(
+        PROJECT_ROOT / "config" / "pilot_deal_architecture_evidence.csv",
+        exists=True,
+        readable=True,
+        help="Version-controlled evidence register: one row per deal, attribute, and source.",
+    ),
+    output_dir: Path = typer.Option(PROJECT_ROOT / "data" / "derived" / "deal_architecture_pilot"),
+) -> None:
+    """Derive the 10-deal architecture review table from source-backed attributes.
+
+    Archetypes are machine suggestions pending human review; the human fields stay blank.
+    """
+    result = build_deal_architecture(evidence_register_csv)
+    write_deal_architecture(output_dir, result)
+    typer.echo(f"Deals coded: {result.manifest['deal_count']}")
+    typer.echo(f"Evidence rows: {result.manifest['evidence_row_count']}")
+    typer.echo(f"Suggested archetypes: {result.manifest['machine_suggested_archetype_counts']}")
+    typer.echo(f"Review status: {result.manifest['review_status']}")
+    typer.echo(f"Wrote {output_dir}")
 
 
 @app.command("analyze-employee-tone")
