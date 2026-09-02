@@ -78,7 +78,7 @@ def test_deal_topic_matrix_rows_and_dominant_topic() -> None:
     assert set(label_map) == set(range(solution.k))
     for row in matrix:
         assert row["dominant_topic"] in label_map.values()
-        total = sum(float(row[label_map[topic]]) for topic in range(solution.k))
+        total = sum(float(str(row[label_map[topic]])) for topic in range(solution.k))
         assert abs(total - 1.0) < 0.05
 
 
@@ -94,7 +94,7 @@ def test_leave_one_deal_out_reports_jaccard() -> None:
     rows = leave_one_deal_out_stability(texts, deals, config=CONFIG)
     assert len(rows) == 4
     assert all(row["status"] == "ok" for row in rows)
-    assert all(0.0 <= float(row["mean_top_term_jaccard"]) <= 1.0 for row in rows)
+    assert all(0.0 <= float(str(row["mean_top_term_jaccard"])) <= 1.0 for row in rows)
 
 
 def test_fit_topics_rejects_tiny_corpora() -> None:

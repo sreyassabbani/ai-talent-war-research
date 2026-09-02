@@ -259,5 +259,7 @@ def test_tone_manifest_records_corpus_validation_state(tmp_path: Path) -> None:
     )
 
     pending = analyze_employee_tone(passages, corpus_validation=PENDING)
-    assert pending.manifest["corpus_validation"]["status"] == STATUS_PENDING
+    corpus_block = pending.manifest["corpus_validation"]
+    assert isinstance(corpus_block, dict)
+    assert corpus_block["status"] == STATUS_PENDING
     assert pending.manifest["interpretation_status"] == "secondary_diagnostic_corpus_not_validated"
