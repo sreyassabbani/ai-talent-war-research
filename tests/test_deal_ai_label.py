@@ -31,6 +31,8 @@ def test_explicit_ai_language_is_labelled_and_evidenced() -> None:
     assert label.label == "ai_explicit"
     assert label.weight >= 5
     assert "artificial intelligence" in label.terms
+    # Terms are the filing's own wording, never the screen's regular expressions.
+    assert not any(char in term for term in label.terms for char in r"\()[]?"), label.terms
     assert label.source_url == URL
     assert label.excerpt
 

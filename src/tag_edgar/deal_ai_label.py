@@ -97,7 +97,12 @@ def label_deal(
         result = screen_ai_text_for_target(text, target_name)
         if result.total_weight > best_weight:
             best_weight = result.total_weight
-            best_terms = result.distinct_terms
+            # Report the wording that actually appears in the filing. The screen's own term
+            # labels are regular expressions, one of which is a lookahead that would print as
+            # regex syntax in the report instead of as evidence.
+            best_terms = tuple(
+                sorted({hit.matched_text for hit in result.hits if hit.weight >= 3})
+            )
             best_excerpt = result.best_excerpt
             best_url = url
         signals = detect_talent_signals(text)
