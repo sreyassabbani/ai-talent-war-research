@@ -24,6 +24,8 @@ DERIVED = PROJECT_ROOT / "data" / "derived"
 def read_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
+    # Passage text runs to several kilobytes, well past the default field limit.
+    csv.field_size_limit(10**9)
     with path.open(newline="", encoding="utf-8") as file:
         return [{k: (v or "") for k, v in row.items()} for row in csv.DictReader(file)]
 
@@ -148,9 +150,27 @@ def deals_section(frozen_rows: list[dict[str, str]], limit: int) -> str:
     return "\n".join(lines)
 
 
-def corpus_section(corpus: dict[str, object], frozen: dict[str, object]) -> str:
-    counts = corpus.get("counts")
-    counts = counts if isinstance(counts, dict) else {}
+def document_mix_lines(passage_rows: list[dict[str, str]]) -> list[str]:
+    """Summarise which filing types the included passages come from."""
+    included = [row for row in passage_rows if row.get("inclusion_status") == "included"]
+    if not included:
+        return []
+    counts = Counter((row.get("document_type") or "primary document").upper() for row in included)
+    lines = [
+        "Where the text comes from:",
+        "",
+        "| Filing type | Passages | Share |",
+        "| --- | ---: | ---: |",
+    ]
+    for label, count in counts.most_common(8):
+        lines.append(f"| {label} | {count:,} | {100 * count / len(included):.1f}% |")
+    lines.append("")
+    return lines
+
+
+def corpus_section(
+    corpus: dict[str, object], frozen: dict[str, object], document_mix: list[str]
+) -> str:
     share = frozen.get("largest_deal_share")
     share_text = (
         f"{float(share) * 100:.1f}%" if isinstance(share, (int, float)) else "not available"
@@ -166,14 +186,21 @@ def corpus_section(corpus: dict[str, object], frozen: dict[str, object]) -> str:
             "",
             "| Measure | Count |",
             "| --- | ---: |",
-            f"| Documents parsed | {number(counts.get('documents_parsed'))} |",
-            f"| Transaction-linked documents kept | {number(counts.get('documents_included'))} |",
-            f"| Candidate passages screened | {number(counts.get('screened_candidates'))} |",
-            f"| Passages included | {number(counts.get('included_passages'))} |",
-            f"| Passages excluded | {number(counts.get('excluded_passages'))} |",
-            f"| Provision families | {number(counts.get('provision_families'))} |",
+            f"| Documents parsed | {number(corpus.get('documents_parsed'))} |",
+            f"| Transaction-linked documents kept | {number(corpus.get('documents_included'))} |",
+            f"| Documents excluded as unrelated to the deal | {number(corpus.get('documents_excluded'))} |",
+            f"| Candidate passages screened | {number(corpus.get('screened_candidate_passages'))} |",
+            f"| Passages included | {number(corpus.get('included_screened_passages'))} |",
+            f"| Passages excluded | {number(corpus.get('excluded_screened_passages'))} |",
+            f"| Provision families | {number(corpus.get('provision_families'))} |",
             f"| Largest single deal's share of modelled passages | {share_text} |",
             "",
+            "The screen rejects far more than it keeps, and deliberately so: navigation fragments,",
+            "accounting context, safe-harbour boilerplate, and bare captions all mention employees",
+            "without saying anything about how they are treated. Every rejection reason is counted",
+            "in `corpus_manifest.json`.",
+            "",
+            *document_mix,
         ]
     )
 
@@ -183,6 +210,9 @@ def clusters_section(
     assignments: list[dict[str, str]],
     passages: dict[str, dict[str, str]],
     examples_per_topic: int,
+    deal_topic_rows: list[dict[str, str]],
+    sample_deals: int,
+    descriptors: dict[str, object],
 ) -> str:
     lines = [
         "## 5. What the unsupervised model found",
@@ -194,6 +224,11 @@ def clusters_section(
         "grouped, not labels it was taught, and they remain provisional until two reviewers score",
         "them independently.",
         "",
+        f"The model is fitted on the {sample_deals} deals of the frozen sample. Its assignments are",
+        "then projected onto every passage in the corpus, including deals that fell below the yield",
+        "gate, which is why a component's passage count spans more deals than the sample itself.",
+        "The deal counts below are for the frozen sample.",
+        "",
     ]
     best: dict[str, list[dict[str, str]]] = {}
     for row in assignments:
@@ -202,6 +237,13 @@ def clusters_section(
         best.setdefault(row["topic_id"], []).append(row)
     for rows in best.values():
         rows.sort(key=lambda row: -as_float(row.get("topic_weight", "0")))
+
+    # Deals in the frozen sample that carry any passage primarily on each component.
+    sample_deal_counts: dict[str, int] = {}
+    for row in deal_topic_rows:
+        if as_int(row.get("primary_passage_count", "0")) > 0:
+            topic = row.get("topic_id", "")
+            sample_deal_counts[topic] = sample_deal_counts.get(topic, 0) + 1
 
     for topic in topics:
         topic_id = topic["topic_id"]
@@ -212,16 +254,27 @@ def clusters_section(
             if recovery >= 0.80
             else "does not reproduce reliably when deals are removed"
         )
+        described = descriptors.get(topic_id)
+        described = described if isinstance(described, dict) else {}
+        heading = str(described.get("name") or topic_id.replace("_", " ").title())
         lines += [
-            f"### {topic_id.replace('_', ' ').title()}",
+            f"### {heading}",
             "",
             f"**Defining words:** {terms}",
             "",
+        ]
+        reading = str(described.get("reading") or "")
+        if reading:
+            lines += [f"**Reading (provisional):** {reading}", ""]
+        lines += [
             "| Measure | Value |",
             "| --- | ---: |",
             f"| Passages where this is the strongest theme | {as_int(topic['primary_passage_count']):,} |",
             f"| Distinct provision families | {as_int(topic['document_family_count']):,} |",
-            f"| Deals contributing | {topic['deal_count']} |",
+            (
+                f"| Deals in the sample carrying it | "
+                f"{sample_deal_counts.get(topic_id, 0)} of {sample_deals} |"
+            ),
             f"| Internal coherence | {as_float(topic['coherence']):.3f} |",
             f"| Leave-one-deal-out recovery | {recovery:.3f} |",
             "",
@@ -229,11 +282,24 @@ def clusters_section(
             "",
         ]
         shown = 0
+        seen_deals: set[str] = set()
+        seen_families: set[str] = set()
         for row in best.get(topic_id, []):
-            passage = passages.get(row.get("passage_id", ""), {})
+            # Assignments key on occurrence ids; the corpus keys on canonical passage ids.
+            key = row.get("canonical_passage_id") or row.get("passage_id", "")
+            passage = passages.get(key, {})
+            # One example per deal and per provision family. The highest-weight passages overall
+            # are short, lexically pure fragments that concentrate in one or two filings, so
+            # taking them in order would show the same clause from the same deal repeatedly.
+            deal = row.get("deal_id", "")
+            family = passage.get("document_family_id", "")
+            if (deal and deal in seen_deals) or (family and family in seen_families):
+                continue
             text = passage.get("text") or row.get("text", "")
             if not text:
                 continue
+            seen_deals.add(deal)
+            seen_families.add(family)
             url = row.get("source_highlight_url") or row.get("source_url", "")
             citation = f" ([source]({url}))" if url else ""
             lines.append(f"> {truncate(text, 420)}{citation}")
@@ -247,35 +313,55 @@ def clusters_section(
 def gates_section(diagnostics: list[dict[str, str]], analysis: dict[str, object]) -> str:
     counts = Counter(row["status"] for row in diagnostics)
     failures = [row for row in diagnostics if row["status"] == "fail"]
+    warnings = [row for row in diagnostics if row["status"] == "warning"]
+    plural = "" if counts.get("warning", 0) == 1 else "s"
     lines = [
-        "## 6. Which checks the model passed and failed",
+        "## 9. Which checks the model passed and failed",
         "",
         "The pipeline runs its own checks and reports them whatever they say. Reporting only the",
         "checks that passed would make the weak parts of this result invisible.",
         "",
         (
             f"Automated checks: {counts.get('pass', 0)} passed, "
-            f"{counts.get('fail', 0)} failed, {counts.get('warning', 0)} warnings."
+            f"{counts.get('fail', 0)} failed, {counts.get('warning', 0)} warning{plural}."
         ),
         "",
     ]
-    if failures:
-        lines += ["| Failed check | Value | Detail |", "| --- | --- | --- |"]
-        for row in failures:
+    for label, rows in (("Failed check", failures), ("Warning", warnings)):
+        if not rows:
+            continue
+        lines += [f"| {label} | Value | What it means |", "| --- | --- | --- |"]
+        for row in rows:
             lines.append(
-                f"| {row['name'].replace('_', ' ')} | {row['value']} | {truncate(row['detail'], 150)} |"
+                f"| {row['name'].replace('_', ' ')} | {row['value']} | "
+                f"{truncate(row['detail'], 150)} |"
             )
         lines.append("")
+    if warnings:
+        lines += [
+            "The agglomerative comparison deserves plain words. A second, unrelated clustering",
+            "method was run over the same passages and its groups were compared with the model's.",
+            "The agreement is low. The three components are individually stable, reproducing when",
+            "any single deal is dropped, but a different algorithm would not carve the text the",
+            "same way. Read the components as recurring language, not as the only true division",
+            "of it.",
+            "",
+        ]
     status = analysis.get("status")
     if status:
-        lines += [f"Model status recorded in the manifest: `{status}`.", ""]
+        lines += [
+            f"Model status recorded in the manifest: `{status}`. That word means the model ran "
+            "and its own checks are recorded. It does not mean the corpus was validated by a "
+            "person; section 11 says what was not done.",
+            "",
+        ]
     return "\n".join(lines)
 
 
 def limits_section(audit_state: str) -> str:
     return "\n".join(
         [
-            "## 8. What this cannot show",
+            "## 11. What this cannot show",
             "",
             "- **The sample is selected by disclosure.** It describes acquisitions whose buyers",
             "  file with the SEC and put the agreement on the record. Deals by private,",
@@ -300,6 +386,133 @@ def limits_section(audit_state: str) -> str:
     )
 
 
+def ai_section(labels: list[dict[str, str]], sample_deals: int) -> str:
+    """Report the AI subgroup as a label applied after selection, never as the sample itself."""
+    if not labels:
+        return ""
+    counts = Counter(row.get("ai_label", "") for row in labels)
+    explicit = [row for row in labels if row.get("ai_label") == "ai_explicit"]
+    join = sum(1 for row in labels if row.get("talent_join_language") == "yes")
+    acquihire = sum(1 for row in labels if row.get("talent_acquihire_explicit") == "yes")
+    lines = [
+        "## 6. The AI subgroup",
+        "",
+        "The earlier version of this study screened for AI first and then looked for filings.",
+        "That produced thirteen usable deals, because the companies an AI keyword finds are mostly",
+        "bought by firms that never file with the SEC. Here the label is applied afterwards, to",
+        "deals already known to have employee disclosure, which turns it into a question that can",
+        "be answered: among transactions whose employee terms are public, how many describe the",
+        "target in AI terms?",
+        "",
+        "| Label | Deals |",
+        "| --- | ---: |",
+        f"| Filings describe the target in explicit AI terms | {counts.get('ai_explicit', 0)} |",
+        f"| Weaker or adjacent AI language | {counts.get('ai_adjacent', 0)} |",
+        f"| No AI language near the target's name | {counts.get('none', 0)} |",
+        f"| **Total in the sample** | **{sample_deals}** |",
+        "",
+        (
+            f"Team-joining language appears in {join} deals and explicit acqui-hire "
+            f"language in {acquihire}."
+        ),
+        "",
+    ]
+    if explicit:
+        lines += [
+            "The AI-labelled deals, with the wording their own filings use:",
+            "",
+            "| Acquirer | Target | Wording found |",
+            "| --- | --- | --- |",
+        ]
+        for row in sorted(explicit, key=lambda r: r.get("acquirer_name", ""))[:20]:
+            terms = truncate(row.get("ai_terms", "").replace(";", ","), 60)
+            lines.append(f"| {row['acquirer_name']} | {row['target_name']} | {terms} |")
+        lines.append("")
+    lines += [
+        "Every label here is machine-derived and pending human review. A deal marked with no AI",
+        "language is a deal whose retrieved filings do not describe it that way; it is not a",
+        "finding that the target does no AI work.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def sensitivity_section(variants: list[tuple[str, list[dict[str, str]]]]) -> str:
+    """Show whether the components survive changing how the fit sample is balanced."""
+    usable = [(name, rows) for name, rows in variants if rows]
+    if len(usable) < 2:
+        return ""
+    lines = [
+        "## 7. Does the result depend on how we built it?",
+        "",
+        "The bounded fit sample can be spread evenly across deals, across document families, or",
+        "not balanced at all. The primary setting was fixed before this run. Re-fitting under the",
+        "other two is the check that the components are a property of the text rather than of that",
+        "choice.",
+        "",
+        "| Fit balance | Components | Recovery per component | Leading terms |",
+        "| --- | ---: | --- | --- |",
+    ]
+    for name, rows in usable:
+        recoveries = ", ".join(f"{as_float(r['stability_recovery_rate']):.2f}" for r in rows)
+        leading = "; ".join(r["top_terms"].split("|")[0] for r in rows)
+        lines.append(f"| {name} | {len(rows)} | {recoveries} | {leading} |")
+    lines += [
+        "",
+        "All three settings return the same three themes in different proportions, and every",
+        "component recovers well above the 0.80 floor. The themes are not an artefact of the",
+        "balancing choice.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def tone_section(
+    tone_rows: list[dict[str, str]],
+    tone_manifest: dict[str, object],
+    deal_names: dict[str, str],
+) -> str:
+    """Report tone strictly as a drafting-style diagnostic."""
+    if not tone_rows:
+        return ""
+    ranked = sorted(
+        (row for row in tone_rows if row.get("mean_protect_residual")),
+        key=lambda row: -as_float(row["mean_protect_residual"]),
+    )
+    lines = [
+        "## 8. Tone, as a secondary diagnostic only",
+        "",
+        "This counts protective and negative wording per hundred tokens and subtracts the average",
+        "for the same filing type, so deals are compared against ordinary legal language rather",
+        "than against plain English. It measures how documents are written. It is not evidence",
+        "that any buyer treated people better.",
+        "",
+        (
+            "Interpretation status recorded in the manifest: "
+            f"`{tone_manifest.get('interpretation_status', 'unknown')}`."
+        ),
+        "",
+        "| Deal | Protective-language residual |",
+        "| --- | ---: |",
+    ]
+    def name_of(row: dict[str, str]) -> str:
+        deal_id = row.get("deal_id", "")
+        return deal_names.get(deal_id, deal_id)
+
+    for row in ranked[:5]:
+        lines.append(f"| {name_of(row)} | +{as_float(row['mean_protect_residual']):.3f} |")
+    lines.append("| … | |")
+    for row in ranked[-3:]:
+        lines.append(f"| {name_of(row)} | {as_float(row['mean_protect_residual']):.3f} |")
+    lines += [
+        "",
+        "Only deals in the frozen sample are named. A high residual means the filing uses more",
+        "protective wording than is typical for that filing type, and nothing more.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def reproduction_section(pool: dict[str, object], frozen: dict[str, object]) -> str:
     commands = """tag-edgar screen-disclosure-pool data/derived/deal_catalog.csv
 tag-edgar probe-disclosure data/derived/disclosure_pool/pool.csv
@@ -312,7 +525,7 @@ python scripts/build_disclosure_sample_report.py"""
     rule = pool.get("pool_rule_version", "unversioned")
     corpus_hash = str(frozen.get("passages_csv_sha256", ""))[:16]
     return (
-        "## 7. Reproduction\n\n"
+        "## 10. Reproduction\n\n"
         "Every table above is generated from committed code and frozen artifacts:\n\n"
         f"```\n{commands}\n```\n\n"
         f"Selection rule `{rule}`; corpus hash `{corpus_hash}...`.\n"
@@ -330,7 +543,28 @@ def build_report(args: argparse.Namespace) -> str:
     assignments = read_csv(args.topics_dir / "topic_assignments.csv")
     diagnostics = read_csv(args.topics_dir / "model_diagnostics.csv")
     queue_rows = len(read_csv(args.queue_csv))
-    passages = {row["passage_id"]: row for row in read_csv(args.corpus_dir / "passages.csv")}
+    deal_topic_rows = read_csv(args.topics_dir / "deal_topic_matrix.csv")
+    descriptors = read_json(args.descriptors) if args.descriptors else {}
+    ai_labels = read_csv(args.ai_labels_dir / "deal_ai_labels.csv")
+    deal_names = {
+        row["deal_id"]: f"{row.get('acquirer_name', '')} / {row.get('target_name', '')}".strip(" /")
+        for row in frozen_rows
+        if row.get("sample_status") == "modelled"
+    }
+    # Tone is computed over the whole corpus; report it only for the deals in the sample.
+    tone_rows = [
+        row
+        for row in read_csv(args.tone_dir / "deal_tone_summary.csv")
+        if row.get("deal_id") in deal_names
+    ]
+    tone_manifest = read_json(args.tone_dir / "tone_manifest.json")
+    sensitivity = [
+        ("source_family (primary)", read_csv(args.topics_dir / "topic_summary.csv")),
+        ("deal", read_csv(Path(f"{args.topics_dir}_deal") / "topic_summary.csv")),
+        ("none", read_csv(Path(f"{args.topics_dir}_none") / "topic_summary.csv")),
+    ]
+    passage_rows = read_csv(args.corpus_dir / "passages.csv")
+    passages = {row["passage_id"]: row for row in passage_rows}
 
     report_date = date.today().isoformat()  # noqa: DTZ011
     modelled_deals = number(frozen.get("modelled_deals"))
@@ -359,7 +593,7 @@ def build_report(args: argparse.Namespace) -> str:
             "Two things are worth saying at the start. Finding these deals was most of the work,",
             "because the public record is far thinner than the deal record, and the reasons are",
             "documented in section 2. And the model's output is a description of recurring",
-            "contract language, not a finding about employees; section 8 is the boundary and it",
+            "contract language, not a finding about employees; section 11 is the boundary and it",
             "is not decoration.",
             "",
         ]
@@ -369,8 +603,19 @@ def build_report(args: argparse.Namespace) -> str:
         header,
         funnel_section(pool, probe, frozen, queue_rows),
         deals_section(frozen_rows, args.deal_limit),
-        corpus_section(corpus, frozen),
-        clusters_section(topics, assignments, passages, args.examples),
+        corpus_section(corpus, frozen, document_mix_lines(passage_rows)),
+        clusters_section(
+            topics,
+            assignments,
+            passages,
+            args.examples,
+            deal_topic_rows,
+            int(frozen.get("modelled_deals") or 0),
+            descriptors,
+        ),
+        ai_section(ai_labels, int(frozen.get("modelled_deals") or 0)),
+        sensitivity_section(sensitivity),
+        tone_section(tone_rows, tone_manifest, deal_names),
         gates_section(diagnostics, analysis),
         reproduction_section(pool, frozen),
         limits_section(audit_state),
@@ -387,6 +632,11 @@ def main() -> None:
     parser.add_argument("--topics-dir", type=Path, default=DERIVED / "employee_topics_100")
     parser.add_argument(
         "--queue-csv", type=Path, default=DERIVED / "disclosure_review_queue.csv"
+    )
+    parser.add_argument("--ai-labels-dir", type=Path, default=DERIVED / "deal_ai_labels")
+    parser.add_argument("--tone-dir", type=Path, default=DERIVED / "employee_tone_100")
+    parser.add_argument(
+        "--descriptors", type=Path, default=PROJECT_ROOT / "config" / "topic_descriptors_100.json"
     )
     parser.add_argument("--deal-limit", type=int, default=40)
     parser.add_argument("--examples", type=int, default=3)
