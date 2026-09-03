@@ -49,7 +49,7 @@ MODELLED_STATUS = "modelled"
 #: Highest-weight primary passages kept per deal and topic in the openable sample.
 SAMPLE_PER_DEAL_TOPIC = 3
 
-FIELDS = (
+FIELDS: tuple[str, ...] = (
     "deal_id",
     "acquirer_name",
     "target_name",

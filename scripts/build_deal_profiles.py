@@ -45,7 +45,7 @@ TOPIC_LABELS = {
     "topic_3": "stock_and_equity_awards",
 }
 
-FIELDS = (
+FIELDS: tuple[str, ...] = (
     "deal_id",
     "acquirer_name",
     "target_name",
