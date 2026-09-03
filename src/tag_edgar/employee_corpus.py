@@ -158,6 +158,49 @@ def _display_text(value: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", value).split())
 
 
+# HTML renditions of the same clause disagree about what its heading is. An exhibit filed on its
+# own carries the real section heading; the same clause reprinted inside an S-4, S-4/A, 424B3 or
+# DEFM14A frequently sits under a running-header artefact -- "Table of Contents", a page number,
+# an annex label. These are document furniture, not section titles: they say nothing about the
+# provision, and treating them as headings both split the deduplication key and fed the topic
+# model 7,827 junk tokens. Suppressed for both purposes; the raw heading is still recorded.
+_STRUCTURAL_HEADING = re.compile(
+    r"""^(?:
+        table\ of\ contents | contents | index | toc
+      | page(?:\s*(?:no\.?|number))?\s*[\divxlcdm]*
+      | (?:annex|exhibit|appendix|schedule|attachment|article|section|part)
+        \s*[a-z]?[\s\-–—]*[\divxlcdm]*(?:[.\-–—][\divxlcdm]+)*
+      | [a-z]?[\s\-–—]*\d+(?:[.\-–—]\d+)*
+      | [ivxlcdm]+[\s\-–—]*\d*
+      | [a-z]
+    )$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+# Punctuation and invisible characters that SEC HTML hangs off a running header. Written as escapes
+# because a literal zero-width space in source is indistinguishable from a typo.
+_HEADING_TRIM = " .:-‐–—•\u200b "
+
+
+def is_structural_heading(heading: str | None) -> bool:
+    """True when a heading is document furniture rather than a section title.
+
+    Only bare furniture matches. "Article VII COVENANTS AND AGREEMENTS" is a real heading and is
+    kept; the bare "Article VII" that the same clause carries inside a proxy wrapper is not.
+    """
+    if heading is None:
+        return False
+    stripped = _display_text(heading).strip(_HEADING_TRIM)
+    if not stripped:
+        return False
+    return bool(_STRUCTURAL_HEADING.match(stripped))
+
+
+def _model_heading(heading: str | None) -> str | None:
+    return None if is_structural_heading(heading) else heading
+
+
 def normalize_model_text(value: str) -> str:
     """Return stable, low-noise text suitable for lexical feature extraction."""
     normalized = unicodedata.normalize("NFKC", value).casefold()
@@ -326,6 +369,16 @@ def _merged_ranges(
     return merged
 
 
+def _canonical_key(candidate: _PassageCandidate) -> tuple[bool, tuple[str | int, ...]]:
+    """Order a duplicate group so the rendition carrying a real section heading represents it.
+
+    Every member of the group is the same text, so the choice only decides which provenance the
+    modelled row keeps. Preferring a real heading over "Table of Contents" means the surviving row
+    can still be located in its document; the deterministic key breaks ties as before.
+    """
+    return (_model_heading(candidate.heading) is None, _candidate_key(candidate))
+
+
 def _candidate_key(candidate: _PassageCandidate) -> tuple[str | int, ...]:
     document = candidate.document
     return (
@@ -354,9 +407,14 @@ def _passage_candidates(
         selected = parsed.blocks[start : end + 1]
         text = "\n".join(block.text for block in selected)
         heading = selected[0].heading
-        analysis_text = "\n".join(filter(None, (heading, text)))
-        display_text = _display_text(analysis_text)
-        content_sha256 = hashlib.sha256(display_text.encode("utf-8")).hexdigest()
+        analysis_text = "\n".join(filter(None, (_model_heading(heading), text)))
+        # The key is the passage text alone. Including the heading meant one paragraph filed twice
+        # -- once as a standalone exhibit, once reprinted inside the S-4 or proxy that carries it
+        # -- hashed differently whenever the two renditions disagreed about the heading, which was
+        # the cause of every within-deal repeat that survived deduplication. Text is normalised
+        # for whitespace and Unicode form only, never for numbers: two retention clauses that
+        # differ solely in a dollar amount are different provisions and must stay separate rows.
+        content_sha256 = hashlib.sha256(_display_text(text).encode("utf-8")).hexdigest()
         candidates.append(
             _PassageCandidate(
                 document=document,
@@ -384,8 +442,11 @@ def build_employee_corpus(
 ) -> EmployeeCorpus:
     """Build a deterministic, exact-deduplicated employee passage corpus.
 
-    ``passages`` contains one canonical modeling row per normalized exact passage.
-    ``occurrences`` retains every source location and points back to its canonical passage.
+    ``passages`` contains one canonical modeling row per distinct passage text, keyed on the text
+    alone so that the same clause filed as an exhibit and reprinted inside an S-4 or proxy is
+    modelled once rather than once per rendition. ``occurrences`` retains every source location
+    and points back to its canonical passage, so deal-level attribution is unaffected by which
+    rendition was chosen to represent the group.
     """
     if context_blocks < 0:
         raise ValueError("context_blocks cannot be negative.")
@@ -422,7 +483,7 @@ def build_employee_corpus(
     passages: list[EmployeePassage] = []
     occurrences: list[PassageOccurrence] = []
     for content_sha256 in sorted(by_content):
-        group = sorted(by_content[content_sha256], key=_candidate_key)
+        group = sorted(by_content[content_sha256], key=_canonical_key)
         canonical = group[0]
         passage_id = f"passage_{content_sha256[:16]}"
         duplicate_group_id = f"duplicate_{content_sha256[:16]}"

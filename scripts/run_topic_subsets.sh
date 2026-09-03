@@ -7,19 +7,26 @@
 #
 # Every setting below matches the parent run in run_disclosure_analysis.sh, so a second-level
 # diagnostic is comparable to the first-level diagnostic of the same name.
+#
+# Paths are overridable and default to the cycle-5 directories, so a later cycle points this at
+# its own parent corpus and model without forking the script.
 set -euo pipefail
 
 PY="${PY:-.venv/Scripts/python.exe}"
 D=data/derived
-FROZEN_QUEUE="$D/disclosure_frozen_queue.csv"
-PARENT_TOPICS="$D/employee_topics_100"
-PARENT_CORPUS="$D/employee_corpus_100"
 SEED=20260823
+
+FROZEN_QUEUE="${FROZEN_QUEUE:-$D/disclosure_frozen_queue.csv}"
+PARENT_TOPICS="${TOPICS:-$D/employee_topics_100}"
+PARENT_CORPUS="${CORPUS:-$D/employee_corpus_100}"
+# Sub-corpora and sub-models are named by appending _t<n> to the parent names.
+SUB_CORPUS_PREFIX="${SUB_CORPUS_PREFIX:-$PARENT_CORPUS}"
+SUB_TOPICS_PREFIX="${SUB_TOPICS_PREFIX:-$PARENT_TOPICS}"
 
 # Theme 3 first: it is the one the advisor asked for by name.
 for t in 3 1 2; do
-  SUBCORPUS="$D/employee_corpus_100_t$t"
-  SUBTOPICS="$D/employee_topics_100_t$t"
+  SUBCORPUS="${SUB_CORPUS_PREFIX}_t$t"
+  SUBTOPICS="${SUB_TOPICS_PREFIX}_t$t"
 
   echo "== topic_$t: build the sub-corpus =="
   $PY -m tag_edgar.cli build-topic-subset-corpus \
@@ -40,14 +47,14 @@ echo "== topic_1 sensitivity: without press releases =="
 $PY -m tag_edgar.cli build-topic-subset-corpus \
   "$PARENT_TOPICS/canonical_topic_assignments.csv" "$PARENT_CORPUS" \
   --parent-topic-id topic_1 --exclude-document-type EX-99 \
-  --output-dir "$D/employee_corpus_100_t1_nopr"
+  --output-dir "${SUB_CORPUS_PREFIX}_t1_nopr"
 
 $PY -m tag_edgar.cli analyze-employee-topics "$FROZEN_QUEUE" \
-  "$D/employee_corpus_100_t1_nopr" \
-  --output-dir "$D/employee_topics_100_t1_nopr" --seed "$SEED" --k-min 3 --k-max 7 \
+  "${SUB_CORPUS_PREFIX}_t1_nopr" \
+  --output-dir "${SUB_TOPICS_PREFIX}_t1_nopr" --seed "$SEED" --k-min 3 --k-max 7 \
   --fit-balance source_family --max-fit-passages 1500
 
 echo "== write the report =="
 $PY scripts/build_second_level_report.py
 
-echo "Done. Second-level results in $D/employee_topics_100_t{3,1,2} and _t1_nopr"
+echo "Done. Second-level results in ${SUB_TOPICS_PREFIX}_t{3,1,2} and _t1_nopr"

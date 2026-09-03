@@ -120,31 +120,76 @@ they appear.
 Checking the corpus while writing this memo turned up a real defect, small in aggregate and
 concentrated in a few deals.
 
-Passages are deduplicated by `duplicate_group`, and that key does not span a deal's preliminary
-and definitive filings of the same document. So when a company files a PREM14A and then a
-DEFM14A, or an S-4 and then its S-4/A and 424B3, the same employee paragraph is admitted more
-than once for the same deal.
+> **Revised 2026-09-03, later the same day.** The first version of this section named the wrong
+> mechanism, reported the wrong count, and proposed a fix that would not have worked. It is
+> corrected below, and the corrected diagnosis is what cycle 6 acts on. The original text is in
+> the commit history. Everything in this section describes the **pre-fix** corpus that
+> `data/published/disclosure_sample_133/` was built from; the code no longer behaves this way.
 
-Across the 133 modelled deals, 13,817 included passages contain **1,166 exact-text repeats that
-survived deduplication**. Per deal:
+**What the deduplicator actually does.** The key is a SHA-256 of the passage's heading and text
+together, normalised for whitespace and Unicode form, and it is applied across every document in
+the corpus at once — not within a document family, and not within a deal. Under that key there
+are **zero** within-deal repeats. The deduplicator does exactly what it was written to do. The
+earlier claim that the key "does not span a deal's preliminary and definitive filings" was wrong.
+
+**The heading is what leaks.** A clause filed as a standalone exhibit carries its real section
+heading. The same clause reprinted inside the S-4, S-4/A, 424B3 or proxy that incorporates it
+frequently sits under a running-header artefact instead — `Table of Contents`, a page number, an
+annex letter. Same paragraph, two headings, two hashes, two modelled rows. Of the 968 excess rows
+in the 133-deal sample, **968 differ only in their heading**. There is not one case of the same
+heading appearing in two filings, which is the case the original diagnosis described.
 
 | | |
 | --- | ---: |
+| Excess rows, 133 modelled deals | **968** of 13,817 (7.0%) |
+| Excess rows, 235 retrieved deals | 1,017 of 16,079 (6.3%) |
+| Excess rows where only the heading differs | 968 of 968 (100%) |
 | Deals with no duplicated text | 97 of 133 |
 | Median per-deal duplication rate | 0.0% |
 | Mean per-deal duplication rate | 2.5% |
 | Deals above 20% | 3 |
 | Worst deal (Bally's / Bet.Works, PREM14A + DEFM14A) | 32.0% |
 
-Why it matters and how much: a deal that files the same document twice contributes its employee
-language twice, which inflates that deal's weight in its own topic shares. It affects the fitted
-model far less, because the fit universe is a bounded, balanced sample rather than the raw
-passage pool. **The three worst-affected deals should not be read at face value in
-`09_deal_profiles.csv`** until this is fixed.
+The count previously given here, 1,166, does not reproduce under any duplicate definition
+tested. **968** is the figure consistent with every per-deal statistic in the table, all of which
+were correct as published.
 
-The fix is a one-line change to the deduplication key — hash on normalised text within a deal,
-not within a document family — but it changes every downstream count, so it belongs at the start
-of the next cycle rather than as a patch to a published result.
+Why it matters and how much: a deal whose agreement is reprinted inside its own proxy contributes
+that employee language twice, which inflates that deal's weight in its own topic shares. It
+affects the fitted model far less, because the fit universe is a bounded, balanced sample rather
+than the raw passage pool. **The three worst-affected deals should not be read at face value in
+`09_deal_profiles.csv`** — Bally's / Bet.Works (32.0%, PREM14A reprinted as DEFM14A), System1 /
+Protected.Net (30.3%, mostly S-4/A), Ginkgo / Baktus (20.8%, 424B3 reprinting the S-4).
+
+**The fix originally proposed would not have fixed it.** "Hash on normalised text within a deal"
+leaves the heading inside the string being normalised, so the two renditions still hash apart. It
+removes 238 rows, 1.7%, and leaves 730 of the 968 in place. The fix that works is to drop the
+heading from the key and hash the passage text alone. Numbers are *not* normalised away in that
+key: two retention clauses differing only in a dollar amount are different provisions and must
+stay separate rows.
+
+## 5b. A second defect, found in the same check: headings are model features
+
+The heading does not only enter the deduplication key. It is prepended to the passage before
+`model_text` is built, so every heading is fed to the topic model as text. In the 133-deal
+sample:
+
+| | |
+| --- | ---: |
+| Passages whose heading is `Table of Contents` | 2,254 of 13,817 (16.3%) |
+| Passages with a structural heading of any kind | 2,831 (20.5%) |
+| Passages with no heading at all | 439 (3.2%) |
+| Heading tokens fed to the model | 54,584 of 1,626,898 (3.4%) |
+| Of those, structural furniture | 7,827 |
+
+This was not noticed before because a heading looks like content. It is a smaller distortion than
+the duplication — 0.5% of the modelled token stream is furniture — but it is the same root cause,
+and repairing one without the other would have meant refitting twice.
+
+Both are fixed together in cycle 6: structural headings are suppressed before the text reaches
+the model, real section headings are kept as features, and the surviving row of a duplicate group
+is chosen to be the one carrying a real heading rather than the artefact, so it can still be
+found in its filing.
 
 ## 6. What this memo does not establish
 
