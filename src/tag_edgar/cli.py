@@ -54,6 +54,7 @@ from .sec_client import SecClient
 from .settings import PROJECT_ROOT, load_settings
 from .storage import write_csv, write_dict_csv
 from .technology import load_technology_screen
+from .topic_subset import build_topic_subset_corpus
 from .validation_sample import build_validation_preflight, write_validation_preflight
 from .windows import event_window
 
@@ -1115,6 +1116,57 @@ def label_deal_ai_command(
     for label, count in sorted(counts.items()):
         typer.echo(f"{label}: {count}")
     typer.echo(f"Wrote {output_dir}")
+
+
+@app.command("build-topic-subset-corpus")
+def build_topic_subset_corpus_command(
+    assignments_csv: Path = typer.Argument(
+        ...,
+        exists=True,
+        readable=True,
+        help="canonical_topic_assignments.csv from the parent analyze-employee-topics run.",
+    ),
+    corpus_dir: Path = typer.Argument(
+        ..., exists=True, file_okay=False, help="Corpus the parent model was fitted on."
+    ),
+    parent_topic_id: str = typer.Option(..., help="Parent topic to open up, e.g. topic_3."),
+    output_dir: Path = typer.Option(
+        PROJECT_ROOT / "data" / "derived" / "employee_corpus_subset",
+        help="Corpus directory to write. Feed it straight to analyze-employee-topics.",
+    ),
+    exclude_document_type: list[str] = typer.Option(
+        [],
+        help="Drop passages whose document type starts with this, e.g. EX-99 for press "
+        "releases. Repeatable. Use it for 'does the theme survive without X' checks.",
+    ),
+) -> None:
+    """Restrict a corpus to one topic's primary passages so the topic can be modelled again.
+
+    A first-level theme is a broad class. This cuts the corpus down to the passages that theme
+    best explains, so the same fitting pipeline -- with the same stability and sensitivity
+    diagnostics -- can describe how the theme divides internally.
+    """
+    result = build_topic_subset_corpus(
+        assignments_csv,
+        corpus_dir,
+        output_dir,
+        parent_topic_id=parent_topic_id,
+        parent_topics_dir=assignments_csv.parent,
+        exclude_document_type_prefixes=tuple(exclude_document_type),
+    )
+    typer.echo(f"Parent topic: {result.parent_topic_id}")
+    typer.echo(f"Passages: {result.passage_count} of {result.parent_passage_count} "
+               f"({result.share_of_parent:.1%} of the parent corpus)")
+    if result.excluded_document_types:
+        typer.echo(
+            f"Excluded by document type {'|'.join(result.excluded_document_types)}: "
+            f"{result.excluded_document_type_count}"
+        )
+    typer.echo(f"Source occurrences: {result.source_occurrence_count}")
+    typer.echo(f"Deals represented: {result.deal_count}")
+    for document_type, count in list(result.document_type_counts.items())[:5]:
+        typer.echo(f"  {document_type}: {count}")
+    typer.echo(f"Wrote {result.output_dir}")
 
 
 if __name__ == "__main__":

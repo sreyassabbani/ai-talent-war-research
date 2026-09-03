@@ -59,6 +59,32 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+#: Written by this script itself, so not companions.
+_SELF_WRITTEN = frozenset({"README.md", "snapshot_manifest.json"})
+
+COMPANION_SCRIPTS = (
+    ("08_passage_links*", "scripts/publish_passage_links.py", "passage text with SEC deep links"),
+    ("09_deal_profiles*", "scripts/build_deal_profiles.py", "one row per modelled deal"),
+)
+
+
+def _companions(target: Path, published: set[str]) -> list[tuple[str, int]]:
+    """Files in the directory this script did not write.
+
+    The README is regenerated on every publish. Without this, a re-publish would silently drop
+    every mention of the tables the sibling scripts wrote, and a reader would conclude they
+    were withdrawn rather than simply written by a different command.
+    """
+    if not target.exists():
+        return []
+    extra = [
+        path
+        for path in sorted(target.iterdir())
+        if path.is_file() and path.name not in published and path.name not in _SELF_WRITTEN
+    ]
+    return [(path.name, path.stat().st_size) for path in extra]
+
+
 def readme(published: list[tuple[str, int, str]], target: Path) -> str:
     lines = [
         "# Disclosure-first sample: published result tables",
@@ -77,10 +103,25 @@ def readme(published: list[tuple[str, int, str]], target: Path) -> str:
     ]
     for name, size, digest in published:
         lines.append(f"| `{name}` | {size // 1024} KB | `{digest[:16]}` |")
+    companions = _companions(target, {name for name, _, _ in published})
+    if companions:
+        lines += [
+            "",
+            "Written by the sibling scripts rather than by this one:",
+            "",
+            "| File | Size |",
+            "| --- | ---: |",
+        ]
+        for name, size in companions:
+            lines.append(f"| `{name}` | {size // 1024} KB |")
+        lines += ["", "Rebuild them with:", ""]
+        for pattern, script, purpose in COMPANION_SCRIPTS:
+            lines.append(f"- `python {script}` — {pattern}, {purpose}.")
+
     lines += [
         "",
         "The numbered prefixes follow the pipeline: pool, probe, corpus, frozen sample, AI",
-        "labels, topic model, tone.",
+        "labels, topic model, tone, passage links, deal profiles.",
         "",
         "## What is not here, and why",
         "",
@@ -104,7 +145,9 @@ def readme(published: list[tuple[str, int, str]], target: Path) -> str:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").strip())
     parser.add_argument(
-        "--output-dir", type=Path, default=PROJECT_ROOT / "data" / "published" / "disclosure_sample_133"
+        "--output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "data" / "published" / "disclosure_sample_133",
     )
     args = parser.parse_args(argv[1:])
 
