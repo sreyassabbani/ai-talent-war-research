@@ -48,6 +48,51 @@ READINGS_PATH = PROJECT_ROOT / "docs" / "second_level_readings.json"
 #: Longest exemplar quote to print. Long enough to show the provision, short enough to read.
 EXEMPLAR_CHARS = 320
 
+#: Written after all three splits were in hand. Interpretation, not output: it is kept here rather
+#: than generated so it is reviewable as a claim, and it is printed only when all three sub-models
+#: exist, because it is a statement about the pattern across them.
+SYNTHESIS = [
+    "## What the three splits have in common",
+    "",
+    (
+        "Read the nine sub-themes together and one pattern runs through all three parents: "
+        "**what survives the stability test is the language that is templated across deals, and "
+        "what fails is the language that varies with the particular workforce.**"
+    ),
+    "",
+    (
+        "The three most stable sub-themes are ERISA and pension definitions (99.5%), award "
+        "treatment at the effective time (98.3%), and executive roles and board governance "
+        "(93.8%). All three are near-boilerplate: the same statutory definitions, the same "
+        '"immediately prior to the Effective Time" construction, the same governance clauses, '
+        "deal after deal."
+    ),
+    "",
+    (
+        "The three least stable are collective bargaining and works councils (56.4%), "
+        "continuing-employee benefit continuity (75.3%), and closing payment mechanics (77.0%). "
+        "These are the passages whose content depends on who the workforce actually is -- whether "
+        "it is unionised, what plans it moves onto, what it gets paid at closing."
+    ),
+    "",
+    (
+        "**This matters for how the numbers are read.** A high recovery rate here means a phrase "
+        "recurs across deals, not that the provision is important, common, or generous. The "
+        "sub-theme that speaks most directly to the question Dr. Singh raised about benefits "
+        "after an acquisition -- continuing-employee benefit continuity -- is one of the least "
+        "stable, and that is a fact about how much benefit terms vary between deals, not "
+        "evidence that they matter less."
+    ),
+    "",
+    (
+        "It also means leave-one-deal-out stability is the wrong instrument for finding the "
+        "provisions that distinguish deals from one another. It rewards sameness by "
+        "construction. A measure of *variation* across deals would be a better next step than a "
+        "third level of clustering."
+    ),
+    "",
+]
+
 
 def _read(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as file:
@@ -254,6 +299,9 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
                 ),
             ]
         lines.append("")
+
+    if all(models.get(key) is not None for key in PARENT_THEMES):
+        lines += SYNTHESIS
 
     lines += [
         "## What this does not establish",

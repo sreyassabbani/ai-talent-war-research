@@ -82,7 +82,49 @@ Across the 133 deals this theme reaches, the largest sub-theme share in a deal i
 
 ## Benefit plans and retirement (`topic_2`)
 
-Not yet fitted. Run `bash scripts/run_topic_subsets.sh`.
+In the parent model this theme covers **5762 passages** (35.8% of the modelled corpus), and Dr. Singh read it as the language aimed at **rank-and-file workers**.
+
+Modelling those passages alone produced **3 sub-themes**:
+
+| Sub-theme | Passages | Defining terms | Coherence | Stability | Survives? |
+| --- | ---: | --- | ---: | ---: | --- |
+| `topic_1` | 2852 | employment, payment, tax, forth, taxes, employee, except, act | 0.090 | 89.6% | yes |
+| `topic_2` | 2013 | plan, employee, benefit, continuing, plans, benefits, continuing employee, time | 0.156 | 75.3% | **no** |
+| `topic_3` | 897 | erisa, plan, pension, benefit, benefit plan, code, erisa affiliate, multiemployer | 0.344 | 99.5% | yes |
+
+**`topic_1` — Employment-law representations and warranties.** What the target promises is true about its employment position: CARES Act payroll-tax relief, labour-law registrations and permits, absence of pending employment claims, strikes and unfair-labour-practice charges. These are compliance representations to the buyer, not commitments to employees.
+
+> (i) CARES Act . Other than as set forth in Section 2.16(i) of the Company Disclosure Letter, the Company has not sought any relief under, or taken any action in respect of, any provision of the CARES Act related to Taxes (including, but not limited to, the delaying of any payments in respect of payroll Taxes under Sec…
+
+> — EX-2.1, filed text
+
+**`topic_2` — Continuing-employee benefit continuity.** The actual post-closing promise to employees: waiving pre-existing condition exclusions, waiting periods and evidence-of-good-health requirements when continuing employees move onto the buyer's health and welfare plans. This is the sub-theme that answers the question Dr. Singh raised about what happens to benefits after an acquisition, and it is the one that fails the stability bar.
+
+> (a) waive all limitations as to pre-existing conditions, exclusions, active employment requirements, waiting periods and requirements to show evidence of good health with respect to participation and coverage requirements applicable to the Continuing Employees (and their eligible dependents) under any health and welfa…
+
+> — EX-2.1, filed text
+
+**`topic_3` — ERISA and pension definitions.** Statutory definitions and the representations built on them: Title IV plans, multiemployer plans, ERISA affiliates, and whether the target has ever maintained or contributed to a pension plan. This is near-identical statutory language deal after deal, which is why it is the most stable sub-theme in the study at 99.5%. Explicit negative representations make up about 29% of it, close enough to its sibling sub-themes that it is not distinctively a set of denials.
+
+> (d) No Pension Plan . None of the Company nor any ERISA Affiliate has ever maintained, established, sponsored, participated in, or contributed to, any Pension Plan subject to Part 3 of Subtitle B of Title I of ERISA, Title IV of ERISA or Section 412 of the Code.
+
+> — EX-2.1, filed text
+
+Across the 133 deals this theme reaches, the largest sub-theme share in a deal is **53% at the median**, and **77 of 133 deals** have one sub-theme above half their weight within the theme.
+
+**1 of 3 sub-themes fail the 80% stability bar** (`topic_2`). They are reported because suppressing them would make the split look cleaner than it is, not because they are ready to carry an argument.
+
+## What the three splits have in common
+
+Read the nine sub-themes together and one pattern runs through all three parents: **what survives the stability test is the language that is templated across deals, and what fails is the language that varies with the particular workforce.**
+
+The three most stable sub-themes are ERISA and pension definitions (99.5%), award treatment at the effective time (98.3%), and executive roles and board governance (93.8%). All three are near-boilerplate: the same statutory definitions, the same "immediately prior to the Effective Time" construction, the same governance clauses, deal after deal.
+
+The three least stable are collective bargaining and works councils (56.4%), continuing-employee benefit continuity (75.3%), and closing payment mechanics (77.0%). These are the passages whose content depends on who the workforce actually is -- whether it is unionised, what plans it moves onto, what it gets paid at closing.
+
+**This matters for how the numbers are read.** A high recovery rate here means a phrase recurs across deals, not that the provision is important, common, or generous. The sub-theme that speaks most directly to the question Dr. Singh raised about benefits after an acquisition -- continuing-employee benefit continuity -- is one of the least stable, and that is a fact about how much benefit terms vary between deals, not evidence that they matter less.
+
+It also means leave-one-deal-out stability is the wrong instrument for finding the provisions that distinguish deals from one another. It rewards sameness by construction. A measure of *variation* across deals would be a better next step than a third level of clustering.
 
 ## What this does not establish
 

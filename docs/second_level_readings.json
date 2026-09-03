@@ -26,6 +26,23 @@
       "exemplar_passage_id": "passage_5a053b53fca8214a"
     }
   },
+  "topic_2": {
+    "topic_1": {
+      "label": "Employment-law representations and warranties",
+      "reading": "What the target promises is true about its employment position: CARES Act payroll-tax relief, labour-law registrations and permits, absence of pending employment claims, strikes and unfair-labour-practice charges. These are compliance representations to the buyer, not commitments to employees.",
+      "exemplar_passage_id": "passage_fa6237da38d1fd35"
+    },
+    "topic_2": {
+      "label": "Continuing-employee benefit continuity",
+      "reading": "The actual post-closing promise to employees: waiving pre-existing condition exclusions, waiting periods and evidence-of-good-health requirements when continuing employees move onto the buyer's health and welfare plans. This is the sub-theme that answers the question Dr. Singh raised about what happens to benefits after an acquisition, and it is the one that fails the stability bar.",
+      "exemplar_passage_id": "passage_c257b3e9322871a5"
+    },
+    "topic_3": {
+      "label": "ERISA and pension definitions",
+      "reading": "Statutory definitions and the representations built on them: Title IV plans, multiemployer plans, ERISA affiliates, and whether the target has ever maintained or contributed to a pension plan. This is near-identical statutory language deal after deal, which is why it is the most stable sub-theme in the study at 99.5%. Explicit negative representations make up about 29% of it, close enough to its sibling sub-themes that it is not distinctively a set of denials.",
+      "exemplar_passage_id": "passage_c841c36eaaade3ac"
+    }
+  },
   "topic_3": {
     "topic_1": {
       "label": "Closing payment mechanics",
