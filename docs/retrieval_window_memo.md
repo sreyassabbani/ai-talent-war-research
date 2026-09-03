@@ -115,6 +115,37 @@ passages across 100 deals, right?" and the answer given was yes. The accurate an
 the first is the frozen sample, the second is the fit universe. They should be labelled wherever
 they appear.
 
+## 5a. A duplication the deduplicator does not catch
+
+Checking the corpus while writing this memo turned up a real defect, small in aggregate and
+concentrated in a few deals.
+
+Passages are deduplicated by `duplicate_group`, and that key does not span a deal's preliminary
+and definitive filings of the same document. So when a company files a PREM14A and then a
+DEFM14A, or an S-4 and then its S-4/A and 424B3, the same employee paragraph is admitted more
+than once for the same deal.
+
+Across the 133 modelled deals, 13,817 included passages contain **1,166 exact-text repeats that
+survived deduplication**. Per deal:
+
+| | |
+| --- | ---: |
+| Deals with no duplicated text | 97 of 133 |
+| Median per-deal duplication rate | 0.0% |
+| Mean per-deal duplication rate | 2.5% |
+| Deals above 20% | 3 |
+| Worst deal (Bally's / Bet.Works, PREM14A + DEFM14A) | 32.0% |
+
+Why it matters and how much: a deal that files the same document twice contributes its employee
+language twice, which inflates that deal's weight in its own topic shares. It affects the fitted
+model far less, because the fit universe is a bounded, balanced sample rather than the raw
+passage pool. **The three worst-affected deals should not be read at face value in
+`09_deal_profiles.csv`** until this is fixed.
+
+The fix is a one-line change to the deduplication key — hash on normalised text within a deal,
+not within a document family — but it changes every downstream count, so it belongs at the start
+of the next cycle rather than as a patch to a published result.
+
 ## 6. What this memo does not establish
 
 - That the window is the *right* window. It is a defensible and now fully documented choice; a

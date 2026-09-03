@@ -40,6 +40,14 @@ PARENT_THEMES = {
 #: Reported first, because it is the one the advisor asked for by name.
 REPORT_ORDER = ("topic_3", "topic_1", "topic_2")
 
+#: Verified plain-English readings, keyed parent -> sub-theme. Written by reading passages, not
+#: inferred from term lists, and kept out of this file so the interpretation is reviewable on its
+#: own. Exemplar text is pulled from the corpus at render time and never transcribed by hand.
+READINGS_PATH = PROJECT_ROOT / "docs" / "second_level_readings.json"
+
+#: Longest exemplar quote to print. Long enough to show the provision, short enough to read.
+EXEMPLAR_CHARS = 320
+
 
 def _read(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as file:
@@ -65,6 +73,24 @@ def _terms(raw: str, limit: int = 8) -> str:
     return ", ".join(part for part in raw.split("|")[:limit] if part)
 
 
+def _load_readings() -> dict[str, dict[str, dict[str, str]]]:
+    if not READINGS_PATH.exists():
+        return {}
+    raw = json.loads(READINGS_PATH.read_text(encoding="utf-8"))
+    return {key: value for key, value in raw.items() if not key.startswith("_")}
+
+
+def _corpus_text(corpus_dir: Path) -> dict[str, tuple[str, str]]:
+    """Passage id -> (document type, collapsed text) for pulling exemplar quotes."""
+    path = corpus_dir / "passages.csv"
+    if not path.exists():
+        return {}
+    return {
+        row["passage_id"]: (row.get("document_type", ""), " ".join((row.get("text") or "").split()))
+        for row in _read(path)
+    }
+
+
 def load_submodel(topics_dir: Path, corpus_dir: Path) -> dict[str, object] | None:
     summary_path = topics_dir / "topic_summary.csv"
     if not summary_path.exists():
@@ -72,6 +98,7 @@ def load_submodel(topics_dir: Path, corpus_dir: Path) -> dict[str, object] | Non
     subset_manifest_path = corpus_dir / "subset_manifest.json"
     manifest_path = topics_dir / "analysis_manifest.json"
     return {
+        "corpus_text": _corpus_text(corpus_dir),
         "topics": _read(summary_path),
         "diagnostics": _read(topics_dir / "model_diagnostics.csv")
         if (topics_dir / "model_diagnostics.csv").exists()
@@ -125,6 +152,12 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
         ),
         "",
         (
+            "Each sub-theme carries a plain-English **reading**, written after reading its passages "
+            "rather than inferred from its term list. A reading is our interpretation. The quote "
+            "beneath it is the filing's own words, pulled from the corpus at render time."
+        ),
+        "",
+        (
             "**Read the stability column before the terms.** A sub-theme whose recovery rate is below "
             f"{STABILITY_BAR:.0%} did not survive the leave-one-deal-out test, and its terms are a "
             "description of this particular corpus rather than a finding that would reappear."
@@ -173,6 +206,23 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
                 f"{_terms(row.get('top_terms', ''))} | "
                 f"{_fixed(_number(row.get('coherence', '')))} | {_pct(recovery)} | {survives} |"
             )
+
+        readings = _load_readings().get(parent_id, {})
+        corpus_text = model["corpus_text"] if isinstance(model["corpus_text"], dict) else {}
+        for row in topics:
+            reading = readings.get(row["topic_id"])
+            if not reading:
+                continue
+            lines += ["", f"**`{row['topic_id']}` — {reading['label']}.** {reading['reading']}"]
+            exemplar = corpus_text.get(reading.get("exemplar_passage_id", ""))
+            if exemplar:
+                document_type, text = exemplar
+                clipped = (
+                    text[: EXEMPLAR_CHARS - 1].rstrip() + "…"
+                    if len(text) > EXEMPLAR_CHARS
+                    else text
+                )
+                lines += ["", f"> {clipped}", "", f"> — {document_type}, filed text"]
 
         covered, dominant, median_top = _deal_spread(deal_topics)
         if covered:

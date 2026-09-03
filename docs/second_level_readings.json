@@ -1,0 +1,29 @@
+{
+  "_note": [
+    "Plain-English readings of the second-level sub-themes, written after reading representative",
+    "passages rather than inferred from the term lists. Each entry names an exemplar by passage_id;",
+    "scripts/build_second_level_report.py pulls that passage's text out of the corpus at render time,",
+    "so no quote in the report is ever hand-transcribed. A reading is our interpretation and is",
+    "labelled as such; the quote beneath it is the filing's own words.",
+    "",
+    "Sub-theme ids are local to their parent model. topic_1 here means the first sub-theme of the",
+    "named parent, not the parent model's topic_1."
+  ],
+  "topic_3": {
+    "topic_1": {
+      "label": "Closing payment mechanics",
+      "reading": "Purchase-price definitions, escrow releases, flow-of-funds memoranda, and closing bonus and unit-appreciation payments routed through payroll. Much of this is transaction-consideration language that mentions employees rather than employee-terms language, which is why it is the least coherent of the three and the only one to fail the stability bar.",
+      "exemplar_passage_id": "passage_d7341564123e0f0f"
+    },
+    "topic_2": {
+      "label": "Standing equity plans and new grants",
+      "reading": "The equity programme as it already exists: the incentive plan, grants made to named executives, unit counts and vesting schedules. It describes the plan rather than what the acquisition does to it.",
+      "exemplar_passage_id": "passage_d3feec653049d945"
+    },
+    "topic_3": {
+      "label": "Award treatment at the effective time",
+      "reading": "What happens to each option and RSU at closing: assumed, converted into an acquirer award, accelerated, or cancelled for no consideration. This is the sub-theme closest to the research question, and it is both the most coherent and the most stable of the three.",
+      "exemplar_passage_id": "passage_107955b932b4298d"
+    }
+  }
+}
