@@ -21,6 +21,7 @@ Part 7.
 | What is inside each of the three themes? | [docs/second_level_topics.md](docs/second_level_topics.md) |
 | Why 133 deals and not 100 AI deals? | [docs/meeting_briefing_plain_english.md](docs/meeting_briefing_plain_english.md) § Parts 2–4 |
 | What can we *not* claim? | [docs/meeting_briefing_plain_english.md](docs/meeting_briefing_plain_english.md) § Part 10 |
+| **Is anything counted twice?** | [docs/retrieval_window_memo.md](docs/retrieval_window_memo.md) §§ 5a–5b — yes, 7.0%, and why |
 | What kind of deal was each pilot deal? | [docs/deal_architecture_codebook.md](docs/deal_architecture_codebook.md) |
 
 ## The published tables
@@ -77,4 +78,11 @@ These hold for every file above and do not go away when a number looks strong.
 - The **150-passage relevance audit has not been read by a human**. The packet is prepared at
   `data/derived/corpus_relevance_audit_133/assessor_packet.csv`. Until two reviewers score it,
   nothing here is a validated finding.
+- **Some passages are counted twice.** In the corpus these tables were built from, a clause filed
+  as an exhibit and reprinted inside the S-4 or proxy that carries it was modelled once per
+  rendition whenever the two disagreed about its heading — 968 rows, 7.0% of the sample. Three
+  deals are affected badly enough that their rows in `09_deal_profiles.csv` should not be read at
+  face value: Bally's / Bet.Works (32.0%), System1 / Protected.Net (30.3%), Ginkgo / Baktus
+  (20.8%). Fixed in the code, not yet in these tables — see
+  [docs/retrieval_window_memo.md](docs/retrieval_window_memo.md) §§ 5a–5b.
 - Second-level themes inherit every one of these limits from their parent.
