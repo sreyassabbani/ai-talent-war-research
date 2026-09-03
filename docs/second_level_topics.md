@@ -114,6 +114,27 @@ Across the 133 deals this theme reaches, the largest sub-theme share in a deal i
 
 **1 of 3 sub-themes fail the 80% stability bar** (`topic_2`). They are reported because suppressing them would make the split look cleaner than it is, not because they are ready to carry an argument.
 
+## Sensitivity: Theme 1 without press releases
+
+Theme 1 mixes merger-agreement text with 622 EX-99 press-release passages. Refitting it with those dropped tests whether it is one theme or two document registers sharing a bucket.
+
+| | Sub-theme (top terms) | Passages | Coherence | Stability |
+| --- | --- | ---: | ---: | ---: |
+| with EX-99 | `topic_1` expenses, costs, tax | 2068 | 0.256 | 79.7% |
+| with EX-99 | `topic_2` executive, officer, directors | 3159 | 0.316 | 93.8% |
+| with EX-99 | `topic_3` labor, union, bargaining | 514 | 0.628 | 56.4% |
+| without EX-99 | `topic_1` executive, directors, employment | 3362 | 0.133 | 95.5% |
+| without EX-99 | `topic_2` taxes, tax, expenses | 1188 | 0.366 | 86.9% |
+| without EX-99 | `topic_3` labor, union, bargaining | 569 | 0.666 | 80.7% |
+
+**The same three groups come back, and all of them get more stable.** 1 of 3 sub-themes clear the 80% bar with press releases in; 3 of 3 clear it with them out. The labour-relations group moves from 56.4% to 80.7% and crosses the bar; the tax and cost group moves from 79.7% to 86.9%.
+
+Coherence does not move the same way, and the report should not pretend it does. The executive group absorbs the passages the other two shed, growing from 3,159 to 3,362 passages, and its coherence falls from 0.316 to 0.133 as it widens. The two smaller groups get both more stable and more coherent. So the corpus change sharpens the boundaries between sub-themes while making the largest one broader.
+
+So the answer is that press releases were not creating a spurious theme -- they were destabilising real ones. A press release restates deal facts in language that resembles every part of the theme at once, which blurs the boundaries between sub-themes without forming one of its own.
+
+**Recommendation:** exclude EX-99 from the modelled corpus, or model announcements separately from contract text. This is a corpus decision, not a tuning knob, so it belongs at the start of the next cycle alongside the deduplication fix.
+
 ## What the three splits have in common
 
 Read the nine sub-themes together and one pattern runs through all three parents: **what survives the stability test is the language that is templated across deals, and what fails is the language that varies with the particular workforce.**

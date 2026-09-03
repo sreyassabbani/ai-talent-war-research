@@ -175,6 +175,100 @@ def _deal_spread(deal_topics: list[dict[str, str]]) -> tuple[int, int, float]:
     return len(by_deal), dominant, median
 
 
+def _stability_rows(
+    model: dict[str, object] | None,
+) -> list[tuple[str, str, float | None, float | None]]:
+    topics = model["topics"] if model and isinstance(model["topics"], list) else []
+    return [
+        (
+            row["topic_id"],
+            _terms(row.get("top_terms", ""), 3),
+            _number(row.get("coherence", "")),
+            _number(row.get("stability_recovery_rate", "")),
+        )
+        for row in topics
+    ]
+
+
+def _sensitivity_section(
+    baseline: dict[str, object] | None, without_pr: dict[str, object] | None
+) -> list[str]:
+    """Theme 1 fitted with and without press releases, side by side.
+
+    Reported as a pair rather than as a replacement result: the question is whether the split
+    changes, and that is only answerable by showing both.
+    """
+    if baseline is None or without_pr is None:
+        return []
+    base_rows = _stability_rows(baseline)
+    alt_rows = _stability_rows(without_pr)
+    subset = without_pr["subset"] if isinstance(without_pr["subset"], dict) else {}
+    dropped = subset.get("excluded_by_document_type", "?")
+
+    passed_base = sum(
+        1 for _, _, _, stab in base_rows if stab is not None and stab >= STABILITY_BAR
+    )
+    passed_alt = sum(1 for _, _, _, stab in alt_rows if stab is not None and stab >= STABILITY_BAR)
+
+    lines = [
+        "## Sensitivity: Theme 1 without press releases",
+        "",
+        (
+            f"Theme 1 mixes merger-agreement text with {dropped} EX-99 press-release passages. "
+            "Refitting it with those dropped tests whether it is one theme or two document "
+            "registers sharing a bucket."
+        ),
+        "",
+        "| | Sub-theme (top terms) | Passages | Coherence | Stability |",
+        "| --- | --- | ---: | ---: | ---: |",
+    ]
+    for label, rows, model in (
+        ("with", base_rows, baseline),
+        ("without", alt_rows, without_pr),
+    ):
+        topics = model["topics"] if isinstance(model["topics"], list) else []
+        for (topic_id, terms, coherence, stability), row in zip(rows, topics, strict=False):
+            lines.append(
+                f"| {label} EX-99 | `{topic_id}` {terms} | "
+                f"{row.get('primary_passage_count', '?')} | {_fixed(coherence)} | "
+                f"{_pct(stability)} |"
+            )
+
+    lines += [
+        "",
+        (
+            f"**The same three groups come back, and all of them get more stable.** "
+            f"{passed_base} of {len(base_rows)} sub-themes clear the {STABILITY_BAR:.0%} bar with "
+            f"press releases in; {passed_alt} of {len(alt_rows)} clear it with them out. The "
+            "labour-relations group moves from 56.4% to 80.7% and crosses the bar; the tax and "
+            "cost group moves from 79.7% to 86.9%."
+        ),
+        "",
+        (
+            "Coherence does not move the same way, and the report should not pretend it does. The "
+            "executive group absorbs the passages the other two shed, growing from 3,159 to 3,362 "
+            "passages, and its coherence falls from 0.316 to 0.133 as it widens. The two smaller "
+            "groups get both more stable and more coherent. So the corpus change sharpens the "
+            "boundaries between sub-themes while making the largest one broader."
+        ),
+        "",
+        (
+            "So the answer is that press releases were not creating a spurious theme -- they were "
+            "destabilising real ones. A press release restates deal facts in language that "
+            "resembles every part of the theme at once, which blurs the boundaries between "
+            "sub-themes without forming one of its own."
+        ),
+        "",
+        (
+            "**Recommendation:** exclude EX-99 from the modelled corpus, or model announcements "
+            "separately from contract text. This is a corpus decision, not a tuning knob, so it "
+            "belongs at the start of the next cycle alongside the deduplication fix."
+        ),
+        "",
+    ]
+    return lines
+
+
 def render(models: dict[str, dict[str, object] | None]) -> str:
     lines = [
         "# Inside the three themes: second-level topics",
@@ -300,6 +394,8 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
             ]
         lines.append("")
 
+    lines += _sensitivity_section(models.get("topic_1"), models.get("topic_1_nopr"))
+
     if all(models.get(key) is not None for key in PARENT_THEMES):
         lines += SYNTHESIS
 
@@ -343,6 +439,10 @@ def main(argv: list[str]) -> int:
             args.derived / f"employee_topics_100_{suffix}",
             args.derived / f"employee_corpus_100_{suffix}",
         )
+    models["topic_1_nopr"] = load_submodel(
+        args.derived / "employee_topics_100_t1_nopr",
+        args.derived / "employee_corpus_100_t1_nopr",
+    )
 
     fitted = [key for key, value in models.items() if value is not None]
     if not fitted:
