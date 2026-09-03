@@ -62,7 +62,9 @@ def _number(value: str) -> float | None:
 
 
 def _pct(value: float | None) -> str:
-    return "not reported" if value is None else f"{value:.0%}"
+    # One decimal, because the bar sits at 80% and a recovery rate of 0.797 rendered as "80%"
+    # next to a "no" verdict reads as a contradiction rather than a near miss.
+    return "not reported" if value is None else f"{value:.1%}"
 
 
 def _fixed(value: float | None) -> str:

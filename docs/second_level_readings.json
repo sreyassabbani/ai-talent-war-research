@@ -9,6 +9,23 @@
     "Sub-theme ids are local to their parent model. topic_1 here means the first sub-theme of the",
     "named parent, not the parent model's topic_1."
   ],
+  "topic_1": {
+    "topic_1": {
+      "label": "Tax definitions and cost accounting",
+      "reading": "Tax definition clauses and cost-of-sales discussion. It is drawn in by words like payroll, severance and withholding, but most of it is not employee-terms language at all. It fails the stability bar, and it is the clearest sign that parent Theme 1 was carrying material that does not belong to it.",
+      "exemplar_passage_id": "passage_772ae2965ab3d789"
+    },
+    "topic_2": {
+      "label": "Executive roles and board governance",
+      "reading": "Who holds which office and how the board is composed: chief executive succession, chairman restrictions, voting agreements over board seats. This is corporate governance around named executives rather than the terms of their employment, and it is the largest and most stable part of the theme.",
+      "exemplar_passage_id": "passage_d37696e70fb5e05f"
+    },
+    "topic_3": {
+      "label": "Collective bargaining and works councils",
+      "reading": "Labour-relations representations in merger agreements: whether the target is party to a collective bargaining agreement, whether a works council represents its employees, whether a representation campaign is under way. The most coherent sub-theme anywhere in this study, and conceptually nothing to do with executives. It fails the stability bar because it is small and concentrated in the deals that happen to have unionised or European workforces.",
+      "exemplar_passage_id": "passage_5a053b53fca8214a"
+    }
+  },
   "topic_3": {
     "topic_1": {
       "label": "Closing payment mechanics",
