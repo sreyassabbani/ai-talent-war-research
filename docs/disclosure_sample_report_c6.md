@@ -150,6 +150,13 @@ then projected onto every passage in the corpus, including deals that fell below
 gate, which is why a component's passage count spans more deals than the sample itself.
 The deal counts below are for the frozen sample.
 
+Three populations appear in this report and they are not interchangeable. The **frozen
+sample** is the 134 deals selected for modelling, and it is the denominator for
+every deal count. The **corpus** is every included passage from every retrieved deal, which
+is larger because it keeps deals that fell below the yield gate. The **fit universe** is the
+bounded, balanced subset of passages the components are actually estimated from, which is
+smaller than either. A count is only comparable to another count drawn from the same one.
+
 ### Executive and officer language
 
 **Defining words:** executive, chief, officer, executive officer, chief executive, said, customers, continue, board, growth
@@ -262,7 +269,7 @@ finding that the target does no AI work.
 
 ## 7. Does the result depend on how we built it?
 
-The bounded fit sample can be spread evenly across deals, across document families, or
+The bounded fit universe can be spread evenly across deals, across document families, or
 not balanced at all. The primary setting was fixed before this run. Re-fitting under the
 other two is the check that the components are a property of the text rather than of that
 choice.

@@ -229,6 +229,13 @@ def clusters_section(
         "gate, which is why a component's passage count spans more deals than the sample itself.",
         "The deal counts below are for the frozen sample.",
         "",
+        "Three populations appear in this report and they are not interchangeable. The **frozen",
+        f"sample** is the {sample_deals} deals selected for modelling, and it is the denominator for",
+        "every deal count. The **corpus** is every included passage from every retrieved deal, which",
+        "is larger because it keeps deals that fell below the yield gate. The **fit universe** is the",
+        "bounded, balanced subset of passages the components are actually estimated from, which is",
+        "smaller than either. A count is only comparable to another count drawn from the same one.",
+        "",
     ]
     best: dict[str, list[dict[str, str]]] = {}
     for row in assignments:
@@ -440,14 +447,14 @@ def ai_section(labels: list[dict[str, str]], sample_deals: int) -> str:
 
 
 def sensitivity_section(variants: list[tuple[str, list[dict[str, str]]]]) -> str:
-    """Show whether the components survive changing how the fit sample is balanced."""
+    """Show whether the components survive changing how the fit universe is balanced."""
     usable = [(name, rows) for name, rows in variants if rows]
     if len(usable) < 2:
         return ""
     lines = [
         "## 7. Does the result depend on how we built it?",
         "",
-        "The bounded fit sample can be spread evenly across deals, across document families, or",
+        "The bounded fit universe can be spread evenly across deals, across document families, or",
         "not balanced at all. The primary setting was fixed before this run. Re-fitting under the",
         "other two is the check that the components are a property of the text rather than of that",
         "choice.",
