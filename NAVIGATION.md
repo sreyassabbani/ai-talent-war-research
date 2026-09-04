@@ -85,4 +85,11 @@ These hold for every file above and do not go away when a number looks strong.
   face value: Bally's / Bet.Works (32.0%), System1 / Protected.Net (30.3%), Ginkgo / Baktus
   (20.8%). Fixed in the code, not yet in these tables — see
   [docs/retrieval_window_memo.md](docs/retrieval_window_memo.md) §§ 5a–5b.
+- **And 6,855 passages were wrongly thrown away.** The relevance screen discarded anything whose
+  text contained "table of contents" — and the page's running header was part of that text, so
+  real provisions printed beneath it were dropped as index entries. Rebuilding without the header
+  readmits **1,266 passage texts**: indemnification survival, RSU award schedules, vesting terms,
+  double-trigger benefit continuation. The published tables were built without them. This is the
+  largest of the three defects and the one most likely to change a reading — see
+  [docs/retrieval_window_memo.md](docs/retrieval_window_memo.md) § 5c.
 - Second-level themes inherit every one of these limits from their parent.

@@ -191,6 +191,59 @@ the model, real section headings are kept as features, and the surviving row of 
 is chosen to be the one carrying a real heading rather than the artefact, so it can still be
 found in its filing.
 
+## 5c. The consequence nobody predicted: the relevance screen was reading the heading too
+
+Rebuilding the corpus with the fix produced a result that a fix which only merges rows cannot
+produce — **the corpus grew.** Chasing that down found the largest of the three defects, and it
+is the one that most affects what the study is actually about.
+
+Section 4 of this memo describes a second relevance filter that runs after the window. One of its
+rules discards a passage as a navigation fragment when the phrase "table of contents" appears in
+the modelled text. Because the heading was prepended before the modelled text was built, that
+rule was reading the running header. **Every real provision printed on a page whose header said
+"Table of Contents" was being discarded as an index entry.**
+
+| | before | after |
+| --- | ---: | ---: |
+| Canonical rows | 42,235 | 36,642 |
+| Included passages | 16,079 | 16,180 |
+| Excluded as a navigation or index fragment | **6,855** | **320** |
+| Within-deal duplicated rows | 1,017 | **0** |
+| Structural-heading tokens inside `model_text` | 9,717 | **9** |
+
+The included corpus barely changes size, +101 rows, and that number hides the real movement:
+**1,266 passage texts enter the corpus that were previously excluded**, and 18 leave. The sample
+turns over by about 8% while appearing almost static.
+
+**These are not index entries.** A sample was read rather than counted. Median length 106 words,
+tenth percentile 32. They are employee indemnification survival clauses, restricted-stock-unit
+award schedules, equity-plan vesting terms, double-trigger benefit continuation on a qualifying
+termination, director biographies, and merger-background narrative. Roughly half are long and
+carry an operative verb. The rest are a genuine mixture, and some are plainly off-target for this
+research question — hedging covenants, insurance cost accounting, an earnings-call slide.
+
+So the screen was not a working gate that the fix broke. It was discarding 6,855 passages on a
+signal that had nothing to do with their content, and the study has been reporting on a corpus
+with that hole in it.
+
+**What replaces it.** The phrase test is kept, and with headings suppressed it now fires only
+when the body itself is navigation — 320 rows. A second test was added for the index entries that
+never say "table of contents": a dotted leader running into a page number, twice or more, checked
+against the raw text because normalisation destroys exactly the dots and digits that make the
+shape legible. On the rebuilt corpus that test catches **7 further rows** out of 16,180, all of
+them unmistakable contents blocks, none containing the word "retention".
+
+Seven rows is the honest measure of how much genuine index text was left. It is also the measure
+of how wrong the original rule was: it excluded 6,855 passages to catch roughly 327.
+
+**A property worth stating, not a defect.** Deduplication is global, so a passage whose text
+appears in two deals becomes one modelled row owned by one of them; 8.2% of canonical passages
+occur in more than one deal. Changing which rendition represents a group therefore moves a few
+deals in and out of the modelled set — 235 retrieved deals became 238, one lost and four gained.
+Deal-level attribution in the analysis comes from the occurrence table, not from canonical
+ownership, so this does not affect topic shares. It does mean a per-deal count of canonical rows
+is not a meaningful quantity on its own.
+
 ## 6. What this memo does not establish
 
 - That the window is the *right* window. It is a defensible and now fully documented choice; a
