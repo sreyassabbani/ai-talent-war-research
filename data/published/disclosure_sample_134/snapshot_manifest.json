@@ -1,0 +1,93 @@
+{
+  "excluded": [
+    {
+      "path": "employee_corpus_c6/passages.csv",
+      "reason": "103 MB of SEC body text"
+    },
+    {
+      "path": "disclosure_runs/",
+      "reason": "35,296 retrieved documents"
+    },
+    {
+      "path": "cache/http/",
+      "reason": "the HTTP cache, about 520 MB"
+    },
+    {
+      "path": "the SDC/Thomson archive",
+      "reason": "licensed vendor data"
+    }
+  ],
+  "files": [
+    {
+      "bytes": 591,
+      "name": "01_pool_manifest.json",
+      "sha256": "81300f16a31e592e6c95aa2f0528cb9e0ef3838f4fdc817907aa7fb207277044"
+    },
+    {
+      "bytes": 197381,
+      "name": "02_probe_results.csv",
+      "sha256": "59aae90384398ee5889eecedee61b6bf6eafc6f1b96d5fccb9d43f9ba0e4f4d3"
+    },
+    {
+      "bytes": 737,
+      "name": "02_probe_manifest.json",
+      "sha256": "a2bbc866b5c7265d61dfa47066b34570172baf4045b93d8a2a4baeb4a817b7f1"
+    },
+    {
+      "bytes": 9503,
+      "name": "03_corpus_manifest.json",
+      "sha256": "bdd92e03ac236127b51544d8d978083fdc44580b24ae9efd96cf8735e5b3db39"
+    },
+    {
+      "bytes": 90567,
+      "name": "04_frozen_sample.csv",
+      "sha256": "33382f5a8b3cccbe1d2bac69a104b4c5212acc0566448577a3707c1b7f38b1f0"
+    },
+    {
+      "bytes": 809,
+      "name": "04_frozen_sample_manifest.json",
+      "sha256": "d9a8096a7d2962855061a4cc505d6fae79e35cc89d1df4b8d7df5bf3e8eb451e"
+    },
+    {
+      "bytes": 46149,
+      "name": "05_deal_ai_labels.csv",
+      "sha256": "19a7724253352a3ee841a568cd94419ca218c39f6d9344a1474ca769bcf4222b"
+    },
+    {
+      "bytes": 1456,
+      "name": "06_topic_summary.csv",
+      "sha256": "413a7bc6628bd3fb9a95417cd413e7f23f4c526b3e6b15d79723a3319158ac3d"
+    },
+    {
+      "bytes": 34333,
+      "name": "06_deal_topic_matrix.csv",
+      "sha256": "c076398f170559f4b6a6a24974f35390de4eccee095660f7afc7a1f8ed1ac57f"
+    },
+    {
+      "bytes": 8584,
+      "name": "06_model_diagnostics.csv",
+      "sha256": "8103a856c293c1293eb9baef0a036e373d2be9d39fe65cbe14ee974a99959356"
+    },
+    {
+      "bytes": 6448,
+      "name": "06_analysis_manifest.json",
+      "sha256": "12fbf2d0333d0fa74b295facbd5409dd65c000b61881636788f067d7abea2b2b"
+    },
+    {
+      "bytes": 24888,
+      "name": "07_deal_tone_summary.csv",
+      "sha256": "465549879b45c530c1d4ee7fba2affe388d085b039d49330564ab16953d249c0"
+    }
+  ],
+  "inputs": {
+    "ai_labels": "data/derived/deal_ai_labels_c6",
+    "corpus": "data/derived/employee_corpus_c6",
+    "frozen": "data/derived/disclosure_frozen_sample_c6",
+    "pool": "data/derived/disclosure_pool",
+    "probe": "data/derived/disclosure_probe",
+    "tone": "data/derived/employee_tone_c6",
+    "topics": "data/derived/employee_topics_c6"
+  },
+  "schema_version": 2,
+  "total_bytes": 421446
+}

@@ -1,0 +1,24 @@
+{
+  "ai_label_counts": {
+    "ai_explicit": 17,
+    "none": 117
+  },
+  "deals": 134,
+  "dominance_margin_threshold": 0.1,
+  "dominant_topic_counts": {
+    "topic_1": 15,
+    "topic_2": 100,
+    "topic_3": 19
+  },
+  "evidence_boundary": "A theme share is how much of a deal's disclosed employee language falls in a theme. It is not how much the buyer spent, promised, or delivered on that theme, and a deal that discusses equity at length has not thereby been shown to treat employees better than one that does not.",
+  "median_dominant_margin": 0.376892,
+  "output_sha256": "f7f91fd1ade2feba44153ad047e0b474a4b2f1f29d069dd8557adccf082d9be7",
+  "schema_version": 1,
+  "theme_profile_counts": {
+    "benefit_plans_and_retirement": 90,
+    "executive_and_officer": 7,
+    "mixed": 30,
+    "stock_and_equity_awards": 7
+  },
+  "written": "2026-09-04T23:57:19+00:00"
+}

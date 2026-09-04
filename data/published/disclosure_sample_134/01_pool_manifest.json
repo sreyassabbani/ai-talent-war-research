@@ -1,0 +1,17 @@
+{
+  "catalog_csv_sha256": "c67c3311325714d860822425467d1c8928c9b23ba1eaa4570ead7d0e4f5d403f",
+  "catalog_rows": 26369,
+  "date_range": {
+    "end": "",
+    "start": ""
+  },
+  "exclusions": {
+    "acquirer_cik_unresolved": 21651,
+    "target_not_technology_sic": 3658
+  },
+  "pool_rows": 1060,
+  "pool_rule_version": "disclosure-first-v1",
+  "schema_version": 1,
+  "selection_basis": "acquirer is an SEC registrant with a technology-SIC target; disclosure existence is not asserted here and is decided by probe-disclosure",
+  "technology_screen_version": "digital-tech-v1"
+}

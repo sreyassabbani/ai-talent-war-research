@@ -1,0 +1,73 @@
+stage,name,value,status,detail
+input,input_rows,36642,pass,Rows supplied.
+input,included_rows,16173,pass,Rows marked included before dedupe.
+input,canonical_passages,16173,pass,One non-empty model passage per duplicate group.
+input,empty_model_text_rows,0,pass,Included canonical rows omitted because model_text was empty.
+input,deal_count,238,pass,Deals represented in corpus.
+input,cross_deal_duplicate_groups,0,pass,"Exact groups spanning deals are propagated, but make leave-one-deal-out stability less independent."
+sampling,fit_passages,1500,pass,Deterministic passage families used to fit candidate models (fit_balance=source_family).
+sampling,fit_balance_mode,source_family,pass,deal: round-robin across deals; source_family: round-robin across source-document families; none: stable-rank truncation only.
+sampling,fit_source_family_count,680,pass,Distinct source-document families represented in model fitting.
+sampling,maximum_fit_source_family_share,0.002,pass,Largest single source-document family share of the fit sample.
+sampling,projected_passages,14673,pass,Remaining canonical passages assigned with fixed-component NMF projection.
+sampling,fit_family_count,1500,pass,Unique deal/provision families represented in model fitting.
+sampling,minimum_fit_passages_per_deal,1,pass,Smallest deal contribution to the balanced fit sample.
+sampling,maximum_fit_passages_per_deal,51,pass,Largest deal contribution to the balanced fit sample.
+vectorize,zero_vector_passages,0,pass,Canonical passages with no terms in the fitted vocabulary.
+vectorize,vocabulary_size,750,pass,Word and bigram TF-IDF vocabulary after document-frequency filters.
+candidate,k_3_reconstruction_error,0.9520194029,pass,Relative Frobenius reconstruction error; lower is better.
+candidate,k_3_npmi_coherence,0.354532337,pass,Mean top-term normalized pointwise mutual information; higher is better.
+candidate,k_3_absolute_coherence_valid,1,pass,One when mean NPMI meets the absolute 0.00 floor.
+candidate,k_3_minimum_family_support,335,pass,Smallest primary-topic document-family support.
+candidate,k_3_minimum_deal_support,123,pass,Smallest primary-topic deal support.
+candidate,k_3_support_valid,1,pass,One when both configured minimum-support constraints are satisfied.
+candidate,k_4_reconstruction_error,0.9514147946,pass,Relative Frobenius reconstruction error; lower is better.
+candidate,k_4_npmi_coherence,0.3181400165,pass,Mean top-term normalized pointwise mutual information; higher is better.
+candidate,k_4_absolute_coherence_valid,1,pass,One when mean NPMI meets the absolute 0.00 floor.
+candidate,k_4_minimum_family_support,166,pass,Smallest primary-topic document-family support.
+candidate,k_4_minimum_deal_support,88,pass,Smallest primary-topic deal support.
+candidate,k_4_support_valid,1,pass,One when both configured minimum-support constraints are satisfied.
+candidate,k_5_reconstruction_error,0.9404094209,pass,Relative Frobenius reconstruction error; lower is better.
+candidate,k_5_npmi_coherence,0.4517544685,pass,Mean top-term normalized pointwise mutual information; higher is better.
+candidate,k_5_absolute_coherence_valid,1,pass,One when mean NPMI meets the absolute 0.00 floor.
+candidate,k_5_minimum_family_support,132,pass,Smallest primary-topic document-family support.
+candidate,k_5_minimum_deal_support,59,pass,Smallest primary-topic deal support.
+candidate,k_5_support_valid,1,pass,One when both configured minimum-support constraints are satisfied.
+candidate,k_6_reconstruction_error,0.934318972,pass,Relative Frobenius reconstruction error; lower is better.
+candidate,k_6_npmi_coherence,0.3419575418,pass,Mean top-term normalized pointwise mutual information; higher is better.
+candidate,k_6_absolute_coherence_valid,1,pass,One when mean NPMI meets the absolute 0.00 floor.
+candidate,k_6_minimum_family_support,201,pass,Smallest primary-topic document-family support.
+candidate,k_6_minimum_deal_support,82,pass,Smallest primary-topic deal support.
+candidate,k_6_support_valid,1,pass,One when both configured minimum-support constraints are satisfied.
+candidate,k_7_reconstruction_error,0.9323895378,pass,Relative Frobenius reconstruction error; lower is better.
+candidate,k_7_npmi_coherence,0.3086867249,pass,Mean top-term normalized pointwise mutual information; higher is better.
+candidate,k_7_absolute_coherence_valid,1,pass,One when mean NPMI meets the absolute 0.00 floor.
+candidate,k_7_minimum_family_support,104,pass,Smallest primary-topic document-family support.
+candidate,k_7_minimum_deal_support,67,pass,Smallest primary-topic deal support.
+candidate,k_7_support_valid,1,pass,One when both configured minimum-support constraints are satisfied.
+selection,selected_k,3,pass,Smallest supported k within reconstruction and coherence tolerances.
+sensitivity,agglomerative_fit_passages,1500,pass,Nonzero fit-sample rows shared identically by NMF and agglomerative comparison.
+sensitivity,nmf_fit_cluster_sizes,"topic_1:583,topic_2:582,topic_3:335",pass,Primary NMF assignments on the shared sensitivity fit universe.
+sensitivity,agglomerative_fit_cluster_sizes,"cluster_1:1085,cluster_2:398,cluster_3:17",pass,Cosine/average agglomerative assignments on the shared fit universe.
+sensitivity,agglomerative_adjusted_rand,0.1860227059,warning,"Identical fit universe; L2 word/bigram TF-IDF; sklearn cosine metric and average linkage; ARI is permutation-invariant, so label alignment is not required; threshold=0.20."
+stability,topic_1_recovery_rate,0.8151260504,pass,Requires recovery in at least 80% of leave-one-deal-out folds.
+topic_quality,topic_1_npmi_coherence,0.309371569,pass,Requires NPMI coherence of at least 0.00.
+topic_quality,topic_1_generic_top_term_ratio,0,pass,Share of top terms composed only of generic legal tokens; requires at most 50%.
+stability,topic_2_recovery_rate,0.9201680672,pass,Requires recovery in at least 80% of leave-one-deal-out folds.
+topic_quality,topic_2_npmi_coherence,0.19839942,pass,Requires NPMI coherence of at least 0.00.
+topic_quality,topic_2_generic_top_term_ratio,0,pass,Share of top terms composed only of generic legal tokens; requires at most 50%.
+stability,topic_3_recovery_rate,0.9957983193,pass,Requires recovery in at least 80% of leave-one-deal-out folds.
+topic_quality,topic_3_npmi_coherence,0.3987802574,pass,Requires NPMI coherence of at least 0.00.
+topic_quality,topic_3_generic_top_term_ratio,0.1,pass,Share of top terms composed only of generic legal tokens; requires at most 50%.
+stability,overall_recovery_rate,0.9103641457,pass,Topic alignment at cosine >= 0.70; every topic must recover in at least 80% of folds.
+bootstrap_stability,topic_1_recovery_rate,0.8,pass,Fixed-seed within-deal family bootstrap; cosine >= 0.70; 80/100 replicates recovered the aligned component.
+bootstrap_stability,topic_2_recovery_rate,0.96,pass,Fixed-seed within-deal family bootstrap; cosine >= 0.70; 96/100 replicates recovered the aligned component.
+bootstrap_stability,topic_3_recovery_rate,0.98,pass,Fixed-seed within-deal family bootstrap; cosine >= 0.70; 98/100 replicates recovered the aligned component.
+bootstrap_stability,overall_recovery_rate,0.9133333333,pass,"Complementary robustness diagnostic only, not a topic-selection or relabeling rule; family representatives are resampled with replacement within each deal while preserving every deal's fit-row count and the original fitted vocabulary."
+embedding_robustness,lsa_components,50,pass,"Fixed-seed randomized TruncatedSVD of word/bigram TF-IDF; these are local LSA embeddings, not transformer semantic embeddings."
+embedding_robustness,lsa_fit_coverage_rate,1,pass,Nonzero LSA rows from the exact NMF fit universe; projected passages are excluded.
+embedding_robustness,hdbscan_min_cluster_size,5,pass,"Prespecified sklearn HDBSCAN parameter; min_samples=None, Euclidean metric, EOM selection, and single-cluster solutions disabled."
+embedding_robustness,hdbscan_noise_count,976,pass,"Fit-universe passages HDBSCAN marked as noise, including any zero LSA rows."
+embedding_robustness,hdbscan_cluster_count,31,pass,"Non-noise HDBSCAN clusters; cluster count is discovered, not set to selected NMF k."
+embedding_robustness,hdbscan_nmf_adjusted_rand,0.209684328,pass,ARI on 524 non-noise shared fit rows only; no recovery threshold and no role in model selection.
+embedding_robustness,agglomerative_nmf_adjusted_rand,0.1664605414,pass,Cosine/average agglomerative clustering of normalized LSA rows with selected NMF k; ARI uses the same nonzero fit rows and has no role in model selection.
