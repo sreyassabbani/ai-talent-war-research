@@ -1,0 +1,22 @@
+{
+  "_note": "Plain-English descriptors written AFTER fitting, from each component's top terms and highest-weighted passages. They are the author's reading of what the model grouped, not labels the model was given, and they stay provisional until two blinded reviewers score the topic-fit packet. Edit them only alongside the evidence that justifies the change.",
+  "_cycle6_revision": "2026-09-04. Forked from topic_descriptors_100.json for the cycle-6 refit. Only the claims cycle 6 measured to be false were changed, and each change is named in _cycle6_changes. The readings themselves are the author's interpretation and have NOT been re-derived from the cycle-6 model: Aarav should re-read the top passages of topics 1 and 2 before this is presented, because the component that moved most is the one whose reading rests on what it mixes.",
+  "_cycle6_changes": [
+    "topic_1: dropped 'Its internal coherence is the lowest of the three'. In cycle 6 topic_1 scores 0.309, between topic_3 at 0.399 and topic_2 at 0.198. The sentence would have contradicted the diagnostics table printed in the same report.",
+    "topic_1: added the cycle-6 finding that 1,955 of its cycle-5 passages moved to topic_2 once the running header stopped being a model feature. The 'mixes two things' reading is kept because the press-release register is still visible in its top terms (said, customers, growth), but it now mixes less than it did.",
+    "topic_2: dropped 'This is the most self-consistent contractual component.' In cycle 6 it is the least coherent of the three at 0.198, having absorbed the 1,955 passages topic_1 was holding.",
+    "topic_3: unchanged. 'Most stable component' remains true and strengthened, 0.996 leave-one-deal-out recovery."
+  ],
+  "topic_1": {
+    "name": "Executive and officer language",
+    "reading": "References to executives, officers, directors and the board. This component mixes two things rather than one: contractual executive-employment and change-in-control terms, and the officer or director language that appears in proxies and announcement press releases, including quoted remarks by a chief executive. It should not be read as a single kind of employee provision. In cycle 6 it is smaller than in cycle 5: 1,955 passages that sat here moved to the benefit-plan component once the page's running header stopped being a model feature, which means part of what made this component mixed was the page a provision was printed on rather than the provision itself."
+  },
+  "topic_2": {
+    "name": "Benefit plans and ERISA",
+    "reading": "Definitions and covenants about employee benefit plans: plan schedules, ERISA representations, pension and welfare arrangements, and undertakings about benefits after closing. In cycle 6 it is the least internally coherent of the three components, having absorbed 1,955 benefit-plan passages that the previous cycle had misfiled under executive language. It is broader than it was, and more reproducible across folds, at the same time."
+  },
+  "topic_3": {
+    "name": "Equity awards at the effective time",
+    "reading": "Treatment of stock, options, restricted stock and restricted stock units when the transaction closes: conversion, assumption, vesting and cash-out of outstanding awards. It is the most stable component, recovering in nearly every leave-one-deal-out fold."
+  }
+}

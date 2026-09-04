@@ -31,6 +31,10 @@ TONE="${TONE:-$D/employee_tone_100}"
 REVIEW="${REVIEW:-$D/employee_topic_review_100}"
 REPORT="${REPORT:-docs/disclosure_sample_report.md}"
 AUDIT_STATE="${AUDIT_STATE:-not run for this cycle}"
+# The descriptors are a written reading of what each component grouped, so they are cycle-specific
+# whenever a refit moves the components. Leaving this on the cycle-5 file published two claims
+# cycle 6 measured to be false.
+DESCRIPTORS="${DESCRIPTORS:-config/topic_descriptors_100.json}"
 
 echo "== 1/8 corpus =="
 # --no-manual-coding: the manually coded positive sources belong to the ten pilot deals, which
@@ -81,6 +85,7 @@ $PY scripts/build_disclosure_sample_report.py \
   --frozen-dir "$FROZEN_SAMPLE" \
   --ai-labels-dir "$LABELS" \
   --tone-dir "$TONE" \
+  --descriptors "$DESCRIPTORS" \
   --audit-state "$AUDIT_STATE" \
   --output "$REPORT"
 

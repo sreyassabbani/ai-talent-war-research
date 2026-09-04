@@ -154,7 +154,7 @@ The deal counts below are for the frozen sample.
 
 **Defining words:** executive, chief, officer, executive officer, chief executive, said, customers, continue, board, growth
 
-**Reading (provisional):** References to executives, officers, directors and the board. This component mixes two things rather than one: contractual executive-employment and change-in-control terms, and the officer or director language that appears in proxies and announcement press releases, including quoted remarks by a chief executive. Its internal coherence is the lowest of the three, which is what a mixed component looks like. It should not be read as a single kind of employee provision.
+**Reading (provisional):** References to executives, officers, directors and the board. This component mixes two things rather than one: contractual executive-employment and change-in-control terms, and the officer or director language that appears in proxies and announcement press releases, including quoted remarks by a chief executive. It should not be read as a single kind of employee provision. In cycle 6 it is smaller than in cycle 5: 1,955 passages that sat here moved to the benefit-plan component once the page's running header stopped being a model feature, which means part of what made this component mixed was the page a provision was printed on rather than the provision itself.
 
 | Measure | Value |
 | --- | ---: |
@@ -176,7 +176,7 @@ Stability reading: this component reproduces when any single deal is removed.
 
 **Defining words:** plan, employee, benefit, erisa, benefit plan, employment, employees, compensation, pension, employee benefit
 
-**Reading (provisional):** Definitions and covenants about employee benefit plans: plan schedules, ERISA representations, pension and welfare arrangements, and undertakings about benefits after closing. This is the most self-consistent contractual component.
+**Reading (provisional):** Definitions and covenants about employee benefit plans: plan schedules, ERISA representations, pension and welfare arrangements, and undertakings about benefits after closing. In cycle 6 it is the least internally coherent of the three components, having absorbed 1,955 benefit-plan passages that the previous cycle had misfiled under executive language. It is broader than it was, and more reproducible across folds, at the same time.
 
 | Measure | Value |
 | --- | ---: |
