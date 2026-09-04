@@ -1,0 +1,48 @@
+{
+  "exit_code": 2,
+  "stages": {
+    "analyze": {
+      "completed_at": "2026-08-28T03:11:25+00:00",
+      "passages": 72,
+      "status": "completed",
+      "tone_deals": 13,
+      "topic_status": "exploratory_rejected_deal_concentration",
+      "topics": 3
+    },
+    "build_corpus": {
+      "completed_at": "2026-08-28T03:11:21+00:00",
+      "documents": 36,
+      "occurrences": 73,
+      "passages": 72,
+      "status": "completed",
+      "zero_passage_deals": 22
+    },
+    "freeze_universe": {
+      "candidates": 119,
+      "completed_at": "2026-08-28T03:11:19+00:00",
+      "document_rows": 1411,
+      "manifest_rows": 119,
+      "mode": "rescreen_cached",
+      "qualifying_machine_rows": 35,
+      "status": "completed"
+    },
+    "report": {
+      "completed_at": "2026-08-28T03:11:25+00:00",
+      "employee_passages": 72,
+      "failed_documents": 9,
+      "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md",
+      "manifest_rows": 119,
+      "outcome_status": "partial",
+      "qualifying_machine_rows_pending_human_review": 35,
+      "retrieved_documents": 1402,
+      "run_failures": 0,
+      "shortfall": 65,
+      "status": "completed",
+      "target_deals": 100,
+      "topic_status": "exploratory_rejected_deal_concentration",
+      "zero_passage_deals": 22
+    }
+  },
+  "status": "partial",
+  "updated_at": "2026-08-28T03:11:25+00:00"
+}

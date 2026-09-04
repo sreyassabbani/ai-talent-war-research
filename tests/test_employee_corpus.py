@@ -1,6 +1,7 @@
 from tag_edgar.employee_corpus import (
     CorpusDocument,
     build_employee_corpus,
+    is_structural_heading,
     normalize_model_text,
     parse_document,
     screen_employee_terms,
@@ -130,3 +131,97 @@ def test_model_normalization_masks_numbers_urls_and_normalizes_case() -> None:
     normalized = normalize_model_text("RSUs worth $1,250 vest at HTTPS://EXAMPLE.COM/x.")
 
     assert normalized == "rsus worth numbertoken vest at urltoken"
+
+
+def test_same_clause_under_different_headings_is_modelled_once() -> None:
+    """The defect this fixes: an exhibit and the S-4 reprinting it disagreed about the heading.
+
+    The clause is identical, so it is one provision and must contribute one modelled row. Before
+    the key dropped the heading, the running-header artefact in the wrapper produced a second
+    hash and the deal's own language was counted twice against it.
+    """
+    clause = "<p>Continuing employees keep their base salary for twelve months.</p>"
+    documents = [
+        _document("ex-2-1", f"<h2>Article VII COVENANTS AND AGREEMENTS</h2>{clause}"),
+        _document("s-4", f"<h2>Table of Contents</h2>{clause}"),
+    ]
+
+    corpus = build_employee_corpus(documents, context_blocks=0)
+
+    assert len(corpus.passages) == 1
+    assert corpus.passages[0].occurrence_count == 2
+    assert {row.document_id for row in corpus.occurrences} == {"ex-2-1", "s-4"}
+
+
+def test_the_surviving_row_keeps_the_real_section_heading() -> None:
+    clause = "<p>Continuing employees keep their base salary for twelve months.</p>"
+    # "aaa" sorts before "zzz", so the deterministic tie-break alone would pick the artefact.
+    documents = [
+        _document("aaa-wrapper", f"<h2>Table of Contents</h2>{clause}"),
+        _document("zzz-exhibit", f"<h2>Article VII COVENANTS AND AGREEMENTS</h2>{clause}"),
+    ]
+
+    corpus = build_employee_corpus(documents, context_blocks=0)
+
+    assert len(corpus.passages) == 1
+    assert corpus.passages[0].heading == "Article VII COVENANTS AND AGREEMENTS"
+    assert corpus.passages[0].document_id == "zzz-exhibit"
+
+
+def test_structural_headings_are_kept_out_of_the_modelled_text() -> None:
+    clause = "<p>Continuing employees keep their base salary for twelve months.</p>"
+    wrapper = build_employee_corpus(
+        [_document("s-4", f"<h2>Table of Contents</h2>{clause}")], context_blocks=0
+    )
+    exhibit = build_employee_corpus(
+        [_document("ex", f"<h2>Employee Matters</h2>{clause}")], context_blocks=0
+    )
+
+    assert "table" not in wrapper.passages[0].model_text
+    assert "contents" not in wrapper.passages[0].model_text
+    # A real section heading is a genuine feature and stays.
+    assert exhibit.passages[0].model_text.startswith("employee matters")
+    # Provenance is not rewritten: the row still records the heading the filing carried.
+    assert wrapper.passages[0].heading == "Table of Contents"
+
+
+def test_structural_heading_detection_keeps_titles_and_drops_furniture() -> None:
+    for furniture in (
+        "Table of Contents",
+        "TABLE OF CONTENTS \u200b",
+        "Contents",
+        "I- 1",
+        "A:",
+        "Page 14",
+        "Annex B",
+        "Article VII",
+        "Exhibit 10.1",
+        "iv",
+        "2.14",
+    ):
+        assert is_structural_heading(furniture), furniture
+
+    for title in (
+        "Article VII COVENANTS AND AGREEMENTS",
+        "EMPLOYMENT AGREEMENT",
+        "6.12. ERISA Compliance .",
+        "Employee Matters",
+        "2022 STOCK INCENTIVE PLAN",
+        "Section 5.4 Employee Benefits",
+        "",
+    ):
+        assert not is_structural_heading(title), title
+
+    assert not is_structural_heading(None)
+
+
+def test_clauses_differing_only_in_an_amount_stay_separate_rows() -> None:
+    """Deduplication must not normalise numbers away: the amount is the provision."""
+    documents = [
+        _document("a", "<h2>People</h2><p>A retention bonus of $5,000,000 is payable.</p>"),
+        _document("b", "<h2>People</h2><p>A retention bonus of $2,000,000 is payable.</p>"),
+    ]
+
+    corpus = build_employee_corpus(documents, context_blocks=0)
+
+    assert len(corpus.passages) == 2

@@ -4,7 +4,7 @@ The small tables behind `docs/disclosure_sample_report.md`, copied out of the
 git-ignored `data/derived/` so every number in the report can be checked against the
 file it came from.
 
-Snapshot written 2026-09-02 by
+Snapshot written 2026-09-03 by
 `scripts/publish_disclosure_snapshot.py`. Re-running that script refreshes it.
 
 ## What is here
@@ -24,8 +24,23 @@ Snapshot written 2026-09-02 by
 | `06_analysis_manifest.json` | 5 KB | `f04217ca7e88df40` |
 | `07_deal_tone_summary.csv` | 23 KB | `2477b82654128a39` |
 
+Written by the sibling scripts rather than by this one:
+
+| File | Size |
+| --- | ---: |
+| `08_passage_links.csv.gz` | 3021 KB |
+| `08_passage_links_manifest.json` | 0 KB |
+| `08_passage_links_sample.csv` | 1105 KB |
+| `09_deal_profiles.csv` | 28 KB |
+| `09_deal_profiles_manifest.json` | 0 KB |
+
+Rebuild them with:
+
+- `python scripts/publish_passage_links.py` — 08_passage_links*, passage text with SEC deep links.
+- `python scripts/build_deal_profiles.py` — 09_deal_profiles*, one row per modelled deal.
+
 The numbered prefixes follow the pipeline: pool, probe, corpus, frozen sample, AI
-labels, topic model, tone.
+labels, topic model, tone, passage links, deal profiles.
 
 ## What is not here, and why
 

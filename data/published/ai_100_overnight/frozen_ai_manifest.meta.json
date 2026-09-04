@@ -1,0 +1,12 @@
+{
+  "candidate_count": 119,
+  "candidate_sha256": "f89de969842f92bb41f199523029d39e8ad52dc1a79a3a6a01af69b44ca8116d",
+  "candidates_csv": "data\\derived\\ai_100_candidate_preflight.csv",
+  "generated_at": "2026-08-28T03:11:19+00:00",
+  "include_reserves": true,
+  "manifest_sha256": "e0a49c707f5e999ca64be4d2277caefa787d62c44d48cf356adf8b20cbbf585c",
+  "mode": "rescreen_cached",
+  "note": "Machine-screened evidence pending human review.",
+  "stage": "freeze_universe",
+  "target_deals": 100
+}

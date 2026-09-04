@@ -1,0 +1,63 @@
+{
+  "_note": [
+    "Plain-English readings of the second-level sub-themes, written after reading representative",
+    "passages rather than inferred from the term lists. Each entry names an exemplar by passage_id;",
+    "scripts/build_second_level_report.py pulls that passage's text out of the corpus at render time,",
+    "so no quote in the report is ever hand-transcribed. A reading is our interpretation and is",
+    "labelled as such; the quote beneath it is the filing's own words.",
+    "",
+    "Sub-theme ids are local to their parent model. topic_1 here means the first sub-theme of the",
+    "named parent, not the parent model's topic_1."
+  ],
+  "topic_1": {
+    "topic_1": {
+      "label": "Tax definitions and cost accounting",
+      "reading": "Tax definition clauses and cost-of-sales discussion. It is drawn in by words like payroll, severance and withholding, but most of it is not employee-terms language at all. It fails the stability bar, and it is the clearest sign that parent Theme 1 was carrying material that does not belong to it.",
+      "exemplar_passage_id": "passage_772ae2965ab3d789"
+    },
+    "topic_2": {
+      "label": "Executive roles and board governance",
+      "reading": "Who holds which office and how the board is composed: chief executive succession, chairman restrictions, voting agreements over board seats. This is corporate governance around named executives rather than the terms of their employment, and it is the largest and most stable part of the theme.",
+      "exemplar_passage_id": "passage_d37696e70fb5e05f"
+    },
+    "topic_3": {
+      "label": "Collective bargaining and works councils",
+      "reading": "Labour-relations representations in merger agreements: whether the target is party to a collective bargaining agreement, whether a works council represents its employees, whether a representation campaign is under way. The most coherent sub-theme anywhere in this study, and conceptually nothing to do with executives. It fails the stability bar because it is small and concentrated in the deals that happen to have unionised or European workforces.",
+      "exemplar_passage_id": "passage_5a053b53fca8214a"
+    }
+  },
+  "topic_2": {
+    "topic_1": {
+      "label": "Employment-law representations and warranties",
+      "reading": "What the target promises is true about its employment position: CARES Act payroll-tax relief, labour-law registrations and permits, absence of pending employment claims, strikes and unfair-labour-practice charges. These are compliance representations to the buyer, not commitments to employees.",
+      "exemplar_passage_id": "passage_fa6237da38d1fd35"
+    },
+    "topic_2": {
+      "label": "Continuing-employee benefit continuity",
+      "reading": "The actual post-closing promise to employees: waiving pre-existing condition exclusions, waiting periods and evidence-of-good-health requirements when continuing employees move onto the buyer's health and welfare plans. This is the sub-theme that answers the question Dr. Singh raised about what happens to benefits after an acquisition, and it is the one that fails the stability bar.",
+      "exemplar_passage_id": "passage_c257b3e9322871a5"
+    },
+    "topic_3": {
+      "label": "ERISA and pension definitions",
+      "reading": "Statutory definitions and the representations built on them: Title IV plans, multiemployer plans, ERISA affiliates, and whether the target has ever maintained or contributed to a pension plan. This is near-identical statutory language deal after deal, which is why it is the most stable sub-theme in the study at 99.5%. Explicit negative representations make up about 29% of it, close enough to its sibling sub-themes that it is not distinctively a set of denials.",
+      "exemplar_passage_id": "passage_c841c36eaaade3ac"
+    }
+  },
+  "topic_3": {
+    "topic_1": {
+      "label": "Closing payment mechanics",
+      "reading": "Purchase-price definitions, escrow releases, flow-of-funds memoranda, and closing bonus and unit-appreciation payments routed through payroll. Much of this is transaction-consideration language that mentions employees rather than employee-terms language, which is why it is the least coherent of the three and the only one to fail the stability bar.",
+      "exemplar_passage_id": "passage_d7341564123e0f0f"
+    },
+    "topic_2": {
+      "label": "Standing equity plans and new grants",
+      "reading": "The equity programme as it already exists: the incentive plan, grants made to named executives, unit counts and vesting schedules. It describes the plan rather than what the acquisition does to it.",
+      "exemplar_passage_id": "passage_d3feec653049d945"
+    },
+    "topic_3": {
+      "label": "Award treatment at the effective time",
+      "reading": "What happens to each option and RSU at closing: assumed, converted into an acquirer award, accelerated, or cancelled for no consideration. This is the sub-theme closest to the research question, and it is both the most coherent and the most stable of the three.",
+      "exemplar_passage_id": "passage_107955b932b4298d"
+    }
+  }
+}

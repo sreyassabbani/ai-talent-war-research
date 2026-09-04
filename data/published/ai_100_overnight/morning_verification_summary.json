@@ -1,0 +1,14 @@
+{
+  "employee_passages": 72,
+  "failed_documents": 9,
+  "final_report": "data\\derived\\ai_100_overnight\\final_research_report.md",
+  "manifest_rows": 119,
+  "qualifying_machine_rows_pending_human_review": 35,
+  "retrieved_documents": 1402,
+  "run_failures": 0,
+  "shortfall": 65,
+  "status": "partial",
+  "target_deals": 100,
+  "topic_status": "exploratory_rejected_deal_concentration",
+  "zero_passage_deals": 22
+}

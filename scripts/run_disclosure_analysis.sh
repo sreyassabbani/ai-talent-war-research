@@ -7,17 +7,30 @@
 # The freeze decides the sample. Every step after it runs on the frozen deal list, never on the
 # full retrieval queue, so the deal count in the report is the deal count the model saw.
 #
+# Every output path is overridable, and the defaults are the cycle-5 paths this script has always
+# written. A later cycle sets them to its own directories and runs this same script, so the two
+# cycles differ in their inputs and never in their code path -- the same reason the second-level
+# model is a corpus subset rather than a flag inside the fitter.
+#
 # Usage:  bash scripts/run_disclosure_analysis.sh
+#         CORPUS=... TOPICS=... bash scripts/run_disclosure_analysis.sh   # another cycle
 set -euo pipefail
 
 PY="${PY:-.venv/Scripts/python.exe}"
 D=data/derived
 QUEUE="$D/disclosure_review_queue.csv"
-FROZEN_QUEUE="$D/disclosure_frozen_queue.csv"
 RUNS="$D/disclosure_runs"
-CORPUS="$D/employee_corpus_100"
-TOPICS="$D/employee_topics_100"
 SEED=20260823
+
+CORPUS="${CORPUS:-$D/employee_corpus_100}"
+TOPICS="${TOPICS:-$D/employee_topics_100}"
+FROZEN_SAMPLE="${FROZEN_SAMPLE:-$D/disclosure_frozen_sample}"
+FROZEN_QUEUE="${FROZEN_QUEUE:-$D/disclosure_frozen_queue.csv}"
+LABELS="${LABELS:-$D/deal_ai_labels}"
+TONE="${TONE:-$D/employee_tone_100}"
+REVIEW="${REVIEW:-$D/employee_topic_review_100}"
+REPORT="${REPORT:-docs/disclosure_sample_report.md}"
+AUDIT_STATE="${AUDIT_STATE:-not run for this cycle}"
 
 echo "== 1/8 corpus =="
 # --no-manual-coding: the manually coded positive sources belong to the ten pilot deals, which
@@ -28,14 +41,14 @@ $PY -m tag_edgar.cli build-employee-corpus "$QUEUE" "$RUNS" \
 echo "== 2/8 freeze the modelled sample =="
 $PY -m tag_edgar.cli freeze-disclosure-sample "$QUEUE" "$CORPUS/passages.csv" "$RUNS" \
   --probe-csv "$D/disclosure_probe/probe_results.csv" \
-  --output-dir "$D/disclosure_frozen_sample"
+  --output-dir "$FROZEN_SAMPLE"
 
 echo "== 3/8 restrict the queue to the frozen sample =="
 $PY scripts/restrict_queue_to_frozen.py "$QUEUE" \
-  "$D/disclosure_frozen_sample/frozen_sample.csv" "$FROZEN_QUEUE"
+  "$FROZEN_SAMPLE/frozen_sample.csv" "$FROZEN_QUEUE"
 
 echo "== 4/8 AI and talent labels (after selection) =="
-$PY -m tag_edgar.cli label-deal-ai "$FROZEN_QUEUE" "$CORPUS" --output-dir "$D/deal_ai_labels"
+$PY -m tag_edgar.cli label-deal-ai "$FROZEN_QUEUE" "$CORPUS" --output-dir "$LABELS"
 
 echo "== 5/8 topic model, prespecified primary settings =="
 $PY -m tag_edgar.cli analyze-employee-topics "$FROZEN_QUEUE" "$CORPUS" \
@@ -51,17 +64,17 @@ done
 
 echo "== 7/8 tone (secondary diagnostic) and the blinded topic-review packet =="
 $PY -m tag_edgar.cli analyze-employee-tone "$CORPUS/passages.csv" \
-  --output-dir "$D/employee_tone_100"
+  --output-dir "$TONE"
 $PY -m tag_edgar.cli prepare-employee-topic-review \
   "$TOPICS/canonical_topic_assignments.csv" "$CORPUS/passages.csv" \
-  --output-dir "$D/employee_topic_review_100"
+  --output-dir "$REVIEW"
 
 echo "== 8/8 report =="
 # The corpus relevance audit was not run for this cycle, by direction. The report states that
 # in place of a passing gate; it never claims one.
 $PY scripts/build_disclosure_sample_report.py \
   --corpus-dir "$CORPUS" --topics-dir "$TOPICS" \
-  --audit-state "not run for this cycle" \
-  --output docs/disclosure_sample_report.md
+  --audit-state "$AUDIT_STATE" \
+  --output "$REPORT"
 
-echo "Done. Report: docs/disclosure_sample_report.md"
+echo "Done. Report: $REPORT"

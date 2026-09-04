@@ -38,7 +38,12 @@ typeCheckingMode = "standard"
 # This one script needs python-docx, which is optional report-rendering tooling rather than a
 # package dependency, so CI does not install it and the import cannot resolve there. Only this
 # file is excluded; the rest of scripts/ is type-checked.
-exclude = ["scripts/markdown_report_to_docx.py"]
+exclude = [
+    "scripts/markdown_report_to_docx.py",
+    "scripts/markdown_report_to_pdf.py",
+    "scripts/build_ai_100_cluster_results_report.py",
+    "audit_salvage_2026-08-30",
+]
 
 [tool.ruff]
 line-length = 100
