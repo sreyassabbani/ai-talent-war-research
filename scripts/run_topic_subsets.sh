@@ -22,6 +22,16 @@ PARENT_CORPUS="${CORPUS:-$D/employee_corpus_100}"
 # Sub-corpora and sub-models are named by appending _t<n> to the parent names.
 SUB_CORPUS_PREFIX="${SUB_CORPUS_PREFIX:-$PARENT_CORPUS}"
 SUB_TOPICS_PREFIX="${SUB_TOPICS_PREFIX:-$PARENT_TOPICS}"
+# Name the report after the parent model. Without this a later cycle would write its second-level
+# results over the previous cycle's report file, and the superseded record is the thing that makes
+# two cycles comparable. The cycle-5 parent keeps the original filename so existing links hold.
+if [ -z "${SECOND_LEVEL_REPORT:-}" ]; then
+  parent_name="$(basename "$PARENT_TOPICS")"
+  case "$parent_name" in
+    employee_topics_100) SECOND_LEVEL_REPORT=docs/second_level_topics.md ;;
+    *) SECOND_LEVEL_REPORT="docs/second_level_topics_${parent_name#employee_topics_}.md" ;;
+  esac
+fi
 
 # Theme 3 first: it is the one the advisor asked for by name.
 for t in 3 1 2; do
@@ -55,6 +65,12 @@ $PY -m tag_edgar.cli analyze-employee-topics "$FROZEN_QUEUE" \
   --fit-balance source_family --max-fit-passages 1500
 
 echo "== write the report =="
-$PY scripts/build_second_level_report.py
+# The report is told which sub-models to read. Called with no arguments it defaults to the
+# cycle-5 directories, so a later cycle that did not pass these would silently publish a report
+# describing the previous cycle's sub-models.
+$PY scripts/build_second_level_report.py \
+  --topics-prefix "$SUB_TOPICS_PREFIX" \
+  --corpus-prefix "$SUB_CORPUS_PREFIX" \
+  --output "$SECOND_LEVEL_REPORT"
 
 echo "Done. Second-level results in ${SUB_TOPICS_PREFIX}_t{3,1,2} and _t1_nopr"

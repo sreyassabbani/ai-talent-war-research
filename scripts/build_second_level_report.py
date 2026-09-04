@@ -428,20 +428,45 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").strip())
     parser.add_argument("--derived", type=Path, default=DERIVED)
     parser.add_argument(
+        "--topics-prefix",
+        type=Path,
+        default=None,
+        help=(
+            "Parent topic-model directory. Sub-models are read from this path with _t1, _t2, _t3 "
+            "and _t1_nopr appended, matching what run_topic_subsets.sh writes. "
+            "Defaults to <derived>/employee_topics_100."
+        ),
+    )
+    parser.add_argument(
+        "--corpus-prefix",
+        type=Path,
+        default=None,
+        help="Parent corpus directory, suffixed the same way. Defaults to "
+        "<derived>/employee_corpus_100.",
+    )
+    parser.add_argument(
         "--output", type=Path, default=PROJECT_ROOT / "docs" / "second_level_topics.md"
     )
     args = parser.parse_args(argv[1:])
+
+    # A prefix is a directory path with a suffix appended, not a parent directory, so the sibling
+    # naming from run_topic_subsets.sh is reproduced here rather than reinvented.
+    topics_prefix = args.topics_prefix or (args.derived / "employee_topics_100")
+    corpus_prefix = args.corpus_prefix or (args.derived / "employee_corpus_100")
+
+    def suffixed(prefix: Path, suffix: str) -> Path:
+        return prefix.with_name(f"{prefix.name}_{suffix}")
 
     models: dict[str, dict[str, object] | None] = {}
     for parent_id in PARENT_THEMES:
         suffix = parent_id.replace("topic_", "t")
         models[parent_id] = load_submodel(
-            args.derived / f"employee_topics_100_{suffix}",
-            args.derived / f"employee_corpus_100_{suffix}",
+            suffixed(topics_prefix, suffix),
+            suffixed(corpus_prefix, suffix),
         )
     models["topic_1_nopr"] = load_submodel(
-        args.derived / "employee_topics_100_t1_nopr",
-        args.derived / "employee_corpus_100_t1_nopr",
+        suffixed(topics_prefix, "t1_nopr"),
+        suffixed(corpus_prefix, "t1_nopr"),
     )
 
     fitted = [key for key, value in models.items() if value is not None]
