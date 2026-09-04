@@ -244,6 +244,79 @@ Deal-level attribution in the analysis comes from the occurrence table, not from
 ownership, so this does not affect topic shares. It does mean a per-deal count of canonical rows
 is not a meaningful quantity on its own.
 
+## 5d. What the refit showed (cycle 6, 2026-09-04)
+
+Sections 5a–5c describe defects and a rebuilt corpus. This section records what happened when the
+model was actually refitted on it, because a corpus measurement is not a result and the previous
+version of this memo already demonstrated the cost of asserting a consequence before measuring it.
+
+**First, a reconciliation.** The "after" column in section 5c was measured on an intermediate
+rebuild, before the dotted-leader shape test was added. The corpus cycle 6 published is:
+
+| | 5c "after" | published cycle 6 |
+| --- | ---: | ---: |
+| Canonical rows | 36,642 | 36,642 |
+| Included passages | 16,180 | **16,173** |
+| Excluded as a navigation or index fragment | 320 | **331** |
+
+Seven passages moved out of the included pile, which is the count section 5c predicts the shape
+test would catch. The remaining four-row difference in the exclusion column is not accounted for
+by that test and is not worth a theory; the published manifest is authoritative.
+
+**The three themes survived.** The fit chose `k=3` again, the term lists identify the same three
+themes, and all three still clear the 0.80 recovery bar set before any of this was fitted.
+
+| Theme | Passages | Coherence | Stability (bar 0.80) |
+| --- | ---: | ---: | ---: |
+| 1 — executive and officer | 5,741 → 4,100 | 0.258 → 0.309 | 0.864 → 0.815 |
+| 2 — benefit plans and ERISA | 5,762 → 7,689 | 0.351 → **0.198** | 0.889 → 0.920 |
+| 3 — stock and equity | 4,576 → 4,384 | 0.432 → 0.399 | 0.983 → **0.996** |
+
+**The dominant theme is unchanged for all 133 deals in the frozen sample.** Not one moved.
+
+**The defect is visible in cycle 5's own published output.** The top positive residual terms for
+cycle-5 Theme 1 — the terms that most distinguished that theme — included `table`, `contents` and
+`table contents`. The running header was a top-ten distinguishing feature of a theme. In cycle 6
+no such term appears in any theme. This is the clearest available evidence that the header was
+shaping the analysis and not merely padding it.
+
+**Where the readmitted passages went, and what actually moved.** The 1,266 readmitted texts split
+516 / 214 / 536 across themes 1, 2 and 3. Every one of them carries the same cycle-5 exclusion
+reason, `excluded_navigation_or_index_fragment`, and no other reason appears — the readmission is
+exactly the defect in 5c and nothing else rode in with it.
+
+Theme 2 grew by 1,927 but took only 214 readmitted passages, so its growth is not readmission. A
+migration matrix over the 14,888 passages primary-assigned in both cycles shows what it is:
+
+```
+rows = cycle 5 theme, cols = cycle 6 theme
+              topic_1     topic_2     topic_3
+topic_1         3,418       1,955          14
+topic_2            27       5,298          15
+topic_3           135         213       3,813
+
+stayed: 12,529 (84.2%)   moved: 2,359 (15.8%)
+```
+
+One cell dominates: **1,955 passages moved from Theme 1 to Theme 2**, with every other
+off-diagonal cell under 250. The header was not only discarding provisions, it was misfiling
+them — benefit-plan text printed on contents-headed pages was being pulled into the executive
+theme by its header, and once the header stopped being a feature that text reassigned on its own
+vocabulary. Theme 2's coherence fall is the cost of absorbing those 1,955 passages, not an effect
+of the readmission.
+
+Theme 3 is the least disturbed of the three: 3,813 of its 4,161 cycle-5 passages stayed, and its
+stability rose. The strongest result in the study is the one the defect touched least.
+
+Matching across cycles is on normalised passage text, because the deduplication key changed and
+passage identifiers are not comparable between the two runs. Per-theme totals reconcile to
+`topic_summary.csv` within 4 to 9 passages; the residue is normalisation collisions.
+
+**What this does not establish.** That the rebuilt screen is *correct*. It readmits 1,266 passages
+that a human has not scored, and the 150-row relevance audit remains unread. A screen that keeps
+the wrong text would produce exactly this picture: stable themes, clean diagnostics, and no way to
+tell from the numbers alone. Nothing in this section is a validated finding.
+
 ## 6. What this memo does not establish
 
 - That the window is the *right* window. It is a defensible and now fully documented choice; a
