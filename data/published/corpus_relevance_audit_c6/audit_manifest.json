@@ -1,0 +1,48 @@
+{
+  "assessor_packet_sha256": "3f8ce28f99db070399967809f077b3d7879b99a6e1f2035ddbbc3e7180915b48",
+  "audit_status": "pending_human_labels",
+  "blinded_packet_omits": [
+    "passage_id",
+    "deal_id",
+    "document_family_id",
+    "source_url",
+    "inclusion_decision",
+    "exclusion_reason"
+  ],
+  "candidate_csv_sha256": "e526dc02de9b8ca9f30d81c4023c994e62743213620c0f370aa115ce083754a4",
+  "confidence_interval": "two-sided 95% Wilson score interval",
+  "distinct_sampled_deals": 78,
+  "distinct_sampled_document_families": 150,
+  "gate_status": "pending",
+  "gate_thresholds": {
+    "excluded_candidate_missed_content_maximum_exclusive": 0.05,
+    "included_passage_relevance_minimum": 0.9
+  },
+  "human_label_contract": {
+    "all_sampled_rows_required": true,
+    "assessor_id": "nonblank",
+    "human_attestation": "human_assessed",
+    "relevance_label": [
+      "not_relevant",
+      "relevant"
+    ]
+  },
+  "labels_are_human_attested": false,
+  "labels_present": false,
+  "private_key_sha256": "a611fe54775134de266b1933ae29ad5c7c269d6ca4d6dc5d9766adc148497577",
+  "requested_counts": {
+    "excluded": 75,
+    "included": 75
+  },
+  "sample_counts": {
+    "excluded": 75,
+    "included": 75
+  },
+  "schema_version": 1,
+  "selection_method": "decision_then_deal_document_family_round_robin_with_sha256_order",
+  "selection_seed": "employee-corpus-relevance-v1",
+  "universe_counts": {
+    "excluded": 20469,
+    "included": 16173
+  }
+}
