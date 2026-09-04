@@ -72,8 +72,15 @@ $PY -m tag_edgar.cli prepare-employee-topic-review \
 echo "== 8/8 report =="
 # The corpus relevance audit was not run for this cycle, by direction. The report states that
 # in place of a passing gate; it never claims one.
+# Every cycle-specific input is passed. Passing only --corpus-dir and --topics-dir left
+# --frozen-dir, --ai-labels-dir and --tone-dir on their cycle-5 defaults, so the cycle-6 report
+# was written with a cycle-6 corpus and model against a cycle-5 sample, labels and tone. Nothing
+# failed; the headline deal and passage counts were simply the previous cycle's.
 $PY scripts/build_disclosure_sample_report.py \
   --corpus-dir "$CORPUS" --topics-dir "$TOPICS" \
+  --frozen-dir "$FROZEN_SAMPLE" \
+  --ai-labels-dir "$LABELS" \
+  --tone-dir "$TONE" \
   --audit-state "$AUDIT_STATE" \
   --output "$REPORT"
 
