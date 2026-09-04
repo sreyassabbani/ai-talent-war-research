@@ -23,6 +23,7 @@ Part 7.
 | What can we *not* claim? | [docs/meeting_briefing_plain_english.md](docs/meeting_briefing_plain_english.md) § Part 10 |
 | **Is anything counted twice?** | [docs/retrieval_window_memo.md](docs/retrieval_window_memo.md) §§ 5a–5b — yes, 7.0%, and why |
 | What kind of deal was each pilot deal? | [docs/deal_architecture_codebook.md](docs/deal_architecture_codebook.md) |
+| **Is the screen keeping the right passages?** | [data/published/corpus_relevance_audit_c6/](data/published/corpus_relevance_audit_c6/) — unanswered until two humans score it |
 
 ## The published tables
 
@@ -75,9 +76,12 @@ These hold for every file above and do not go away when a number looks strong.
   any employee stayed, left, or was paid.
 - The sample is selected on **whether a buyer filed with the SEC**. Private, PE, and foreign
   buyers cannot appear. That is a property of the public record, not a bug to fix.
-- The **150-passage relevance audit has not been read by a human**. The packet is prepared at
-  `data/derived/corpus_relevance_audit_133/assessor_packet.csv`. Until two reviewers score it,
-  nothing here is a validated finding.
+- The **150-passage relevance audit has not been read by a human**. Until two reviewers score it,
+  nothing here is a validated finding. The packet is now published and readable at
+  [data/published/corpus_relevance_audit_c6/](data/published/corpus_relevance_audit_c6/); it is
+  built on the cycle-6 corpus, so it scores the text that will actually be reported rather than
+  the superseded corpus these tables came from. Earlier packets were written only into the
+  git-ignored `data/derived/`, which is why no second reader ever saw one.
 - **Some passages are counted twice.** In the corpus these tables were built from, a clause filed
   as an exhibit and reprinted inside the S-4 or proxy that carries it was modelled once per
   rendition whenever the two disagreed about its heading — 968 rows, 7.0% of the sample. Three
