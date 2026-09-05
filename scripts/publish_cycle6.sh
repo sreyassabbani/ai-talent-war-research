@@ -26,6 +26,38 @@ TONE="$D/employee_tone_c6"
 REPORT="docs/disclosure_sample_report_c6.md"
 OUT="${OUT:-data/published/disclosure_sample_134}"
 
+# Cross-check before writing anything. Every defect in this cycle had the same shape: nothing
+# failed, and a wrong number printed under a correct-looking heading. All were caught by hand, by
+# reading one number against another that should have agreed with it. These two agreements are
+# cheap enough to check on every run.
+#
+#   1. The report's reproduction section names the directory a reader should check its numbers
+#      against. That string was hardcoded to the cycle-5 path, so the cycle-6 report sent readers
+#      to the superseded tables while every number above it was correct.
+#   2. The report's headline passage count must be the one the passage tables are built from. A
+#      report written against another cycle's frozen sample is not an error at any step; it just
+#      prints last cycle's totals.
+echo "== 0/3 check the report agrees with what is about to be published =="
+if ! grep -q "$OUT" "$REPORT"; then
+  echo "FAIL: $REPORT does not name $OUT." >&2
+  echo "      Regenerate it with --published-dir '$OUT/' before publishing." >&2
+  exit 1
+fi
+REPORT_PASSAGES=$(grep -oE '\*\*[0-9]{2,3},[0-9]{3}\*\* employee passages|[0-9]{2,3},[0-9]{3} passages drawn' "$REPORT" | grep -oE '[0-9]{2,3},[0-9]{3}' | head -1)
+FROZEN_PASSAGES=$($PY -c "
+import csv,sys
+csv.field_size_limit(10**9)
+rows=list(csv.DictReader(open(r'$FROZEN/frozen_sample.csv',newline='',encoding='utf-8')))
+print(f\"{sum(int(r['included_passages']) for r in rows if r['sample_status']=='modelled'):,}\")
+")
+if [ "$REPORT_PASSAGES" != "$FROZEN_PASSAGES" ]; then
+  echo "FAIL: report headline says $REPORT_PASSAGES passages; the frozen sample carries $FROZEN_PASSAGES." >&2
+  echo "      That is the cycle-mismatch defect. Regenerate the report from all-cycle-6 inputs." >&2
+  exit 1
+fi
+echo "report names $OUT; headline $REPORT_PASSAGES passages matches the frozen sample"
+echo
+
 echo "== 1/3 deal profiles =="
 $PY scripts/build_deal_profiles.py \
   --frozen-sample "$FROZEN/frozen_sample.csv" \

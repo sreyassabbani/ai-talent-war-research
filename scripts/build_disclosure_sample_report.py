@@ -522,7 +522,9 @@ def tone_section(
     return "\n".join(lines)
 
 
-def reproduction_section(pool: dict[str, object], frozen: dict[str, object]) -> str:
+def reproduction_section(
+    pool: dict[str, object], frozen: dict[str, object], published_dir: str
+) -> str:
     commands = """tag-edgar screen-disclosure-pool data/derived/deal_catalog.csv
 tag-edgar probe-disclosure data/derived/disclosure_pool/pool.csv
 tag-edgar build-disclosure-queue data/derived/disclosure_probe/probe_results.csv
@@ -538,7 +540,7 @@ python scripts/build_disclosure_sample_report.py"""
         "Every table above is generated from committed code and frozen artifacts:\n\n"
         f"```\n{commands}\n```\n\n"
         f"Selection rule `{rule}`; corpus hash `{corpus_hash}...`.\n\n"
-        "The tables themselves are published under `data/published/disclosure_sample_133/`, so "
+        f"The tables themselves are published under `{published_dir}`, so "
         "any number here can be checked against the file it came from without rerunning the "
         "pipeline. The passage corpus, the retrieved documents, and the SDC archive are not "
         "published; that directory's README gives the reason for each.\n"
@@ -641,7 +643,7 @@ def build_report(args: argparse.Namespace) -> str:
         sensitivity_section(sensitivity),
         tone_section(tone_rows, tone_manifest, deal_names),
         gates_section(diagnostics, analysis),
-        reproduction_section(pool, frozen),
+        reproduction_section(pool, frozen, args.published_dir),
         limits_section(audit_state),
     ]
     return "\n".join(sections).rstrip() + "\n"
@@ -668,6 +670,15 @@ def main() -> None:
         "--audit-state",
         default="not run",
         help="Human relevance-audit state, stated verbatim in the limits section.",
+    )
+    parser.add_argument(
+        "--published-dir",
+        default="data/published/disclosure_sample_133/",
+        help=(
+            "Directory the result tables are published to, named in the reproduction section. "
+            "This was hardcoded to the cycle-5 path, so the cycle-6 report sent readers to the "
+            "superseded tables. A cycle must pass its own."
+        ),
     )
     parser.add_argument(
         "--output", type=Path, default=PROJECT_ROOT / "docs" / "disclosure_sample_report.md"

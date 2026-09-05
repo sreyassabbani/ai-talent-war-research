@@ -20,5 +20,5 @@
   "sample_rows": 1074,
   "sample_rule": "top 3 primary passages per deal and topic by weight",
   "schema_version": 1,
-  "written": "2026-09-04T23:57:40+00:00"
+  "written": "2026-09-05T00:09:54+00:00"
 }

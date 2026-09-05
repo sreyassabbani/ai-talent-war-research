@@ -35,6 +35,9 @@ AUDIT_STATE="${AUDIT_STATE:-not run for this cycle}"
 # whenever a refit moves the components. Leaving this on the cycle-5 file published two claims
 # cycle 6 measured to be false.
 DESCRIPTORS="${DESCRIPTORS:-config/topic_descriptors_100.json}"
+# Named in the report's reproduction section as the place a reader can check its numbers. It was
+# hardcoded to the cycle-5 directory, so the cycle-6 report pointed at the superseded tables.
+PUBLISHED="${PUBLISHED:-data/published/disclosure_sample_133/}"
 
 echo "== 1/8 corpus =="
 # --no-manual-coding: the manually coded positive sources belong to the ten pilot deals, which
@@ -87,6 +90,7 @@ $PY scripts/build_disclosure_sample_report.py \
   --tone-dir "$TONE" \
   --descriptors "$DESCRIPTORS" \
   --audit-state "$AUDIT_STATE" \
+  --published-dir "$PUBLISHED" \
   --output "$REPORT"
 
 echo "Done. Report: $REPORT"

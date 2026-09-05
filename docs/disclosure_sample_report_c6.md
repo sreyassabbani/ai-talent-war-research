@@ -345,7 +345,7 @@ python scripts/build_disclosure_sample_report.py
 
 Selection rule `disclosure-first-v1`; corpus hash `e526dc02de9b8ca9...`.
 
-The tables themselves are published under `data/published/disclosure_sample_133/`, so any number here can be checked against the file it came from without rerunning the pipeline. The passage corpus, the retrieved documents, and the SDC archive are not published; that directory's README gives the reason for each.
+The tables themselves are published under `data/published/disclosure_sample_134/`, so any number here can be checked against the file it came from without rerunning the pipeline. The passage corpus, the retrieved documents, and the SDC archive are not published; that directory's README gives the reason for each.
 
 ## 11. What this cannot show
 
