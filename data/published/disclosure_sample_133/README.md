@@ -1,5 +1,40 @@
 # Disclosure-first sample: published result tables
 
+> ## Superseded on 2026-09-04 by [`../disclosure_sample_134/`](../disclosure_sample_134/)
+>
+> **Do not quote numbers from this directory.** It is kept as the record of what was
+> published on 2026-09-03, not as a second opinion alongside the newer tables. Where the
+> two disagree, cycle 6 is the corrected one.
+>
+> These tables were built on a corpus with three defects, all found after publication and
+> all now fixed. Each is written up in
+> [`docs/retrieval_window_memo.md`](../../../docs/retrieval_window_memo.md):
+>
+> | Defect | Effect on these tables | Written up in |
+> | --- | --- | --- |
+> | The page's running header counted as passage text, so the relevance screen threw away real provisions whose page happened to print "table of contents" | 1,266 passage texts wrongly discarded — indemnification survival, RSU award schedules, vesting terms, double-trigger benefit continuation | § 5c |
+> | Section headings were fed to the model as features | "table", "contents" and "table contents" were top-ten distinguishing terms of Theme 1 — a running header was a defining feature of a theme | § 5b |
+> | A clause filed as an exhibit and reprinted inside the S-4 or proxy carrying it was modelled once per rendition | 968 rows counted twice, 7.0% of the sample; Bally's / Bet.Works, System1 / Protected.Net and Ginkgo / Baktus worst affected | §§ 5a–5b |
+>
+> **What changed when they were fixed** (§ 5d). The sample moved from 133 deals / 13,817
+> passages to **134 deals / 13,954 passages** — one deal crossed the yield gate. Within-deal
+> duplicate rows went 1,017 → 0 and structural-heading tokens 9,717 → 9. The three themes
+> **survived**: k=3 in both cycles, the same identities by their terms, all still clearing the
+> 0.80 stability bar, and the dominant theme unchanged for all 133 deals present in both. So
+> the headline result of these tables stands. What moved is inside it — 1,955 passages
+> migrated from Theme 1 to Theme 2 once the header stopped misfiling benefit-plan text into
+> the executive theme, and Theme 1's coherence rose 0.258 → 0.309 while Theme 2's fell 0.351
+> → 0.198.
+>
+> **One conclusion here is now reversed.** The cycle-5 report recommended excluding EX-99
+> press releases, because dropping them took Theme 1 from 1 of 3 sub-themes passing to 3 of 3.
+> In cycle 6 Theme 1 passes 3 of 3 *with* press releases and 2 of 3 without. The header fix
+> had been doing what the EX-99 exclusion appeared to do. Treat that recommendation as
+> withdrawn; the question is open again.
+>
+> Regenerating this directory with `scripts/publish_disclosure_snapshot.py` would erase this
+> notice, since that script rewrites the README from the files it finds. Do not re-run it here.
+
 The small tables behind `docs/disclosure_sample_report.md`, copied out of the
 git-ignored `data/derived/` so every number in the report can be checked against the
 file it came from.
