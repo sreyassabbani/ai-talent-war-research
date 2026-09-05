@@ -51,37 +51,22 @@ EXEMPLAR_CHARS = 320
 #: Written after all three splits were in hand. Interpretation, not output: it is kept here rather
 #: than generated so it is reviewable as a claim, and it is printed only when all three sub-models
 #: exist, because it is a statement about the pattern across them.
-SYNTHESIS = [
-    "## What the three splits have in common",
-    "",
-    (
-        "Read the nine sub-themes together and one pattern runs through all three parents: "
-        "**what survives the stability test is the language that is templated across deals, and "
-        "what fails is the language that varies with the particular workforce.**"
-    ),
-    "",
-    (
-        "The three most stable sub-themes are ERISA and pension definitions (99.5%), award "
-        "treatment at the effective time (98.3%), and executive roles and board governance "
-        "(93.8%). All three are near-boilerplate: the same statutory definitions, the same "
-        '"immediately prior to the Effective Time" construction, the same governance clauses, '
-        "deal after deal."
-    ),
-    "",
-    (
-        "The three least stable are collective bargaining and works councils (56.4%), "
-        "continuing-employee benefit continuity (75.3%), and closing payment mechanics (77.0%). "
-        "These are the passages whose content depends on who the workforce actually is -- whether "
-        "it is unionised, what plans it moves onto, what it gets paid at closing."
-    ),
-    "",
+#: The claim the synthesis makes. It is kept as prose because it is an interpretation and should
+#: be reviewable as one; the evidence under it is generated, because an earlier version hardcoded
+#: six stability figures and two sub-theme names, and a refit made all six numbers wrong and
+#: dissolved both of the named components.
+SYNTHESIS_THESIS = (
+    "Read the nine sub-themes together and one pattern runs through all three parents: "
+    "**what survives the stability test is the language that is templated across deals, and "
+    "what fails is the language that varies with the particular workforce.**"
+)
+
+SYNTHESIS_CLOSING = [
     (
         "**This matters for how the numbers are read.** A high recovery rate here means a phrase "
-        "recurs across deals, not that the provision is important, common, or generous. The "
-        "sub-theme that speaks most directly to the question Dr. Singh raised about benefits "
-        "after an acquisition -- continuing-employee benefit continuity -- is one of the least "
-        "stable, and that is a fact about how much benefit terms vary between deals, not "
-        "evidence that they matter less."
+        "recurs across deals, not that the provision is important, common, or generous. Where a "
+        "sub-theme about what happens to a particular workforce scores low, that is a fact about "
+        "how much such terms vary between deals, not evidence that they matter less."
     ),
     "",
     (
@@ -92,6 +77,44 @@ SYNTHESIS = [
     ),
     "",
 ]
+
+
+def _synthesis(
+    models: dict[str, dict[str, object] | None], readings: dict[str, dict[str, dict[str, str]]]
+) -> list[str]:
+    """The cross-parent pattern, with the ranked evidence computed from the models themselves."""
+    ranked: list[tuple[float, str]] = []
+    for parent_id in PARENT_THEMES:
+        model = models.get(parent_id)
+        if model is None:
+            continue
+        for topic_id, terms, _coherence, stability in _stability_rows(model):
+            if stability is None:
+                continue
+            label = readings.get(parent_id, {}).get(topic_id, {}).get("label")
+            name = label or terms
+            ranked.append((stability, f"{name} ({_pct(stability)})"))
+    if len(ranked) < 6:
+        return []
+    ranked.sort(reverse=True)
+    top = "; ".join(name for _, name in ranked[:3])
+    bottom = "; ".join(name for _, name in reversed(ranked[-3:]))
+    return [
+        "## What the splits have in common",
+        "",
+        SYNTHESIS_THESIS,
+        "",
+        f"The three most stable sub-themes across all parents are {top}.",
+        "",
+        f"The three least stable are {bottom}.",
+        "",
+        (
+            "A sub-theme without a carried reading is named by its leading terms, because naming "
+            "it anything else would be inventing an interpretation to fill a table."
+        ),
+        "",
+        *SYNTHESIS_CLOSING,
+    ]
 
 
 def _read(path: Path) -> list[dict[str, str]]:
@@ -120,10 +143,11 @@ def _terms(raw: str, limit: int = 8) -> str:
     return ", ".join(part for part in raw.split("|")[:limit] if part)
 
 
-def _load_readings() -> dict[str, dict[str, dict[str, str]]]:
-    if not READINGS_PATH.exists():
+def _load_readings(path: Path | None = None) -> dict[str, dict[str, dict[str, str]]]:
+    target = path or READINGS_PATH
+    if not target.exists():
         return {}
-    raw = json.loads(READINGS_PATH.read_text(encoding="utf-8"))
+    raw = json.loads(target.read_text(encoding="utf-8"))
     return {key: value for key, value in raw.items() if not key.startswith("_")}
 
 
@@ -234,42 +258,52 @@ def _sensitivity_section(
                 f"{_pct(stability)} |"
             )
 
+    # Everything below is computed. An earlier version stated the direction of this result in
+    # prose -- that dropping press releases stabilised the split, and that EX-99 should therefore
+    # be excluded. That was true of the cycle it was written for and false in the next one, where
+    # the same comparison reverses. A conclusion that flips between corpora cannot be a constant.
+    base_stats = [stab for _, _, _, stab in base_rows if stab is not None]
+    alt_stats = [stab for _, _, _, stab in alt_rows if stab is not None]
+    base_mean = sum(base_stats) / len(base_stats) if base_stats else 0.0
+    alt_mean = sum(alt_stats) / len(alt_stats) if alt_stats else 0.0
+    delta = passed_alt - passed_base
+    direction = (
+        "more sub-themes clear the bar without press releases"
+        if delta > 0
+        else "fewer sub-themes clear the bar without press releases"
+        if delta < 0
+        else "the same number of sub-themes clear the bar either way"
+    )
+
     lines += [
         "",
         (
-            f"**The same three groups come back, and all of them get more stable.** "
-            f"{passed_base} of {len(base_rows)} sub-themes clear the {STABILITY_BAR:.0%} bar with "
-            f"press releases in; {passed_alt} of {len(alt_rows)} clear it with them out. The "
-            "labour-relations group moves from 56.4% to 80.7% and crosses the bar; the tax and "
-            "cost group moves from 79.7% to 86.9%."
+            f"**On this corpus, {direction}.** {passed_base} of {len(base_rows)} sub-themes clear "
+            f"the {STABILITY_BAR:.0%} bar with press releases in; {passed_alt} of {len(alt_rows)} "
+            f"clear it with them out. Mean recovery moves from {base_mean:.1%} to {alt_mean:.1%}."
         ),
         "",
         (
-            "Coherence does not move the same way, and the report should not pretend it does. The "
-            "executive group absorbs the passages the other two shed, growing from 3,159 to 3,362 "
-            "passages, and its coherence falls from 0.316 to 0.133 as it widens. The two smaller "
-            "groups get both more stable and more coherent. So the corpus change sharpens the "
-            "boundaries between sub-themes while making the largest one broader."
+            "The two fits are separate models, so their sub-themes are not paired and a row here "
+            "cannot be read across the table as the same group before and after. What the "
+            "comparison supports is whether the split as a whole holds up, not what happened to "
+            "any one sub-theme."
         ),
         "",
         (
-            "So the answer is that press releases were not creating a spurious theme -- they were "
-            "destabilising real ones. A press release restates deal facts in language that "
-            "resembles every part of the theme at once, which blurs the boundaries between "
-            "sub-themes without forming one of its own."
-        ),
-        "",
-        (
-            "**Recommendation:** exclude EX-99 from the modelled corpus, or model announcements "
-            "separately from contract text. This is a corpus decision, not a tuning knob, so it "
-            "belongs at the start of the next cycle alongside the deduplication fix."
+            "**This is a corpus decision and it is still open.** Whether EX-99 announcements "
+            "belong in the modelled corpus, or should be modelled separately from contract text, "
+            "is a question about what the study is measuring rather than a setting to be tuned to "
+            "whichever value scores better on this page."
         ),
         "",
     ]
     return lines
 
 
-def render(models: dict[str, dict[str, object] | None]) -> str:
+def render(
+    models: dict[str, dict[str, object] | None], readings_path: Path | None = None
+) -> str:
     lines = [
         "# Inside the three themes: second-level topics",
         "",
@@ -348,8 +382,22 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
                 f"{_fixed(_number(row.get('coherence', '')))} | {_pct(recovery)} | {survives} |"
             )
 
-        readings = _load_readings().get(parent_id, {})
+        readings = _load_readings(readings_path).get(parent_id, {})
         corpus_text = model["corpus_text"] if isinstance(model["corpus_text"], dict) else {}
+        unread = [row["topic_id"] for row in topics if not readings.get(row["topic_id"])]
+        if unread and readings:
+            # Silence would read as "no interpretation offered" rather than "this component is
+            # not the one the earlier reading described", which is the actual situation whenever
+            # a refit renumbers or reorganises the sub-themes.
+            lines += [
+                "",
+                (
+                    f"No plain-English reading is carried for {', '.join(f'`{t}`' for t in unread)}: "
+                    "these sub-themes do not match a component any earlier reading was written "
+                    "about, so anything said about them here would be a description of a term "
+                    "list rather than of passages somebody read."
+                ),
+            ]
         for row in topics:
             reading = readings.get(row["topic_id"])
             if not reading:
@@ -397,7 +445,7 @@ def render(models: dict[str, dict[str, object] | None]) -> str:
     lines += _sensitivity_section(models.get("topic_1"), models.get("topic_1_nopr"))
 
     if all(models.get(key) is not None for key in PARENT_THEMES):
-        lines += SYNTHESIS
+        lines += _synthesis(models, _load_readings(readings_path))
 
     lines += [
         "## What this does not establish",
@@ -428,20 +476,55 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").strip())
     parser.add_argument("--derived", type=Path, default=DERIVED)
     parser.add_argument(
+        "--topics-prefix",
+        type=Path,
+        default=None,
+        help=(
+            "Parent topic-model directory. Sub-models are read from this path with _t1, _t2, _t3 "
+            "and _t1_nopr appended, matching what run_topic_subsets.sh writes. "
+            "Defaults to <derived>/employee_topics_100."
+        ),
+    )
+    parser.add_argument(
+        "--corpus-prefix",
+        type=Path,
+        default=None,
+        help="Parent corpus directory, suffixed the same way. Defaults to "
+        "<derived>/employee_corpus_100.",
+    )
+    parser.add_argument(
+        "--readings",
+        type=Path,
+        default=None,
+        help=(
+            "Plain-English sub-theme readings. Second-level topic numbers are assigned by the fit "
+            "and are not stable across cycles, so a refit needs its own file. Defaults to "
+            "docs/second_level_readings.json."
+        ),
+    )
+    parser.add_argument(
         "--output", type=Path, default=PROJECT_ROOT / "docs" / "second_level_topics.md"
     )
     args = parser.parse_args(argv[1:])
+
+    # A prefix is a directory path with a suffix appended, not a parent directory, so the sibling
+    # naming from run_topic_subsets.sh is reproduced here rather than reinvented.
+    topics_prefix = args.topics_prefix or (args.derived / "employee_topics_100")
+    corpus_prefix = args.corpus_prefix or (args.derived / "employee_corpus_100")
+
+    def suffixed(prefix: Path, suffix: str) -> Path:
+        return prefix.with_name(f"{prefix.name}_{suffix}")
 
     models: dict[str, dict[str, object] | None] = {}
     for parent_id in PARENT_THEMES:
         suffix = parent_id.replace("topic_", "t")
         models[parent_id] = load_submodel(
-            args.derived / f"employee_topics_100_{suffix}",
-            args.derived / f"employee_corpus_100_{suffix}",
+            suffixed(topics_prefix, suffix),
+            suffixed(corpus_prefix, suffix),
         )
     models["topic_1_nopr"] = load_submodel(
-        args.derived / "employee_topics_100_t1_nopr",
-        args.derived / "employee_corpus_100_t1_nopr",
+        suffixed(topics_prefix, "t1_nopr"),
+        suffixed(corpus_prefix, "t1_nopr"),
     )
 
     fitted = [key for key, value in models.items() if value is not None]
@@ -450,7 +533,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(render(models), encoding="utf-8")
+    args.output.write_text(render(models, args.readings), encoding="utf-8")
     print(f"Fitted sub-models: {', '.join(sorted(fitted))}")
     print(f"Wrote {args.output}")
     return 0

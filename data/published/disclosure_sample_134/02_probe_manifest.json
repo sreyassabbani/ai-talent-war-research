@@ -1,0 +1,17 @@
+{
+  "confirm_target_name": true,
+  "evidence_boundary": "probe_status records which forms exist, not what they disclose; target_name_hit is a machine corroboration and is not human review",
+  "pool_csv_sha256": "e032c5a0a09757b0e6c0958101b903b33f4041bb7a99a506e4d258bc20277bb1",
+  "pool_rule_version": "disclosure-first-v1",
+  "probe_positive_deals": 170,
+  "probe_window": "tag_edgar.windows.event_window: announcement-30d to effective+30d, or announcement+365d when no closing date is recorded",
+  "probed_deals": 1060,
+  "schema_version": 1,
+  "status_counts": {
+    "agreement_exhibit": 89,
+    "announcement_only": 724,
+    "merger_proxy": 81,
+    "no_transaction_filing": 166
+  },
+  "target_name_confirmed": 112
+}

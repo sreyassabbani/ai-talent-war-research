@@ -369,7 +369,19 @@ def _passage_eligibility(
     # Keep the screening universe broad, but do not model labels, table-of-contents entries, or
     # other navigation fragments as if they were employee provisions. The audit found that these
     # fragments were a major source of false positives.
+    #
+    # This test reads the passage body. It used to read the heading too, because the heading was
+    # prepended before model_text was built, and a running header saying "Table of Contents" then
+    # excluded every real provision printed beneath it -- 6,855 exclusions, of which the great
+    # majority were 100-word clauses about indemnification, vesting and benefit continuity. With
+    # headings suppressed upstream the phrase now fires only when the body itself is navigation.
     if _NAVIGATION_CONTEXT.search(model_text) and not _EMPLOYEE_TREATMENT_CONTEXT.search(model_text):
+        return False, "excluded_navigation_or_index_fragment"
+    # An index entry that never says "table of contents" is still recognisable by its shape: a
+    # title, dotted leaders, a page number, repeated down the block. That shape only survives in
+    # the raw text -- normalize_model_text strips the dots and masks the numbers that make it
+    # legible. Two leaders are required so that a single elided quotation does not qualify.
+    if raw_text is not None and len(_INDEX_LEADER.findall(raw_text)) >= 2:
         return False, "excluded_navigation_or_index_fragment"
     if raw_text is not None and _is_bare_employee_caption(raw_text):
         return False, "excluded_bare_employee_caption"
@@ -515,6 +527,9 @@ _AWARD_TREATMENT_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _NAVIGATION_CONTEXT = re.compile(r"\b(?:table of contents|exhibits?)\b", re.IGNORECASE)
+# A dotted leader running into a page number: "Employee Benefit Matters ......... 84". Both the
+# dots and the trailing number are required, so an ellipsis inside a quoted passage is not enough.
+_INDEX_LEADER = re.compile(r"(?:\.\s*){4,}\s*\d{1,4}(?!\d)|…\s*\d{1,4}(?!\d)")
 _CAPTION_ACTION = re.compile(
     r"\b(?:is|are|was|were|be|been|being|shall|will|may|must|means?|include[ds]?|"
     r"provide[ds]?|receive[ds]?|convert(?:ed|s)?|assum(?:e|ed|es)|cancel(?:led|s)?|"

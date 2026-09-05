@@ -1,0 +1,20 @@
+{
+  "evidence_boundary": "zero_yield rows record that no employee passage survived the screen in the retrieved documents; that is a disclosure observation, not evidence that the transaction lacked employee arrangements",
+  "largest_deal_share": 0.0662,
+  "modelled_deals": 134,
+  "modelled_passages": 13954,
+  "passages_csv_sha256": "e526dc02de9b8ca9f30d81c4023c994e62743213620c0f370aa115ce083754a4",
+  "pool_rule_version": "disclosure-first-v1",
+  "queue_csv_sha256": "bfeb164c7bd0ef72a22d8dc6dca7a816a22112ece51d4e29a3becc7b6a3bf02f",
+  "queued_deals": 400,
+  "schema_version": 1,
+  "status_counts": {
+    "below_yield_gate": 104,
+    "modelled": 134,
+    "zero_yield_reported_not_modelled": 162
+  },
+  "yield_gate": {
+    "minimum_passages": 10,
+    "minimum_source_documents": 2
+  }
+}

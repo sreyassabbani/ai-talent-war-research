@@ -1,0 +1,24 @@
+{
+  "distinct_deals": 134,
+  "distinct_passages": 13954,
+  "evidence_boundary": "Quotes are filing text as retrieved. A highlight link locates a passage; it does not certify that the passage supports any claim made about it.",
+  "files": {
+    "08_passage_links.csv.gz": {
+      "bytes": 3212887,
+      "sha256": "1d31746b60a6e6895280149dc6fa8613fd5330a695b956670e3fcab9dcaa48f4"
+    },
+    "08_passage_links_sample.csv": {
+      "bytes": 1106423,
+      "sha256": "6d0e20386ed51277c2f0e8ed329fd9bf71eb955548418c20be813f4b3e5e1a7c"
+    }
+  },
+  "highlight_link_coverage": 0.999928,
+  "passage_rows": 13954,
+  "quote_chars": 400,
+  "row_rule": "one row per included passage, carrying its primary topic",
+  "rows_with_highlight_link": 13953,
+  "sample_rows": 1074,
+  "sample_rule": "top 3 primary passages per deal and topic by weight",
+  "schema_version": 1,
+  "written": "2026-09-05T00:09:54+00:00"
+}

@@ -600,6 +600,39 @@ def test_passage_gate_excludes_bare_captions_and_navigation_fragments() -> None:
     ) == (False, "excluded_navigation_or_index_fragment")
 
 
+def test_index_entries_are_caught_by_their_shape_not_by_the_words_around_them() -> None:
+    """A contents block that never says "table of contents" is still a contents block.
+
+    The dotted leader and the page number survive only in the raw text, so the shape test has to
+    read that; model_text has already masked the numbers and stripped the dots.
+    """
+    index_block = (
+        "SECTION 7.8 Environmental Matters ................................. 84\n"
+        "SECTION 7.9 Employee Benefit Matters ............................. 84\n"
+        "SECTION 7.10 Retention Awards ..................................... 85"
+    )
+    assert _passage_eligibility(
+        ("employee benefit", "retention"),
+        "section numbertoken environmental matters section numbertoken employee benefit matters",
+        index_block,
+    ) == (False, "excluded_navigation_or_index_fragment")
+
+
+def test_a_real_provision_is_not_mistaken_for_an_index_entry() -> None:
+    """The shape test must not fire on ordinary prose, including elided quotations."""
+    provision = (
+        "Parent shall provide each Continuing Employee with a base salary that is no less "
+        "favourable than the base salary provided immediately prior to the Effective Time ... "
+        "for a period of 12 months following the Closing Date."
+    )
+    included, reason = _passage_eligibility(
+        ("continued employment", "salary"),
+        "parent shall provide each continuing employee with a base salary numbertoken months",
+        provision,
+    )
+    assert included, reason
+
+
 def test_passage_gate_excludes_generic_proxy_litigation_and_representative_language() -> None:
     assert _passage_eligibility(
         ("employees",),

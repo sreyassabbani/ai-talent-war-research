@@ -229,6 +229,13 @@ def clusters_section(
         "gate, which is why a component's passage count spans more deals than the sample itself.",
         "The deal counts below are for the frozen sample.",
         "",
+        "Three populations appear in this report and they are not interchangeable. The **frozen",
+        f"sample** is the {sample_deals} deals selected for modelling, and it is the denominator for",
+        "every deal count. The **corpus** is every included passage from every retrieved deal, which",
+        "is larger because it keeps deals that fell below the yield gate. The **fit universe** is the",
+        "bounded, balanced subset of passages the components are actually estimated from, which is",
+        "smaller than either. A count is only comparable to another count drawn from the same one.",
+        "",
     ]
     best: dict[str, list[dict[str, str]]] = {}
     for row in assignments:
@@ -440,14 +447,14 @@ def ai_section(labels: list[dict[str, str]], sample_deals: int) -> str:
 
 
 def sensitivity_section(variants: list[tuple[str, list[dict[str, str]]]]) -> str:
-    """Show whether the components survive changing how the fit sample is balanced."""
+    """Show whether the components survive changing how the fit universe is balanced."""
     usable = [(name, rows) for name, rows in variants if rows]
     if len(usable) < 2:
         return ""
     lines = [
         "## 7. Does the result depend on how we built it?",
         "",
-        "The bounded fit sample can be spread evenly across deals, across document families, or",
+        "The bounded fit universe can be spread evenly across deals, across document families, or",
         "not balanced at all. The primary setting was fixed before this run. Re-fitting under the",
         "other two is the check that the components are a property of the text rather than of that",
         "choice.",
@@ -515,7 +522,9 @@ def tone_section(
     return "\n".join(lines)
 
 
-def reproduction_section(pool: dict[str, object], frozen: dict[str, object]) -> str:
+def reproduction_section(
+    pool: dict[str, object], frozen: dict[str, object], published_dir: str
+) -> str:
     commands = """tag-edgar screen-disclosure-pool data/derived/deal_catalog.csv
 tag-edgar probe-disclosure data/derived/disclosure_pool/pool.csv
 tag-edgar build-disclosure-queue data/derived/disclosure_probe/probe_results.csv
@@ -531,7 +540,7 @@ python scripts/build_disclosure_sample_report.py"""
         "Every table above is generated from committed code and frozen artifacts:\n\n"
         f"```\n{commands}\n```\n\n"
         f"Selection rule `{rule}`; corpus hash `{corpus_hash}...`.\n\n"
-        "The tables themselves are published under `data/published/disclosure_sample_133/`, so "
+        f"The tables themselves are published under `{published_dir}`, so "
         "any number here can be checked against the file it came from without rerunning the "
         "pipeline. The passage corpus, the retrieved documents, and the SDC archive are not "
         "published; that directory's README gives the reason for each.\n"
@@ -634,7 +643,7 @@ def build_report(args: argparse.Namespace) -> str:
         sensitivity_section(sensitivity),
         tone_section(tone_rows, tone_manifest, deal_names),
         gates_section(diagnostics, analysis),
-        reproduction_section(pool, frozen),
+        reproduction_section(pool, frozen, args.published_dir),
         limits_section(audit_state),
     ]
     return "\n".join(sections).rstrip() + "\n"
@@ -661,6 +670,15 @@ def main() -> None:
         "--audit-state",
         default="not run",
         help="Human relevance-audit state, stated verbatim in the limits section.",
+    )
+    parser.add_argument(
+        "--published-dir",
+        default="data/published/disclosure_sample_133/",
+        help=(
+            "Directory the result tables are published to, named in the reproduction section. "
+            "This was hardcoded to the cycle-5 path, so the cycle-6 report sent readers to the "
+            "superseded tables. A cycle must pass its own."
+        ),
     )
     parser.add_argument(
         "--output", type=Path, default=PROJECT_ROOT / "docs" / "disclosure_sample_report.md"

@@ -31,6 +31,13 @@ TONE="${TONE:-$D/employee_tone_100}"
 REVIEW="${REVIEW:-$D/employee_topic_review_100}"
 REPORT="${REPORT:-docs/disclosure_sample_report.md}"
 AUDIT_STATE="${AUDIT_STATE:-not run for this cycle}"
+# The descriptors are a written reading of what each component grouped, so they are cycle-specific
+# whenever a refit moves the components. Leaving this on the cycle-5 file published two claims
+# cycle 6 measured to be false.
+DESCRIPTORS="${DESCRIPTORS:-config/topic_descriptors_100.json}"
+# Named in the report's reproduction section as the place a reader can check its numbers. It was
+# hardcoded to the cycle-5 directory, so the cycle-6 report pointed at the superseded tables.
+PUBLISHED="${PUBLISHED:-data/published/disclosure_sample_133/}"
 
 echo "== 1/8 corpus =="
 # --no-manual-coding: the manually coded positive sources belong to the ten pilot deals, which
@@ -72,9 +79,18 @@ $PY -m tag_edgar.cli prepare-employee-topic-review \
 echo "== 8/8 report =="
 # The corpus relevance audit was not run for this cycle, by direction. The report states that
 # in place of a passing gate; it never claims one.
+# Every cycle-specific input is passed. Passing only --corpus-dir and --topics-dir left
+# --frozen-dir, --ai-labels-dir and --tone-dir on their cycle-5 defaults, so the cycle-6 report
+# was written with a cycle-6 corpus and model against a cycle-5 sample, labels and tone. Nothing
+# failed; the headline deal and passage counts were simply the previous cycle's.
 $PY scripts/build_disclosure_sample_report.py \
   --corpus-dir "$CORPUS" --topics-dir "$TOPICS" \
+  --frozen-dir "$FROZEN_SAMPLE" \
+  --ai-labels-dir "$LABELS" \
+  --tone-dir "$TONE" \
+  --descriptors "$DESCRIPTORS" \
   --audit-state "$AUDIT_STATE" \
+  --published-dir "$PUBLISHED" \
   --output "$REPORT"
 
 echo "Done. Report: $REPORT"

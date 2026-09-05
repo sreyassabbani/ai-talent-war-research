@@ -191,6 +191,132 @@ the model, real section headings are kept as features, and the surviving row of 
 is chosen to be the one carrying a real heading rather than the artefact, so it can still be
 found in its filing.
 
+## 5c. The consequence nobody predicted: the relevance screen was reading the heading too
+
+Rebuilding the corpus with the fix produced a result that a fix which only merges rows cannot
+produce — **the corpus grew.** Chasing that down found the largest of the three defects, and it
+is the one that most affects what the study is actually about.
+
+Section 4 of this memo describes a second relevance filter that runs after the window. One of its
+rules discards a passage as a navigation fragment when the phrase "table of contents" appears in
+the modelled text. Because the heading was prepended before the modelled text was built, that
+rule was reading the running header. **Every real provision printed on a page whose header said
+"Table of Contents" was being discarded as an index entry.**
+
+| | before | after |
+| --- | ---: | ---: |
+| Canonical rows | 42,235 | 36,642 |
+| Included passages | 16,079 | 16,180 |
+| Excluded as a navigation or index fragment | **6,855** | **320** |
+| Within-deal duplicated rows | 1,017 | **0** |
+| Structural-heading tokens inside `model_text` | 9,717 | **9** |
+
+The included corpus barely changes size, +101 rows, and that number hides the real movement:
+**1,266 passage texts enter the corpus that were previously excluded**, and 18 leave. The sample
+turns over by about 8% while appearing almost static.
+
+**These are not index entries.** A sample was read rather than counted. Median length 106 words,
+tenth percentile 32. They are employee indemnification survival clauses, restricted-stock-unit
+award schedules, equity-plan vesting terms, double-trigger benefit continuation on a qualifying
+termination, director biographies, and merger-background narrative. Roughly half are long and
+carry an operative verb. The rest are a genuine mixture, and some are plainly off-target for this
+research question — hedging covenants, insurance cost accounting, an earnings-call slide.
+
+So the screen was not a working gate that the fix broke. It was discarding 6,855 passages on a
+signal that had nothing to do with their content, and the study has been reporting on a corpus
+with that hole in it.
+
+**What replaces it.** The phrase test is kept, and with headings suppressed it now fires only
+when the body itself is navigation — 320 rows. A second test was added for the index entries that
+never say "table of contents": a dotted leader running into a page number, twice or more, checked
+against the raw text because normalisation destroys exactly the dots and digits that make the
+shape legible. On the rebuilt corpus that test catches **7 further rows** out of 16,180, all of
+them unmistakable contents blocks, none containing the word "retention".
+
+Seven rows is the honest measure of how much genuine index text was left. It is also the measure
+of how wrong the original rule was: it excluded 6,855 passages to catch roughly 327.
+
+**A property worth stating, not a defect.** Deduplication is global, so a passage whose text
+appears in two deals becomes one modelled row owned by one of them; 8.2% of canonical passages
+occur in more than one deal. Changing which rendition represents a group therefore moves a few
+deals in and out of the modelled set — 235 retrieved deals became 238, one lost and four gained.
+Deal-level attribution in the analysis comes from the occurrence table, not from canonical
+ownership, so this does not affect topic shares. It does mean a per-deal count of canonical rows
+is not a meaningful quantity on its own.
+
+## 5d. What the refit showed (cycle 6, 2026-09-04)
+
+Sections 5a–5c describe defects and a rebuilt corpus. This section records what happened when the
+model was actually refitted on it, because a corpus measurement is not a result and the previous
+version of this memo already demonstrated the cost of asserting a consequence before measuring it.
+
+**First, a reconciliation.** The "after" column in section 5c was measured on an intermediate
+rebuild, before the dotted-leader shape test was added. The corpus cycle 6 published is:
+
+| | 5c "after" | published cycle 6 |
+| --- | ---: | ---: |
+| Canonical rows | 36,642 | 36,642 |
+| Included passages | 16,180 | **16,173** |
+| Excluded as a navigation or index fragment | 320 | **331** |
+
+Seven passages moved out of the included pile, which is the count section 5c predicts the shape
+test would catch. The remaining four-row difference in the exclusion column is not accounted for
+by that test and is not worth a theory; the published manifest is authoritative.
+
+**The three themes survived.** The fit chose `k=3` again, the term lists identify the same three
+themes, and all three still clear the 0.80 recovery bar set before any of this was fitted.
+
+| Theme | Passages | Coherence | Stability (bar 0.80) |
+| --- | ---: | ---: | ---: |
+| 1 — executive and officer | 5,741 → 4,100 | 0.258 → 0.309 | 0.864 → 0.815 |
+| 2 — benefit plans and ERISA | 5,762 → 7,689 | 0.351 → **0.198** | 0.889 → 0.920 |
+| 3 — stock and equity | 4,576 → 4,384 | 0.432 → 0.399 | 0.983 → **0.996** |
+
+**The dominant theme is unchanged for all 133 deals in the frozen sample.** Not one moved.
+
+**The defect is visible in cycle 5's own published output.** The top positive residual terms for
+cycle-5 Theme 1 — the terms that most distinguished that theme — included `table`, `contents` and
+`table contents`. The running header was a top-ten distinguishing feature of a theme. In cycle 6
+no such term appears in any theme. This is the clearest available evidence that the header was
+shaping the analysis and not merely padding it.
+
+**Where the readmitted passages went, and what actually moved.** The 1,266 readmitted texts split
+516 / 214 / 536 across themes 1, 2 and 3. Every one of them carries the same cycle-5 exclusion
+reason, `excluded_navigation_or_index_fragment`, and no other reason appears — the readmission is
+exactly the defect in 5c and nothing else rode in with it.
+
+Theme 2 grew by 1,927 but took only 214 readmitted passages, so its growth is not readmission. A
+migration matrix over the 14,888 passages primary-assigned in both cycles shows what it is:
+
+```
+rows = cycle 5 theme, cols = cycle 6 theme
+              topic_1     topic_2     topic_3
+topic_1         3,418       1,955          14
+topic_2            27       5,298          15
+topic_3           135         213       3,813
+
+stayed: 12,529 (84.2%)   moved: 2,359 (15.8%)
+```
+
+One cell dominates: **1,955 passages moved from Theme 1 to Theme 2**, with every other
+off-diagonal cell under 250. The header was not only discarding provisions, it was misfiling
+them — benefit-plan text printed on contents-headed pages was being pulled into the executive
+theme by its header, and once the header stopped being a feature that text reassigned on its own
+vocabulary. Theme 2's coherence fall is the cost of absorbing those 1,955 passages, not an effect
+of the readmission.
+
+Theme 3 is the least disturbed of the three: 3,813 of its 4,161 cycle-5 passages stayed, and its
+stability rose. The strongest result in the study is the one the defect touched least.
+
+Matching across cycles is on normalised passage text, because the deduplication key changed and
+passage identifiers are not comparable between the two runs. Per-theme totals reconcile to
+`topic_summary.csv` within 4 to 9 passages; the residue is normalisation collisions.
+
+**What this does not establish.** That the rebuilt screen is *correct*. It readmits 1,266 passages
+that a human has not scored, and the 150-row relevance audit remains unread. A screen that keeps
+the wrong text would produce exactly this picture: stable themes, clean diagnostics, and no way to
+tell from the numbers alone. Nothing in this section is a validated finding.
+
 ## 6. What this memo does not establish
 
 - That the window is the *right* window. It is a defensible and now fully documented choice; a

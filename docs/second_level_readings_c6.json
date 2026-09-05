@@ -1,0 +1,37 @@
+{
+  "_note": "Plain-English readings of the second-level sub-themes, written after reading representative passages rather than inferred from the term lists. Each entry names an exemplar by passage_id; the script pulls that passage's text from the corpus at render time and never transcribes it by hand.",
+  "_cycle6_note": "2026-09-04. Second-level topic numbers are assigned by the fit and are NOT stable across cycles, so the cycle-5 readings file cannot be carried over by key. Doing so mislabelled every renumbered component: the cycle-6 report initially described the 67.4%-failing option-plan component as 'Award treatment at the effective time ... the most coherent and the most stable of the three', which is the component that actually scores 97.1%. Each cycle-5 reading was scored against every cycle-6 sub-theme of the same parent by Jaccard overlap of top-term sets, and only carried where the match was high and clearly beat the runner-up.",
+  "_carried": [
+    "topic_3/topic_2 <- cycle-5 topic_3/topic_3, Jaccard 1.00 over 10 terms, runner-up 0.00. Identical term sets; the component is unambiguously the same.",
+    "topic_1/topic_2 <- cycle-5 topic_1/topic_2, Jaccard 0.67, runner-up 0.18.",
+    "topic_2/topic_3 <- cycle-5 topic_2/topic_3, Jaccard 0.54, runner-up 0.00. The weakest of the three matches and the one to confirm first, though both term lists are dominated by erisa/plan/pension/benefit/code and no other cycle-6 sub-theme scores above zero against it."
+  ],
+  "_dropped": [
+    "topic_1/topic_1 'Tax definitions and cost accounting' and topic_1/topic_3 'Collective bargaining and works councils': best cycle-6 matches score 0.11 and 0.05. Theme 1 reorganised. The collective-bargaining text did not vanish, it changed parent -- 213 -> 20 passages in Theme 1 and 331 -> 492 in Theme 2 -- and now appears as Theme 2's topic_2 at 54.1% stability. Moving a reading across parents is a larger interpretive claim than re-keying within one, so it is left for Aarav rather than done here.",
+    "topic_2/topic_1 'Employment-law representations and warranties' and topic_2/topic_2 'Continuing-employee benefit continuity': 0.25 and 0.25. The benefit-continuity component in particular no longer separates at all -- its language scatters 111/210/82 across the three cycle-6 sub-themes where cycle 5 had 372 of 387 in one component.",
+    "topic_3/topic_1 'Closing payment mechanics' and topic_3/topic_2 'Standing equity plans and new grants': 0.25 and 0.25. Cycle 6 appears to merge these two into one share/RSU component and separate option-plan language instead, but that is a reading of the term lists and has not been checked against the passages.",
+    "topic_1_nopr: cycle 5 had no readings for the press-release sensitivity and cycle 6 adds none."
+  ],
+  "_exemplars_note": "All cycle-5 exemplar passage ids were re-selected. The deduplication key changed to hash passage text alone, so every canonical passage id is new and not one cycle-5 exemplar resolves against the cycle-6 corpus; carried over, the quotes would have silently disappeared from the report. Replacements are the highest-weight passage of each sub-theme among those 45 to 60 words long, since the highest-weight passage outright is usually a short fragment that reads as a heading rather than a provision.",
+  "topic_1": {
+    "topic_2": {
+      "label": "Executive roles and board governance",
+      "reading": "Who holds which office and how the board is composed: chief executive succession, chairman restrictions, voting agreements over board seats. This is corporate governance around named executives rather than the terms of their employment, and it is the largest part of the theme. In cycle 5 it was also the most stable part; in cycle 6 it is not, recovering 88.0% against 95.9% for the cost-and-services sub-theme beside it.",
+      "exemplar_passage_id": "passage_1abf67f5d5061db0"
+    }
+  },
+  "topic_2": {
+    "topic_3": {
+      "label": "ERISA and pension definitions",
+      "reading": "Statutory definitions and the representations built on them: Title IV plans, multiemployer plans, ERISA affiliates, and whether the target has ever maintained or contributed to a pension plan. This is near-identical statutory language deal after deal, which is why it is the most stable sub-theme in the study, recovering in every leave-one-deal-out fold in cycle 6. Cycle 5 measured explicit negative representations at about 29% of it; that has not been re-measured on this corpus and the figure is not carried forward.",
+      "exemplar_passage_id": "passage_fb0f1a5ad68948c9"
+    }
+  },
+  "topic_3": {
+    "topic_2": {
+      "label": "Award treatment at the effective time",
+      "reading": "What happens to each option and RSU at closing: assumed, converted into an acquirer award, accelerated, or cancelled for no consideration. This is the sub-theme closest to the research question, and it is both the most coherent and the most stable of the three. It is also the most durable result in the study: its ten defining terms are identical in cycle 5 and cycle 6, across a corpus rebuild that moved 2,359 passages between parent themes.",
+      "exemplar_passage_id": "passage_3c50eb3e9ce88dc2"
+    }
+  }
+}

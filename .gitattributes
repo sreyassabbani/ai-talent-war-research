@@ -1,0 +1,6 @@
+# This repo is worked on under Git Bash on Windows with core.autocrlf=true, which rewrites shell
+# scripts to CRLF on checkout. Git Bash then fails them on the carriage return, and -- worse --
+# a checkout that changes the line endings of a script that is currently RUNNING shifts every
+# byte offset under the interpreter, which reads the file lazily. That happened on 2026-09-04 to
+# scripts/run_cycle6.sh during the cycle-6 run.
+*.sh text eol=lf
